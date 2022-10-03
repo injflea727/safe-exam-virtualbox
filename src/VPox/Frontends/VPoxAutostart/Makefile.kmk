@@ -1,0 +1,44 @@
+# $Id: Makefile.kmk $
+## @file
+# VPoxAutostart - VM autostart service.
+#
+
+#
+# Copyright (C) 2012-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifeq ($(KBUILD_TARGET),win)
+ PROGRAMS += VPoxAutostartSvc
+ VPoxAutostartSvc_TEMPLATE   = VPOXMAINCLIENTEXE
+ VPoxAutostartSvc_INCS       = ../Common
+ VPoxAutostartSvc_SOURCES    = \
+	VPoxAutostartCfg.cpp \
+	VPoxAutostartStart.cpp \
+	VPoxAutostartStop.cpp \
+	VPoxAutostartUtils.cpp \
+	VPoxAutostart-win.cpp \
+	../Common/PasswordInput.cpp
+ VPoxAutostartSvc_LIBS.win += Secur32.lib
+else
+ PROGRAMS += VPoxAutostart
+ VPoxAutostart_TEMPLATE   = VPOXMAINCLIENTEXE
+ VPoxAutostart_SOURCES    = \
+	VPoxAutostartCfg.cpp \
+	VPoxAutostartStart.cpp \
+	VPoxAutostartStop.cpp \
+	VPoxAutostartUtils.cpp \
+	VPoxAutostart-posix.cpp
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)

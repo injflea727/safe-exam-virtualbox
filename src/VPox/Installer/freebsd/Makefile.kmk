@@ -1,0 +1,324 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the FreeBSD installer.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifneq ($(KBUILD_HOST),freebsd)
+ $(error "The FreeBSD installer can only be built on FreeBSD!")
+endif
+
+#
+# Globals and targets.
+#
+VPOX_PATH_FBSD_INST_SRC      := $(PATH_SUB_CURRENT)
+VPOX_FBSD_INST_OUT_DIR       := $(PATH_TARGET)/Installer/freebsd
+VPOX_FBSD_INST_STAGE_DIR     := $(PATH_TARGET)/Installer/freebsd/install
+VPOX_FBSD_DBG_PATH           := usr/lib/debug/opt/VirtualPox
+VPOX_FBSD_PACKAGE_NAME        = VirtualPox-$(VPOX_VERSION_STRING)-r$(VPOX_SVN_REV).tbz
+VPOX_FBSD_INST_LIB_DIR       := $(VPOX_FBSD_INST_STAGE_DIR)/lib
+VPOX_FBSD_INST_BIN_DIR       := $(VPOX_FBSD_INST_STAGE_DIR)/bin
+VPOX_FBSD_INST_LIBVPOX_DIR   := $(VPOX_FBSD_INST_LIB_DIR)/virtualpox
+VPOX_FBSD_INST_SHARE_DIR     := $(VPOX_FBSD_INST_STAGE_DIR)/share
+VPOX_FBSD_INST_SHAREAPP_DIR  := $(VPOX_FBSD_INST_SHARE_DIR)/applications
+VPOX_FBSD_INST_SHAREICON_DIR := $(VPOX_FBSD_INST_SHARE_DIR)/pixmaps
+VPOX_FBSD_INST_SHAREVPOX_DIR := $(VPOX_FBSD_INST_SHARE_DIR)/virtualpox
+
+# Unset this to speed up things during makefile hacking.
+VPOX_FBSD_INST_DEP_ON_MAKEFILE := $(MAKEFILE_CURRENT)
+
+BLDDIRS  += $(VPOX_FBSD_INST_OUT_DIR) $(VPOX_FBSD_INST_STAGE_DIR)
+PACKING  += $(PATH_STAGE_BIN)/$(VPOX_FBSD_PACKAGE_NAME)
+
+OTHER_CLEAN   += \
+	$(addprefix $(VPOX_FBSD_INST_STAGE_DIR)/,\
+		pkg_plist \
+		LICENSE) \
+	$(wildcard $(VPOX_FBSD_INST_OUT_DIR)/VirtualPox-*)
+
+#
+# FreeBSD installs.
+#
+INSTALLS += freebsd-misc
+freebsd-misc_INST = bin/
+freebsd-misc_MODE = a+r,u+w
+freebsd-misc_SOURCES = \
+	$(PATH_ROOT)/src/VPox/Frontends/VirtualPox/images/$(if $(VPOX_OSE),OSE,NonOSE)/VirtualPox_32px.png=>VPox.png \
+	$(if $(VPOX_OSE),,$(VPOX_BRAND_LICENSE_TXT)=>LICENSE) \
+	$(if $(VPOX_WITH_QTGUI),$(freebsd-misc_0_OUTDIR)/virtualpox.desktop,)
+freebsd-misc_CLEAN = $(freebsd-misc_0_OUTDIR)/virtualpox.desktop
+
+$$(PATH_freebsd-misc)/virtualpox.desktop: $(PATH_SUB_CURRENT)/virtualpox.desktop $(VPOX_VERSION_STAMP) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$<)
+ifdef VPOX_PATH_PACKAGE_DOCS
+	$(QUIET)$(SED) -e "s+\$$VPOX_DOC_PATH+$(VPOX_PATH_PACKAGE_DOCS)+" --output $@ $<
+else
+	$(QUIET)$(SED) -e "s+\$$VPOX_DOC_PATH+/opt/VirtualPox+" --output $@ $<
+endif
+
+
+
+#
+# The files residing in bin/ that we'll ship.
+#
+
+# Strip these binaries
+VPOX_FBSD_STRIP_BIN = \
+	VPoxDD.so \
+	VPoxDD2.so \
+	VPoxDDU.so \
+	VPoxVMM.so \
+	VPoxRT.so \
+	$(if $(VPOX_WITH_VPOXSDL),VPoxSDL $(if $(VPOX_WITH_HARDENING),VPoxSDL.so),) \
+	$(if $(VPOX_WITH_SHARED_CLIPBOARD), VPoxSharedClipboard.so,) \
+	$(if $(VPOX_WITH_SHARED_FOLDERS), VPoxSharedFolders.so,) \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPoxGuestPropSvc.so,) \
+	$(if $(VPOX_WITH_GUEST_CONTROL),VPoxGuestControlSvc.so,) \
+	VPoxHostChannel.so \
+	$(if $(VPOX_WITH_MAIN), \
+		VPoxManage \
+		VPoxNetDHCP $(if $(VPOX_WITH_HARDENING),VPoxNetDHCP.so,) \
+		VPoxNetAdpCtl \
+		VPoxSVC \
+		VPoxXPCOM.so \
+		VPoxXPCOMC.so \
+		VPoxXPCOMIPCD \
+		components/VPoxXPCOMIPCC.so \
+		components/VPoxSVCM.so \
+		components/VPoxC.so,) \
+		VPoxTestOGL \
+	$(if $(VPOX_WITH_PYTHON),VPoxPython.so,) \
+	$(if $(VPOX_WITH_DTRACE),VPoxDTrace,)
+
+# Do not remove relocation information of these binaries
+VPOX_FBSD_STRIP_OBJ = \
+	VPoxDDRC.rc \
+	VPoxDDR0.r0 \
+	VMMRC.rc \
+	VMMR0.r0
+
+# Do not strip anything of these files
+VPOX_FBSD_NO_STRIP = \
+	$(if $(VPOX_OSE),,LICENSE) \
+	$(if $(VPOX_WITH_MAIN), \
+	  components/VPoxXPCOMBase.xpt \
+	  components/VirtualPox_XPCOM.xpt) \
+	vpoxdrv.tar.gz
+
+# EFI firmware
+ifdef VPOX_WITH_EFIFW_PACKING
+ VPOX_FBSD_NO_STRIP += \
+ 	VPoxEFI32.fd \
+ 	VPoxEFI64.fd
+endif
+
+# Symlinks residing in bin/
+VPOX_FBSD_SYMLINKS = \
+	$(if $(VPOX_WITH_MAIN), \
+		VPoxManage \
+		VPoxSVC) \
+	$(if $(VPOX_WITH_VPOXSDL),VPoxSDL,) \
+	$(if $(VPOX_WITH_DTRACE),VPoxDTrace,)
+
+# Qt GUI
+ifdef VPOX_WITH_QTGUI
+ include $(PATH_ROOT)/src/VPox/Frontends/VirtualPox/nls/ApprovedLanguages.kmk
+ VPOX_FBSD_STRIP_BIN += \
+ 	VPoxKeyboard.so \
+ 	VirtualPox \
+ 	$(if $(VPOX_WITH_HARDENING),VirtualPox.so) \
+	$(if $(VPOX_WITH_DEBUGGER_GUI),VPoxDbg.so DbgPlugInDiggers.so,)
+ VPOX_FBSD_SYMLINKS += \
+ 	VirtualPox
+ VPOX_FBSD_NO_STRIP += \
+	$(VPOX_LICENSE_FILES) \
+ 	$(if $(VPOX_WITH_ORACLE_QT),$(notdir $(wildcard $(PATH_STAGE_BIN)/lib*VPox*)),) \
+	$(if $(VPOX_WITH_ORACLE_QT),accessible/libqtaccessiblewidgets.so,) \
+ 	$(foreach f,$(VPOX_APPROVED_GUI_LANGUAGES),nls/VirtualPox_$(f).qm nls/qt_$(f).qm)
+ VPOX_FBSD_DESKTOP_FILE = \
+	virtualpox.desktop
+ VPOX_FBSD_ICON_FILE = \
+	VPox.png
+endif
+
+# Guest Additions
+ifdef VPOX_WITH_ADDITIONS_PACKING
+ VPOX_FBSD_NO_STRIP += \
+ 	additions/VPoxGuestAdditions.iso
+endif
+
+# Documentation
+ifdef VPOX_WITH_DOCS_PACKING
+ VPOX_FBSD_NO_STRIP += \
+	VirtualPox.chm UserManual.pdf \
+	$(foreach f,$(VPOX_MANUAL_ADD_LANGUAGES),VirtualPox_$(f).chm UserManual_$(f).pdf)
+ VPOX_FBSD_STRIP_BIN += \
+	$(if $(VPOX_WITH_KCHMVIEWER),kchmviewer,)
+endif
+
+# VRDP
+ifdef VPOX_WITH_VRDP
+ VPOX_FBSD_STRIP_BIN += \
+	VPoxVRDP.so \
+	VPoxAuth.so
+ VPOX_FBSD_NO_STRIP += \
+	rdesktop-vrdp.tar.gz
+ ifdef VPOX_WITH_VRDP_RDESKTOP
+#  VPOX_FBSD_NO_STRIP += \
+#	rdesktop-vrdp-keymaps
+  VPOX_FBSD_STRIP_BIN += \
+	rdesktop-vrdp
+ endif
+endif
+
+# Headless
+ifdef VPOX_WITH_HEADLESS
+ VPOX_FBSD_STRIP_BIN += \
+	VPoxHeadless \
+	$(if $(VPOX_WITH_HARDENING),VPoxHeadless.so)
+ VPOX_FBSD_SYMLINKS += \
+	VPoxHeadless
+endif
+
+# Webservices
+ifdef VPOX_WITH_WEBSERVICES
+ VPOX_FBSD_STRIP_BIN += \
+	vpoxwebsrv
+ VPOX_FBSD_SYMLINKS += \
+	vpoxwebsrv
+endif
+
+# DTrace library, testcase and scripts (as the rest of this file, this makes bold
+# ASSUMPTIONS about VBPX_INST_XXX variable values).
+ifdef VPOX_WITH_DTRACE
+ VPOX_FBSD_NO_STRIP += \
+       $(addprefix dtrace/lib/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_LIB_ARCH_FILES)) \
+       $(addprefix dtrace/testcase/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_TESTCASE_ARCH_FILES)) \
+       $(addprefix dtrace/scripts/,$(VPOXINST_DTRACE_SCRIPTS_FILES))
+endif
+
+#
+# All the bin files that goes into the archives.
+#
+VPOX_FBSD_ARCH_FILES := $(VPOX_FBSD_STRIP_BIN) $(VPOX_FBSD_STRIP_OBJ) $(VPOX_FBSD_NO_STRIP)
+
+# Cleanup of the files we copy/symlink from bin.
+OTHER_CLEAN += $(addprefix $(VPOX_FBSD_INST_LIBVPOX_DIR)/,$(VPOX_FBSD_ARCH_FILES))
+
+#
+# The module source archive
+#
+$(PATH_STAGE_BIN)/vpoxdrv.tar.gz: \
+		src
+	$(call MSG_TOOL, export_modules.sh,,$@)
+	$(QUIET)$(PATH_STAGE_BIN)/export_modules.sh $@
+
+#
+# The generic installer.
+## @todo r=aeichner: Create pkg_plist dynamically based on the available features
+#
+$(PATH_STAGE_BIN)/$(VPOX_FBSD_PACKAGE_NAME): \
+		$(VPOX_VERSION_STAMP) \
+		$(VPOX_FBSD_INST_OUT_DIR)/pkg_plist \
+		$(addprefix $(VPOX_FBSD_INST_LIBVPOX_DIR)/,$(VPOX_FBSD_ARCH_FILES)) \
+		$(addprefix $(VPOX_FBSD_INST_BIN_DIR)/,$(VPOX_FBSD_SYMLINKS)) \
+		$(if $(VPOX_OSE),,$(VPOX_BRAND_LICENSE_TXT)) \
+		$(if $(VPOX_WITH_QTGUI),$(addprefix $(VPOX_FBSD_INST_SHAREAPP_DIR)/,$(VPOX_FBSD_DESKTOP_FILE)),) \
+		$(if $(VPOX_WITH_QTGUI),$(addprefix $(VPOX_FBSD_INST_SHAREICON_DIR)/,$(VPOX_FBSD_ICON_FILE)),) \
+		$(VPOX_PATH_FBSD_INST_SRC)/postinstall.sh \
+		$(VPOX_PATH_FBSD_INST_SRC)/postdeinstall.sh
+	$(call MSG_TOOL,pkg_create,,$@)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)pkg_create \
+		-I $(VPOX_PATH_FBSD_INST_SRC)/postinstall.sh \
+		-K $(VPOX_PATH_FBSD_INST_SRC)/postdeinstall.sh \
+		-c $(VPOX_PATH_FBSD_INST_SRC)/pkg-comment \
+		-d $(VPOX_PATH_FBSD_INST_SRC)/pkg-descr \
+		-f $(VPOX_FBSD_INST_OUT_DIR)/pkg_plist \
+		-p /usr/local \
+		-s $(VPOX_FBSD_INST_STAGE_DIR) \
+		$@
+	$(QUIET)$(RM) -Rf $(VPOX_FBSD_INST_STAGE_DIR)
+
+$(addprefix $(VPOX_FBSD_INST_LIBVPOX_DIR)/,$(VPOX_FBSD_STRIP_BIN)): \
+		$(VPOX_FBSD_INST_LIBVPOX_DIR)/% : $(PATH_STAGE_BIN)/%
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -d $(dir $@)
+	$(QUIET)$(INSTALL) -m 0755 $(if $(VPOX_DO_STRIP),-s,) $< $@
+
+# pattern rule for striping and copying the VPOX_FBSD_STRIP_OBJ files to install/lib/virtualpox
+$(addprefix $(VPOX_FBSD_INST_LIBVPOX_DIR)/,$(VPOX_FBSD_STRIP_OBJ)): \
+		$(VPOX_FBSD_INST_LIBVPOX_DIR)/% : $(PATH_STAGE_BIN)/%
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -d $(dir $@)
+ifeq ($(VPOX_DO_STRIP),)
+	$(QUIET)$(INSTALL) -m 0644 $< $@
+else # strip to temp file because of umask.
+	$(QUIET)objcopy --strip-unneeded -R .comment $< $@.tmp
+	$(QUIET)$(INSTALL) -m 0644 $@.tmp $@
+	$(QUIET)$(RM) -f -- $@.tmp
+endif
+
+# pattern rule for linking the VPOX_FBSD_NO_STRIP into lib/virtualpox/
+$(addprefix $(VPOX_FBSD_INST_LIBVPOX_DIR)/,$(VPOX_FBSD_NO_STRIP)): \
+		$(VPOX_FBSD_INST_LIBVPOX_DIR)/% : $(PATH_STAGE_BIN)/%
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -d $(dir $@)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(INSTALL) -m 0644 $< $@
+
+# pattern rule for symlinking the VPOX_FBSD_SYMLINKS into bin/
+$(addprefix $(VPOX_FBSD_INST_BIN_DIR)/,$(VPOX_FBSD_SYMLINKS)): \
+		$(VPOX_FBSD_INST_BIN_DIR)/% : $(PATH_STAGE_BIN)/%
+	$(call MSG_INST_SYM,$<,$@)
+	$(QUIET)$(INSTALL) -d $(dir $@)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(LN_SYMLINK) ../lib/virtualpox/$(notdir $@) $@
+
+# pattern rule for copying the VPOX_FBSD_DESKTOP_FILE into share/applications/
+$(addprefix $(VPOX_FBSD_INST_SHAREAPP_DIR)/,$(VPOX_FBSD_DESKTOP_FILE)): \
+		$(VPOX_FBSD_INST_SHAREAPP_DIR)/% : $(PATH_STAGE_BIN)/%
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -d $(dir $@)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(INSTALL) -m 0644 $< $@
+
+# pattern rule for copying the VPOX_FBSD_ICON_FILE into share/pixmaps/
+$(addprefix $(VPOX_FBSD_INST_SHAREICON_DIR)/,$(VPOX_FBSD_ICON_FILE)): \
+		$(VPOX_FBSD_INST_SHAREICON_DIR)/% : $(PATH_STAGE_BIN)/%
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -d $(dir $@)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(INSTALL) -m 0644 $< $@
+
+# Create pkg_plist
+$(VPOX_FBSD_INST_OUT_DIR)/pkg_plist: \
+		$(VPOX_PATH_FBSD_INST_SRC)/pkg_plist
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -d $(dir $@)
+	$(QUIET)$(CP) -- "$<" "$@"
+ifdef VPOX_WITH_DTRACE
+	$(QUIET)$(APPEND) -n "$@" "@mode 644" \
+		$(addprefix lib/virtualpox/dtrace/lib/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_LIB_ARCH_FILES)) \
+		$(addprefix lib/virtualpox/dtrace/testcase/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_TESTCASE_ARCH_FILES)) \
+		$(addprefix lib/virtualpox/dtrace/scripts/,$(VPOXINST_DTRACE_SCRIPTS_FILES)) \
+		"@mode 755" \
+		"bin/VPoxDTrace"
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

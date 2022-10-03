@@ -1,0 +1,103 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Solaris Shared folder kernel module.
+#
+
+#
+# Copyright (C) 2008-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#ifneq ($(KBUILD_HOST),solaris)
+#$(error "The Solaris guest additions can only be built on Solaris!")
+#endif
+
+#
+# vpoxfs - The Shared Folder Driver
+#
+SYSMODS.solaris      += vpoxfs
+vpoxfs_TEMPLATE      = VPOXGUESTR0
+vpoxfs_DEFS          = VPOX_WITH_HGCM VPOX_SVN_REV=$(VPOX_SVN_REV)
+vpoxfs_DEPS         += $(VPOX_SVN_REV_KMK)
+vpoxfs_INCS         := \
+	.
+vpoxfs_SOURCES       = \
+	vpoxfs_vfs.c \
+	vpoxfs_vnode.c \
+	vpoxfs_prov.c
+vpoxfs_LIBS          = \
+	$(VPOX_LIB_VBGL_R0)
+ifeq ($(KBUILD_HOST),solaris)
+ vpoxfs_LDFLAGS.solaris   += -N drv/vpoxguest -N misc/ctf
+else
+ vpoxfs_SOURCES           += deps.asm
+ vpoxfs_deps.asm_ASFLAGS   = -f bin -g null
+endif
+if  ($(VPOX_SOLARIS_11_UPDATE_VERSION) > 1 \
+ || ($(VPOX_SOLARIS_11_UPDATE_VERSION) == 1 && $(VPOX_SOLARIS_11_BUILD_VERSION) >= 10))
+vpoxfs_DEFS         += VPOX_VFS_EXTENDED_POLICY
+endif
+
+
+ifndef VPOX_OSE
+#
+# vpoxfs_s10 - The Shared Folder Driver for Solaris 10
+#
+SYSMODS.solaris      += vpoxfs_s10
+vpoxfs_s10_TEMPLATE      = VPOXGUESTR0
+vpoxfs_s10_DEFS          = VPOX_WITH_HGCM VPOX_VFS_SOLARIS_10U6 VPOX_SVN_REV=$(VPOX_SVN_REV)
+vpoxfs_s10_DEPS         += $(VPOX_SVN_REV_KMK)
+vpoxfs_s10_INCS         := solaris10/
+vpoxfs_s10_SOURCES       = \
+	vpoxfs_vfs.c \
+	vpoxfs_vnode.c \
+	vpoxfs_prov.c
+vpoxfs_s10_LIBS          = \
+	$(VPOX_LIB_VBGL_R0) \
+	$(VPOX_LIB_IPRT_GUEST_R0)
+ifeq ($(KBUILD_HOST),solaris)
+ vpoxfs_s10_LDFLAGS         += -N drv/vpoxguest -N misc/ctf
+else
+ vpoxfs_s10_SOURCES         += deps.asm
+ vpoxfs_s10_deps.asm_ASFLAGS = -f bin -g null
+endif
+endif # VPOX_OSE
+
+
+#
+# mount - Userland mount wrapper for vpoxfs
+#
+PROGRAMS                += vpoxfsmount
+vpoxfsmount_TEMPLATE    = NewVPoxGuestR3Exe
+vpoxfsmount_SOURCES     = vpoxfs_mount.c
+
+
+#
+# Load script.
+#
+INSTALLS += vpoxfsload
+vpoxfsload_TEMPLATE = VPOXGUESTR0
+vpoxfsload_EXEC_SOURCES = loadfs.sh
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

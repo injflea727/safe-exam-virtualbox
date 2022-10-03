@@ -1,0 +1,77 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Windows USB drivers.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include sub-makefiles.
+if1of ($(KBUILD_TARGET), darwin solaris win)
+ include $(PATH_SUB_CURRENT)/$(KBUILD_TARGET)/Makefile.kmk
+endif
+
+#
+# USBLib - The static USB Library for use in VPoxSVC and VPoxDD.
+#
+# Note! Drivers using USBFilter.cpp should just add ../USBFilter.cpp
+#       to their source list.
+#
+LIBRARIES += USBLib
+USBLib_TEMPLATE       = VPOXR3
+USBLib_SDKS.win       = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK)
+USBLib_DEFS           = IN_USBLIB
+USBLib_DEFS.os2       = STATIC_USBCALLS
+USBLib_DEFS.win       = _WIN32_WINNT=0x0501
+USBLib_SOURCES        = \
+	USBLib.cpp \
+	USBFilter.cpp
+
+# OS specific bits if applicable.
+USBLib_SOURCES.darwin = \
+	darwin/USBLib-darwin.cpp
+USBLib_SOURCES.os2 = \
+	os2/usbcalls.c
+USBLib_SOURCES.solaris = \
+	solaris/USBLib-solaris.cpp
+USBLib_SOURCES.win = \
+	win/lib/VPoxUsbLib-win.cpp
+
+ifdef VPOX_WITH_TESTCASES
+ #
+ # USBFilter testcase.
+ #
+ PROGRAMS += tstUSBFilter
+ tstUSBFilter_TEMPLATE = VPOXR3TSTEXE
+ tstUSBFilter_DEFS = IN_USBLIB
+ tstUSBFilter_SOURCES  = \
+ 	testcase/tstUSBFilter.cpp
+ tstUSBFilter_LIBS  = \
+ 	$(USBLib_1_TARGET)
+endif # VPOX_WITH_TESTCASES
+
+
+# generate rules
+include $(FILE_KBUILD_SUB_FOOTER)
+

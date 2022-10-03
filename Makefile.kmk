@@ -1,0 +1,2024 @@
+# $Id: Makefile.kmk $
+## @file
+# Top level makefile.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = .
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Sub-makefiles / Sub-directories.
+#
+ifndef VPOX_ONLY_ROOT_MAKEFILE
+ if  (defined(VPOX_WITH_DOCS) || defined(VPOX_WITH_MAIN)) \
+  && (!defined(VPOX_ONLY_BUILD) || defined(VPOX_ONLY_DOCS) || defined(VPOX_ONLY_SDK)) \
+  && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+  include $(PATH_SUB_CURRENT)/doc/manual/Makefile.kmk
+ endif
+ include $(PATH_SUB_CURRENT)/src/Makefile.kmk
+ ifdef VPOX_WITH_INCLUDE_SYNTAX_CHECKING
+  include $(PATH_SUB_CURRENT)/include/Makefile.kmk
+ endif
+endif
+
+#
+# Below we might need TOOL_ZIP_UNPACK (for the additions/docs/efifw packages
+# from the build server), and it's not really worth the effort of dragging in
+#q this tool only if absolutely needed.
+#
+## @todo Hack to get at TOOL_ZIP_UNPACK; see if this can be integrated somehow...
+include $(KBUILD_PATH)/tools/ZIP.kmk
+ifndef TOOL_ZIP_PACK
+ TOOL_ZIP_PACK = zip
+endif
+
+
+## @todo split up this file!
+
+
+#
+# Clean up global stuff that Config.kmk generates.
+#
+OTHER_CLEAN += \
+	$(VPOX_PACKAGE_HEADER) \
+	$(VPOX_LICENSE_VER_KMK) \
+	$(VPOX_VERSION_MK) \
+	$(VPOX_VERSION_HEADER) \
+	$(VPOX_VERSION_STAMP) \
+	$(wildcard $(PATH_OUT)/version-stamp-*.*.*) \
+	$(VPOX_SVN_REV_KMK).ts \
+	$(VPOX_SVN_REV_KMK) \
+	$(PATH_OUT)/DynamicConfig.kmk
+
+
+if  !defined(VPOX_ONLY_ADDITIONS) \
+ && !defined(VPOX_ONLY_DOCS) \
+ && !defined(VPOX_ONLY_EXTPACKS) \
+ && !defined(VPOX_ONLY_VALIDATIONKIT) # -> line 426b ;-)
+
+ if !defined(VPOX_OSE) && defined(VPOX_LICENSE_FILES)
+  #
+  # Install the license (and misc non-executable stuff).
+  #
+  INSTALLS += InstallLicenseFiles
+  InstallLicenseFiles_INST = $(INST_BIN)
+  InstallLicenseFiles_MODE = 0644
+  InstallLicenseFiles_SOURCES =
+  InstallLicenseFiles_SOURCES += \
+  	$(VPOX_BRAND_LICENSE_HTML)=>License-$(VPOX_LICENSE_VER).html \
+ 	$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES),$(VPOX_BRAND_$(f)_LICENSE_HTML)=>License-$(VPOX_LICENSE_VER)-$(f).html)
+ endif
+
+
+#
+# Install external binaries (mostly redistributable parts of tools we use).
+#
+# To avoid dragging in unnecessary tools and sdks here, we don't use the .win
+# and .linux property suffixes.
+#
+INSTALLS += InstallExternalLibs
+
+InstallExternalLibs_INST = $(INST_BIN)
+
+# The SDL DLLs
+if1of ($(KBUILD_TARGET), win os2)
+ ifdef VPOX_WITH_VPOXSDL
+  include $(KBUILD_PATH)/sdks/LIBSDL.kmk
+  InstallExternalLibs_SOURCES += \
+	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(DLL_SDK_LIBSDL_SDL))
+  ifdef VPOX_WITH_SECURELABEL
+   InstallExternalLibs_SOURCES += \
+	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(DLL_SDK_LIBSDL_SDLTTF))
+  endif
+  ifeq ($(KBUILD_TARGET),os2)
+   InstallExternalLibs_SOURCES += \
+	$(DLL_SDK_LIBSDL_FSLIB)
+  endif
+ endif
+endif
+
+
+# The compiler runtime DLLs.
+ifeq ($(KBUILD_TARGET).$(VPOX_WITHOUT_COMPILER_REDIST),win.)
+ include $(KBUILD_PATH)/tools/$(VPOX_VCC_TOOL).kmk
+ include $(KBUILD_PATH)/tools/$(VPOX_VCC_TOOL_STEM)X86.kmk
+ VPOX_VCC_REDIR_BASE             := Microsoft.VC$(substr $(VPOX_VCC_TOOL),4,3)
+ VPOX_PATH_VCC_REDIST             = $(PATH_TOOL_$(VPOX_VCC_TOOL))/redist/
+ VPOX_PATH_VCC_REDIST_CRT         = $(VPOX_PATH_VCC_REDIST)/$(subst amd64,x64,$(KBUILD_TARGET_ARCH))/$(VPOX_VCC_REDIR_BASE).CRT
+ VPOX_PATH_VCC_REDIST_CRT_DBG     = $(VPOX_PATH_VCC_REDIST)/Debug_NonRedist/$(subst amd64,x64,$(KBUILD_TARGET_ARCH))/$(VPOX_VCC_REDIR_BASE).DebugCRT
+ VPOX_PATH_VCC_REDIST_CRT_X86     = $(VPOX_PATH_VCC_REDIST)/x86/$(VPOX_VCC_REDIR_BASE).CRT
+ VPOX_PATH_VCC_REDIST_CRT_DBG_X86 = $(VPOX_PATH_VCC_REDIST)/Debug_NonRedist/x86/$(VPOX_VCC_REDIR_BASE).DebugCRT
+
+ InstallExternalLibs_SOURCES += \
+ 	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT)/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4).dll) \
+ 	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT)/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4).dll) \
+ 	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT)/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4).dll)=>testcase/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4).dll \
+ 	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT)/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4).dll)=>testcase/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4).dll
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  InstallExternalLibs_SOURCES += \
+  	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT_X86)/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4).dll,x86_)=>x86/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4).dll \
+  	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT_X86)/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4).dll,x86_)=>x86/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4).dll
+ endif
+ ifeq ($(VPOX_VCC_CRT_TYPE),d)
+  InstallExternalLibs_SOURCES += \
+  	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT_DBG)/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4)d.dll) \
+  	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT_DBG)/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4)d.dll) \
+  	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT_DBG)/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4)d.dll)=>testcase/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4)d.dll \
+  	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT_DBG)/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4)d.dll)=>testcase/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4)d.dll
+  ifdef VPOX_WITH_32_ON_64_MAIN_API
+  InstallExternalLibs_SOURCES += \
+  	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT_DBG_X86)/msvcr$(substr $(VPOX_VCC_TOOL_STEM)d,4).dll,x86_)=>x86/msvcr$(substr $(VPOX_VCC_TOOL_STEM),4)d.dll \
+  	$(call VPOX_RE_SIGN_DLL_FN,InstallExternalLibs,$(VPOX_PATH_VCC_REDIST_CRT_DBG_X86)/msvcp$(substr $(VPOX_VCC_TOOL_STEM)d,4).dll,x86_)=>x86/msvcp$(substr $(VPOX_VCC_TOOL_STEM),4)d.dll
+  endif
+ endif
+endif
+
+#
+# Install our Qt DLLs / Shared Objects / Frameworks.
+# Note: The installer fixes the darwin .dylibs when hardening is enabled.
+# Note: Contents/Info.plist is where it's in 4.7.x, not sure if the location is kosher... According to
+#       https://developer.apple.com/library/mac/documentation/MacOSX/Conceptual/BPFrameworks/Concepts/FrameworkAnatomy.html
+#       the Info.plist file goes into Resources.
+#
+ifeq ($(KBUILD_TARGET),darwin)
+ include $(KBUILD_PATH)/units/qt5.kmk
+ INSTALLS += qt5-bin
+ qt5-bin_INST = $(INST_VIRTUALPOX)Contents/
+ qt5-bin_EXEC_SOURCES = $(foreach qtmod,$(VPOX_QT_MOD_NAMES), \
+ 	$(PATH_SDK_QT5_LIB)/$(qtmod).framework/Versions/5/$(qtmod)=>Frameworks/$(qtmod).framework/Versions/5/$(qtmod))
+ qt5-bin_SOURCES = $(foreach qtmod,$(VPOX_QT_MOD_NAMES), \
+ 	$(PATH_SDK_QT5_LIB)/$(qtmod).framework/Versions/5/Resources/Info.plist=>Frameworks/$(qtmod).framework/Versions/5/Resources/Info.plist)
+ ifdef VPOX_WITH_QT_DSYMS
+  qt5-bin_SOURCES += $(foreach qtmod,$(VPOX_QT_MOD_NAMES), \
+  	$(PATH_SDK_QT5_LIB)/$(qtmod).framework.dSYM/Contents/Info.plist=>Frameworks/$(qtmod).framework.dSYM/Contents/Info.plist \
+  	$(PATH_SDK_QT5_LIB)/$(qtmod).framework.dSYM/Contents/Resources/DWARF/$(qtmod)=>Frameworks/$(qtmod).framework.dSYM/Contents/Resources/DWARF/$(qtmod))
+ endif
+ qt5-bin_EXEC_SOURCES += \
+ 	$(PATH_SDK_QT5)/plugins/platforms/libqcocoa$(SUFF_DLL)=>plugins/platforms/libqcocoa$(SUFF_DLL) \
+ 	$(PATH_SDK_QT5)/plugins/platforms/libqminimal$(SUFF_DLL)=>plugins/platforms/libqminimal$(SUFF_DLL) \
+ 	$(PATH_SDK_QT5)/plugins/platforms/libqoffscreen$(SUFF_DLL)=>plugins/platforms/libqoffscreen$(SUFF_DLL)
+ ifdef VPOX_WITH_QT_DSYMS
+  qt5-bin_SOURCES += $(foreach qtplat, libqcocoa libqminimal libqoffscreen, \
+  	$(PATH_SDK_QT5)/plugins/platforms/$(qtplat)$(SUFF_DLL).dSYM/Contents/Info.plist=>plugins/platforms/$(qtplat)$(SUFF_DLL).dSYM/Contents/Info.plist \
+  	$(PATH_SDK_QT5)/plugins/platforms/$(qtplat)$(SUFF_DLL).dSYM/Contents/Resources/DWARF/$(qtplat)$(SUFF_DLL)=>plugins/platforms/$(qtplat)$(SUFF_DLL).dSYM/Contents/Resources/DWARF/$(qtplat)$(SUFF_DLL))
+ endif
+ qt5-bin_SYMLINKS = $(foreach qtmod, $(VPOX_QT_MOD_NAMES), \
+ 	Frameworks/$(qtmod).framework/Versions/Current=>5 \
+ 	Frameworks/$(qtmod).framework/$(qtmod)=>Versions/5/$(qtmod) \
+ 	Frameworks/$(qtmod).framework/Resources=>Versions/5/Resources)
+ qt5-bin_INSTALLER = $(INSTALL) $(if $(uid),-o $(uid)) $(if $(gid),-g $(gid)) $(if $(mode),-m $(mode)) $(4) -- \
+ 			"$(1)" "$(2)" $(if-expr "$(source_type_prefix)" == "EXEC_" \
+ 			,$(NLTAB)install_name_tool \
+ 			$(if-expr "$(suffix $2)" == "", -id "$(if $(VPOX_WITH_HARDENING),/Applications/VirtualPox.app/Contents/Framework,@rpath)/$(notdir $(2)).framework/Version/5/$(notdir $(2))",) \
+ 			$(foreach qtmod, $(VPOX_QT_MOD_NAMES), \
+ 				$(foreach prefix, @executable_path/../Frameworks/ $(VPOX_PATH_QT)/Frameworks/ $(PATH_SDK_QT)/, \
+ 				-change "$(prefix)$(qtmod).framework/Versions/5/$(qtmod)" \
+ 					"$(if $(VPOX_WITH_HARDENING),/Applications/VirtualPox.app/Contents/Frameworks,@rpath)/$(qtmod).framework/Versions/5/$(qtmod)" ) ) \
+ 			"$(2)",) # HACK ALERT! Using $(source_type_prefix) to detect EXEC_SOURCES.
+else # win x11
+ if1of ($(KBUILD_TARGET), linux solaris)
+  ifndef VPOX_ONLY_BUILD
+   ifneq ($(VPOX_GCC_VERSION_CXX),)
+    ifeq ($(int-ge $(VPOX_GCC_VERSION_CXX),40400),)
+     $(error gcc >= 4.4 required when compiling against Qt5!)
+    endif
+   endif
+  endif
+ endif
+ if defined(VPOX_WITH_ORACLE_QT) || defined(VPOX_WITH_QT_PAYLOAD)
+  include $(KBUILD_PATH)/units/qt5.kmk
+  ifeq ($(KBUILD_TARGET),win)
+   INSTALLS += qt5-bin
+   qt5-bin_MODE = 755
+   qt5-bin_INST = $(INST_BIN)
+   qt5-bin_SOURCES = \
+    $(foreach qtmod,$(VPOX_QT_MOD_NAMES),$(call VPOX_RE_SIGN_DLL_FN,qt5-bin,$(PATH_SDK_QT5)/bin/$(qtmod)$(SUFF_DLL)))
+   qt5-bin_SOURCES += \
+    $(call VPOX_RE_SIGN_DLL_FN,qt5-bin,$(PATH_SDK_QT5)/plugins/platforms/qwindows$(SUFF_DLL))=>platforms/qwindows$(SUFF_DLL) \
+    $(call VPOX_RE_SIGN_DLL_FN,qt5-bin,$(PATH_SDK_QT5)/plugins/platforms/qminimal$(SUFF_DLL))=>platforms/qminimal$(SUFF_DLL) \
+    $(call VPOX_RE_SIGN_DLL_FN,qt5-bin,$(PATH_SDK_QT5)/plugins/platforms/qoffscreen$(SUFF_DLL))=>platforms/qoffscreen$(SUFF_DLL)
+   ifdef VPOX_WITH_QT_PDBS
+    qt5-bin_SOURCES += \
+     $(foreach qtmod,$(VPOX_QT_MOD_NAMES),$(wildcard $(PATH_SDK_QT5)/qt*/$(VPOX_PATH_QT_LIB)/$(qtmod).pdb))
+   endif # VPOX_WITH_QT_PDBS
+  else # x11
+   INSTALLS += qt5-bin
+   qt5-bin_MODE = 755
+   qt5-bin_INST = $(INST_BIN)
+   ifdef VPOX_WITH_HARDENING
+    # The wildcards are necessary to install the libs instead of the symlinks
+    qt5-bin_SOURCES = \
+     $(foreach qtmod,$(VPOX_QT_MOD_NAMES),$(wildcard $(VPOX_PATH_QT_LIB)/lib$(qtmod).so.*.*.*)=>lib$(qtmod).so.5) \
+     $(foreach lib,$(VPOX_QT_PLUGINS),$(VPOX_PATH_QT)/$(lib)=>$(lib))
+     ifneq ($(KBUILD_TARGET),solaris)
+      qt5-bin_SOURCES += \
+       $(foreach lib,$(VPOX_QT_LEGACY_LIBS),$(wildcard $(VPOX_PATH_QT_LIB)/legacy/$(lib).*.*)=>legacy/$(lib))
+     endif # solaris
+   else # !VPOX_WITH_HARDENING
+    # For non-hardened builds we need to remove the RUNPATH. This stuff is
+    # ugly but we need to prevent kBuild from hard-linking otherwise we
+    # (indirectly) change the binaries in tools
+    ifneq ($(KBUILD_TARGET),solaris)
+     QT5_VERSION = 5.6.1
+    else
+     QT5_VERSION = 5.6.2
+    endif
+    qt5-bin_SOURCES = \
+     $(foreach qtmod,$(VPOX_QT_MOD_NAMES),$(qt5-bin_0_OUTDIR)/lib$(qtmod).so.$(QT5_VERSION)=>lib$(qtmod).so.5) \
+     $(foreach lib,$(VPOX_QT_PLUGINS),$(qt5-bin_0_OUTDIR)/$(lib)=>$(lib))
+     ifneq ($(KBUILD_TARGET),solaris)
+      qt5-bin_SOURCES += \
+       $(foreach lib,$(VPOX_QT_LEGACY_LIBS),$(qt5-bin_0_OUTDIR)/$(lib)=>legacy/$(lib))
+     endif # solaris
+
+$(foreach qtmod,$(VPOX_QT_MOD_NAMES),$$(qt5-bin_0_OUTDIR)/lib$(qtmod).so.$(QT5_VERSION)): \
+	$$(qt5-bin_0_OUTDIR)/% : $(VPOX_PATH_QT_LIB)/% | $$(qt5-bin_0_OUTDIR)/
+	$(call MSG_INST_FILE,$^,$@)
+	$(QUIET)$(CP) $^ $@
+	$(QUIET)chrpath --delete $@
+
+     ifn1of ($(KBUILD_TARGET),solaris linux)
+$(foreach lib,$(VPOX_QT_PLUGINS),$$(qt5-bin_0_OUTDIR)/$(lib)): \
+	$$(qt5-bin_0_OUTDIR)/% : $(VPOX_PATH_QT)/% | $$(qt5-bin_0_OUTDIR)/
+	$(call MSG_INST_FILE,$^,$@)
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(CP) $^ $@
+	$(QUIET)chrpath --delete $@
+     endif # !solaris and !linux
+
+     # @todo For solaris and some linuxes dlopen fails to navigate executable rpath to dependent libraries,
+     #       so add explicit rpath for libqxcb.so, find better solution later.
+     if1of ($(KBUILD_TARGET),solaris linux)
+$(foreach lib,$(VPOX_QT_PLUGINS),$$(qt5-bin_0_OUTDIR)/$(lib)): \
+	$$(qt5-bin_0_OUTDIR)/% : $(VPOX_PATH_QT)/% | $$(qt5-bin_0_OUTDIR)/
+	$(call MSG_INST_FILE,$^,$@)
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(CP) $^ $@
+	$(QUIET)chrpath --replace "\$$ORIGIN/../../" $@
+     endif # solaris linux
+
+$(foreach lib,$(VPOX_QT_LEGACY_LIBS),$$(qt5-bin_0_OUTDIR)/$(lib)): \
+	$$(qt5-bin_0_OUTDIR)/% : $(VPOX_PATH_QT_LIB)/legacy/% | $$(qt5-bin_0_OUTDIR)/
+	$(call MSG_INST_FILE,$^,$@)
+	$(QUIET)$(CP) $^ $@
+	$(QUIET)chrpath --delete $@
+
+   endif # !VPOX_WITH_HARDENING
+  endif # x11
+ endif # VPOX_WITH_ORACLE_QT || VPOX_WITH_QT_PAYLOAD
+endif # win x11
+
+
+#
+# Install additions iso from the build server if configured to do so.
+#
+# Note! For building the combined package, just get the additions .ISO
+#       once for amd64 to prevent version inconsistences. In all other
+#       cases we get the .ISO per target architecture.
+#
+if  defined(VPOX_WITH_ADDITIONS_FROM_BUILD_SERVER) \
+ && (   !defined(VPOX_WITH_COMBINED_PACKAGE) \
+     || "$(KBUILD_TARGET_ARCH)" == "amd64" )
+ INSTALLS += buildserver-additions
+ buildserver-additions_INST = $(INST_ADDITIONS_ISO)
+ buildserver-additions_MODE = 0644
+ buildserver-additions_SOURCES = $(PATH_TARGET)/VPoxGuestAdditions.iso
+ buildserver-additions_CLEANS = \
+        $(buildserver-additions_0_OUTDIR)/unpacked.ts \
+        $(buildserver-additions_0_OUTDIR)/VPoxGuestAdditions.zip \
+        $(buildserver-additions_0_OUTDIR)/VPoxGuestAdditions.zip.tmp \
+        $(PATH_TARGET)/VPoxGuestAdditions.iso
+
+ $$(buildserver-additions_0_OUTDIR)/unpacked.ts +| $(PATH_TARGET)/VPoxGuestAdditions.iso: \
+ 		$$(buildserver-additions_0_OUTDIR)/VPoxGuestAdditions.zip
+	$(call MSG_L1,Unpacking additions archive)
+	$(QUIET)$(TOOL_ZIP_UNPACK) $(TOOL_ZIP_UNPACKFLAGS) -o $< -d $(PATH_TARGET)
+	$(TOUCH) -c -- $(PATH_TARGET)/VPoxGuestAdditions.iso
+	$(APPEND) -t $@ "done"
+
+ $$(buildserver-additions_0_OUTDIR)/VPoxGuestAdditions.zip: $(VPOX_SVN_REV_KMK) $(PATH_DEVTOOLS)/bin/additions.sh | $$(dir $$@)
+	$(RM) -f -- "$@" "$@.tmp"
+	$(SHELL) $(PATH_DEVTOOLS)/bin/additions.sh --cmd fetch --filename "$@.tmp" $(if $(VPOX_USE_PROXY_FOR_BUILD_SERVER),--default-proxy,)
+	$(MV) -f -- "$@.tmp" "$@"
+
+endif # VPOX_WITH_ADDITIONS_FROM_BUILD_SERVER unless win.x86+combined
+
+
+#
+# Install documentation files (at the moment the .chm) from the build server.
+#
+ifdef VPOX_WITH_DOCS_FROM_BUILD_SERVER
+## @todo r=bird: Too much mess now for $(PATH_TARGET); move to doc/manual/.
+INSTALLS += buildserver-docs
+buildserver-docs_INST = $(INST_BIN)
+buildserver-docs_MODE = 0644
+buildserver-docs_SOURCES = \
+	$(addprefix $(PATH_TARGET)/, \
+		VirtualPox.chm UserManual.pdf \
+		$(foreach f,$(VPOX_MANUAL_ADD_LANGUAGES),VirtualPox_$(f).chm UserManual_$(f).pdf))
+buildserver-docs_CLEANS = \
+	$(buildserver-docs_0_OUTDIR)/unpacked.ts \
+	$(buildserver-docs_0_OUTDIR)/VPoxDocumentation.zip \
+	$(buildserver-docs_0_OUTDIR)/VPoxDocumentation.zip.tmp \
+	$(addprefix $(PATH_TARGET)/, \
+		VirtualPox.chm UserManual.pdf \
+		$(foreach f,$(VPOX_MANUAL_ADD_LANGUAGES),VirtualPox_$(f).chm UserManual_$(f).pdf))
+
+$$(buildserver-docs_0_OUTDIR)/unpacked.ts +| $(PATH_TARGET)/VirtualPox.chm $(PATH_TARGET)/UserManual.pdf \
+$(foreach f,$(VPOX_MANUAL_ADD_LANGUAGES),$(PATH_TARGET)/VirtualPox_$(f).chm $(PATH_TARGET)/UserManual_$(f).pdf): \
+		$$(buildserver-docs_0_OUTDIR)/VPoxDocumentation.zip
+	$(call MSG_L1,Unpacking documentation)
+	$(QUIET)$(TOOL_ZIP_UNPACK) $(TOOL_ZIP_UNPACKFLAGS) -o $< -d $(PATH_TARGET)
+	$(TOUCH) -c -- $(PATH_TARGET)/VirtualPox.chm \
+		$(PATH_TARGET)/UserManual.pdf \
+		$(foreach f,$(VPOX_MANUAL_ADD_LANGUAGES),$(PATH_TARGET)/VirtualPox_$(f).chm $(PATH_TARGET)/UserManual_$(f).pdf)
+	$(APPEND) -t $@ "done"
+
+$$(buildserver-docs_0_OUTDIR)/VPoxDocumentation.zip: $(VPOX_SVN_REV_KMK) $(PATH_DEVTOOLS)/bin/documentation.sh | $$(dir $$@)
+	$(RM) -f -- "$@" "$@.tmp"
+	$(SHELL) $(PATH_DEVTOOLS)/bin/documentation.sh --cmd fetch --filename "$@.tmp" $(if $(VPOX_USE_PROXY_FOR_BUILD_SERVER),--default-proxy,)
+	$(MV) -f -- "$@.tmp" "$@"
+
+endif # VPOX_WITH_DOCS_FROM_BUILD_SERVER
+
+
+ ifdef VPOX_WITH_EFI
+  #
+  # Install EFI firmware image
+  #
+  ifdef VPOX_WITH_EFIFW_FROM_BUILD_SERVER
+   #
+   # Either from the build server.
+   #
+   ifndef VPOX_EFI_FIRMWARE_EFI_MODULES_KMK_INCLUDED
+    include $(PATH_ROOT)/src/VPox/Devices/EFI/Firmware/EfiModules.kmk
+   endif
+   INSTALLS += buildserver-efifw
+   buildserver-efifw_INST = $(INST_BIN)
+   buildserver-efifw_MODE = 0644
+   buildserver-efifw_SOURCES = \
+   	$(buildserver-efifw_0_OUTDIR)/VPoxEFI32.fd \
+   	$(buildserver-efifw_0_OUTDIR)/VPoxEFI64.fd
+   buildserver-efifw_CLEANS = \
+   	$(buildserver-efifw_0_OUTDIR)/unpacked.ts \
+   	$(buildserver-efifw_0_OUTDIR)/VPoxEFI32.fd \
+   	$(buildserver-efifw_0_OUTDIR)/VPoxEFI64.fd \
+   	$(buildserver-efifw_0_OUTDIR)/VPoxEfiFirmware.zip \
+   	$(buildserver-efifw_0_OUTDIR)/VPoxEfiFirmware.zip.tmp \
+   	$(foreach arch, amd64 x86, $(foreach mod,$(VPOX_EFI_MODULES_FLAT),$$(buildserver-efifw_0_OUTDIR)/$(arch)/$(mod).pdb))
+
+   INSTALLS += buildserver-efifw-dbg-amd64
+   buildserver-efifw-dbg-amd64_INST = $(INST_VPOXDBG_SYMS)amd64/
+   buildserver-efifw-dbg-amd64_MODE = 0644
+   buildserver-efifw-dbg-amd64_SOURCES = \
+   	$(foreach mod,$(VPOX_EFI_MODULES_FLAT),$(buildserver-efifw_0_OUTDIR)/amd64/$(mod).pdb)
+
+   INSTALLS += buildserver-efifw-dbg-x86
+   buildserver-efifw-dbg-x86_INST = $(INST_VPOXDBG_SYMS)x86/
+   buildserver-efifw-dbg-x86_MODE = 0644
+   buildserver-efifw-dbg-x86_SOURCES = \
+   	$(foreach mod,$(VPOX_EFI_MODULES_FLAT),$(buildserver-efifw_0_OUTDIR)/x86/$(mod).pdb)
+
+   $$(buildserver-efifw_0_OUTDIR)/unpacked.ts \
+   +| $$(buildserver-efifw_0_OUTDIR)/VPoxEFI32.fd \
+      $$(buildserver-efifw_0_OUTDIR)/VPoxEFI64.fd \
+      $(foreach arch, amd64 x86, $(foreach mod,$(VPOX_EFI_MODULES_FLAT),$$(buildserver-efifw_0_OUTDIR)/$(arch)/$(mod).pdb)): \
+   		$$(buildserver-efifw_0_OUTDIR)/VPoxEfiFirmware.zip
+	$(call MSG_L1,Unpacking EFI firmware)
+	$(QUIET)$(TOOL_ZIP_UNPACK) $(TOOL_ZIP_UNPACKFLAGS) -o $< -d $(buildserver-efifw_0_OUTDIR)
+	$(foreach arch, amd64 x86, \
+		$(NLTAB) $(QUIET)$(TEST) '!' -d $(dir $@)/$(arch) -- $(MKDIR_EXT) -- $(dir $@)/$(arch) \
+		$(foreach mod,$(VPOX_EFI_MODULES_FLAT) \
+		,$(NLTAB) $(QUIET)$(TEST) '!' -f $(dir $@)/$(arch)/$(mod).pdb -- $(APPEND_EXT) $(dir $@)/$(arch)/$(mod).pdb ))
+	$(TOUCH) -c -- $(buildserver-efifw_0_OUTDIR)/VPoxEFI32.fd \
+		$(buildserver-efifw_0_OUTDIR)/VPoxEFI64.fd
+	$(APPEND) -t $@ "done"
+
+   $$(buildserver-efifw_0_OUTDIR)/VPoxEfiFirmware.zip: \
+		$(VPOX_SVN_REV_KMK) $(PATH_DEVTOOLS)/bin/efi_firmware.sh | $$(dir $$@)
+	$(RM) -f -- "$@" "$@.tmp"
+	$(SHELL) $(PATH_DEVTOOLS)/bin/efi_firmware.sh --cmd fetch --filename "$@.tmp" $(if $(VPOX_USE_PROXY_FOR_BUILD_SERVER),--default-proxy,)
+	$(MV) -f -- "$@.tmp" "$@"
+
+  else # !VPOX_WITH_EFIFW_FROM_BUILD_SERVER
+   #
+   # Or from the local copy (no debug).
+   #
+   INSTALLS += local-efifw
+   local-efifw_INST = $(INST_BIN)
+   local-efifw_MODE = 0644
+   local-efifw_SOURCES = \
+   	$(PATH_ROOT)/src/VPox/Devices/EFI/FirmwareBin/VPoxEFI32.fd=>VPoxEFI32.fd \
+   	$(PATH_ROOT)/src/VPox/Devices/EFI/FirmwareBin/VPoxEFI64.fd=>VPoxEFI64.fd
+  endif # !VPOX_WITH_EFIFW_FROM_BUILD_SERVER
+ endif # VPOX_WITH_EFI
+
+
+ifdef VPOX_WITH_EXTPACKS_FROM_BUILD_SERVER
+#
+# Get the extension pack from from the build server to facility the automatic
+# testing (everything in one tarball (VPoxAll-*)).
+#
+# Note! Using the plural here as we might be downloading more packages eventually.
+#
+INSTALLS += buildserver-extpacks
+buildserver-extpacks_INST = $(INST_DIST)
+buildserver-extpacks_MODE = 0644
+buildserver-extpacks_SOURCES = \
+	$(buildserver-extpacks_0_OUTDIR)/Oracle_VM_VirtualPox_Extension_Pack.vpox-extpack
+buildserver-extpacks_CLEANS = \
+	$(buildserver-extpacks_0_OUTDIR)/Oracle_VM_VirtualPox_Extension_Pack.vpox-extpack \
+	$(buildserver-extpacks_0_OUTDIR)/Oracle_VM_VirtualPox_Extension_Pack.vpox-extpack.tmp
+
+$$(buildserver-extpacks_0_OUTDIR)/Oracle_VM_VirtualPox_Extension_Pack.vpox-extpack: \
+		$(VPOX_SVN_REV_KMK) $(PATH_DEVTOOLS)/bin/extpacks.sh | $$(dir $$@)
+	$(RM) -f -- "$@.tmp" "$@"
+	$(SHELL) $(PATH_DEVTOOLS)/bin/extpacks.sh --cmd fetch --filename "$@.tmp" --vpox-version "$(VPOX_VERSION_STRING_NO_PUB)" \
+		$(if $(VPOX_USE_PROXY_FOR_BUILD_SERVER),--default-proxy,)
+	$(MV) -f -- "$@.tmp" "$@"
+	$(TOUCH) -- "$@"
+
+endif
+
+
+#
+# Install staged binaries on platforms where we can't cross
+# compile things.
+#
+ifn1of ($(KBUILD_TARGET), linux win)
+ VPOX_PATH_STAGED ?= .
+
+ # Additions.
+ ifndef VPOX_WITH_LINUX_ADDITIONS
+  ifndef VPOX_WITH_WIN32_ADDITIONS
+   ifneq ($(wildcard $(VPOX_PATH_STAGED)/VPoxGuestAdditions.iso),)
+    INSTALLS += staged-additions
+    staged-additions_INST = $(INST_ADDITIONS_ISO)
+    staged-additions_MODE = 0644
+    staged-additions_SOURCES = $(VPOX_PATH_STAGED)/VPoxGuestAdditions.iso
+   endif
+  endif
+ endif
+
+ # guesttool.exe
+ ifndef VPOX_WITH_WIN32_ADDITIONS
+  ifneq ($(wildcard $(VPOX_PATH_STAGED)/guesttool.exe),)
+   INSTALLS += staged-guesttool
+   staged-guesttool_INST = $(INST_BIN)
+   staged-guesttool_SOURCES = $(VPOX_PATH_STAGED)/guesttool.exe
+  endif
+ endif
+
+endif
+
+endif # !VPOX_ONLY_ADDITIONS && !VPOX_ONLY_DOCS && !VPOX_ONLY_EXTPACKS && !VPOX_ONLY_VALIDATIONKIT
+
+
+ifdef VPOX_ONLY_DOCS
+# It may sound a bit odd, but for preparing the documentation package the
+# doxygen documentation isn't needed and increases the build time a lot.
+docs:
+else  # !VPOX_ONLY_DOCS
+#
+# Generate documentation.
+# (This should be converted into a separate pass or merged with an existing one later.)
+#
+ ifdef VPOX_WITH_ALL_DOXYGEN_TARGETS
+docs: docs.Core
+ else
+docs:
+ endif
+endif # !VPOX_ONLY_DOCS
+
+#
+# The core (VMM+Devices+Main) documentation.
+#
+# This includes so much because we wish to have the complete CFGM
+# and GCFGM lists.
+#
+VPOX_CORE_DOXYFILE_OUTPUT = $(PATH_OUT)/docs/Core
+BLDDIRS += $(VPOX_CORE_DOXYFILE_OUTPUT)
+OTHER_CLEAN += \
+	$(VPOX_CORE_DOXYFILE_OUTPUT)/Doxyfile.Core \
+	$(VPOX_CORE_DOXYFILE_OUTPUT)/Doxyfile.Core.dep
+
+VPOX_CORE_DOXYFILE_INPUT_DIRS = \
+	include/iprt \
+	include/iprt/cpp \
+	include/iprt/crypto \
+	include/iprt/formats \
+	include/iprt/linux \
+	include/iprt/nt \
+	include/iprt/solaris \
+	include/iprt/win \
+	include/iprt/nocrt \
+	include/VPox \
+	include/VPox/vmm \
+	include/VPox/com \
+	include/VPox/ExtPack \
+	include/VPox/HostServices \
+	include/VPox/GuestHost \
+	include/VPox/HGSMI \
+	src/VPox/VMM \
+	src/VPox/VMM/VMMR0 \
+	src/VPox/VMM/VMMRC \
+	src/VPox/VMM/VMMR3 \
+	src/VPox/VMM/VMMAll \
+	src/VPox/VMM/VMMSwitcher \
+	src/VPox/VMM/include \
+	src/VPox/Debugger \
+	src/VPox/Devices \
+	src/VPox/Devices/Audio \
+	src/VPox/Devices/Bus \
+	src/VPox/Devices/Graphics \
+	src/VPox/Devices/Graphics/BIOS \
+	src/VPox/Devices/Graphics/shaderlib \
+	src/VPox/Devices/Input \
+	src/VPox/Devices/Networking \
+	src/VPox/Devices/PC \
+	src/VPox/Devices/PC/BIOS \
+	src/VPox/Devices/Parallel \
+	src/VPox/Devices/Serial \
+	src/VPox/Devices/Storage \
+	src/VPox/Devices/USB \
+	src/VPox/Devices/USB/darwin \
+	src/VPox/Devices/USB/linux \
+	src/VPox/Devices/USB/os2 \
+	src/VPox/Devices/USB/solaris \
+	src/VPox/Devices/USB/vrdp \
+	src/VPox/Devices/USB/win32 \
+	src/VPox/Devices/VMMDev \
+	src/VPox/Main/include \
+	src/VPox/Main/include/hgcm \
+	src/VPox/Main \
+	src/VPox/Main/glue \
+	src/VPox/Main/webservice \
+	src/VPox/Main/xml \
+	src/VPox/Main/src-all \
+	src/VPox/Main/src-all/win \
+	src/VPox/Main/src-client \
+	src/VPox/Main/src-client/win \
+	src/VPox/Main/src-client/xpcom \
+	src/VPox/Main/src-server \
+	src/VPox/Main/src-server/darwin \
+	src/VPox/Main/src-server/linux \
+	src/VPox/Main/src-server/os2 \
+	src/VPox/Main/src-server/solaris \
+	src/VPox/Main/src-server/win \
+	src/VPox/Main/src-server/xpcom \
+	src/VPox/HostServices \
+	src/VPox/HostServices/DragAndDrop \
+	src/VPox/HostServices/GuestControl \
+	src/VPox/HostServices/GuestProperties \
+	src/VPox/HostServices/SharedClipboard \
+	src/VPox/HostServices/SharedFolders \
+	src/VPox/HostServices/SharedOpenGL \
+	src/VPox/HostServices/SharedOpenGL/crserver \
+	src/VPox/HostServices/SharedOpenGL/crserverlib \
+	src/VPox/HostServices/SharedOpenGL/render \
+	src/VPox/HostServices/SharedOpenGL/unpacker \
+	src/VPox/HostServices/auth \
+	src/VPox/HostServices/auth/directoryservice \
+	src/VPox/HostServices/auth/pam \
+	src/VPox/HostServices/auth/simple \
+	src/VPox/HostServices/auth/winlogon \
+	src/VPox/HostDrivers/Support \
+	src/VPox/HostDrivers/Support/darwin \
+	src/VPox/HostDrivers/Support/freebsd \
+	src/VPox/HostDrivers/Support/linux \
+	src/VPox/HostDrivers/Support/os2 \
+	src/VPox/HostDrivers/Support/solaris \
+	src/VPox/HostDrivers/Support/win \
+	src/VPox/HostDrivers/VPoxNetFlt \
+	src/VPox/HostDrivers/VPoxNetFlt/darwin \
+	src/VPox/HostDrivers/VPoxNetFlt/linux \
+	src/VPox/HostDrivers/VPoxNetFlt/solaris \
+	src/VPox/HostDrivers/VPoxNetFlt/win \
+	src/VPox/HostDrivers/VPoxNetNat \
+	src/VPox/HostDrivers/VPoxNetNat/darwin \
+	src/VPox/HostDrivers/VPoxNetNat/linux \
+	src/VPox/HostDrivers/VPoxNetNat/solaris \
+	src/VPox/HostDrivers/VPoxNetNat/win \
+	src/VPox/HostDrivers/VPoxNetAdp \
+	src/VPox/HostDrivers/VPoxNetAdp/darwin \
+	src/VPox/HostDrivers/VPoxNetAdp/linux \
+	src/VPox/HostDrivers/VPoxNetAdp/solaris \
+	src/VPox/HostDrivers/VPoxNetAdp/win \
+	src/VPox/HostDrivers/VPoxPci \
+	src/VPox/HostDrivers/VPoxPci/darwin \
+	src/VPox/HostDrivers/VPoxPci/linux \
+	src/VPox/HostDrivers/VPoxPci/solaris \
+	src/VPox/HostDrivers/VPoxPci/win \
+	src/VPox/HostDrivers/VPoxUSB \
+	src/VPox/HostDrivers/VPoxUSB/darwin \
+	src/VPox/HostDrivers/VPoxUSB/os2 \
+	src/VPox/HostDrivers/VPoxUSB/solaris \
+	src/VPox/HostDrivers/VPoxUSB/win \
+	src/VPox/HostDrivers/VPoxUSB/win/Device \
+	src/VPox/HostDrivers/VPoxUSB/win/Device/amd64 \
+	src/VPox/HostDrivers/VPoxUSB/win/Device/x86 \
+	src/VPox/HostDrivers/VPoxUSB/win/Filter \
+	src/VPox/HostDrivers/VPoxUSB/win/Install \
+	src/VPox/HostDrivers/VPoxUSB/win/Monitor \
+	src/VPox/HostDrivers/VPoxUSB/win/Monitor/win32 \
+	src/VPox/HostDrivers/VPoxUSB/win/Monitor/win64 \
+	src/VPox/HostDrivers/VPoxUSB/win/usbd \
+	src/VPox/Additions \
+	src/VPox/Additions/WINNT \
+	src/VPox/Additions/WINNT/Graphics \
+	src/VPox/Additions/WINNT/Graphics/Video \
+	src/VPox/Additions/WINNT/Graphics/Video/common \
+	src/VPox/Additions/WINNT/Graphics/Video/common/wddm \
+	src/VPox/Additions/WINNT/Graphics/Video/common/xpdm \
+	src/VPox/Additions/WINNT/Graphics/Video/disp \
+	src/VPox/Additions/WINNT/Graphics/Video/disp/common \
+	src/VPox/Additions/WINNT/Graphics/Video/disp/wddm \
+	src/VPox/Additions/WINNT/Graphics/Video/disp/wddm/dbg \
+	src/VPox/Additions/WINNT/Graphics/Video/disp/xpdm \
+	src/VPox/Additions/WINNT/Graphics/Video/mp \
+	src/VPox/Additions/WINNT/Graphics/Video/mp/common \
+	src/VPox/Additions/WINNT/Graphics/Video/mp/wddm \
+	src/VPox/Additions/WINNT/Graphics/Video/mp/xpdm \
+	src/VPox/Additions/WINNT/Graphics/Wine_new \
+	src/VPox/Additions/WINNT/Graphics/Wine_new/d3d8 \
+	src/VPox/Additions/WINNT/Graphics/Wine_new/d3d9 \
+	src/VPox/Additions/WINNT/Graphics/Wine_new/libWine \
+	src/VPox/Additions/WINNT/Graphics/Wine_new/switcher \
+	src/VPox/Additions/WINNT/Graphics/Wine_new/vpox \
+	src/VPox/Additions/WINNT/Graphics/Wine_new/wined3d \
+	src/VPox/Additions/WINNT/Installer \
+	src/VPox/Additions/WINNT/Installer/ISO \
+	src/VPox/Additions/WINNT/Installer/InstallHelper \
+	src/VPox/Additions/WINNT/Installer/Languages \
+	src/VPox/Additions/WINNT/Installer/Loader \
+	src/VPox/Additions/WINNT/Mouse \
+	src/VPox/Additions/WINNT/Mouse/NT5 \
+	src/VPox/Additions/WINNT/Mouse/common \
+	src/VPox/Additions/WINNT/SharedFolders \
+	src/VPox/Additions/WINNT/SharedFolders/redirector \
+	src/VPox/Additions/WINNT/SharedFolders/redirector/dll \
+	src/VPox/Additions/WINNT/SharedFolders/redirector/sys \
+	src/VPox/Additions/WINNT/SharedFolders/redirector/sys/rdbss \
+	src/VPox/Additions/WINNT/VPoxCredProv \
+	src/VPox/Additions/WINNT/VPoxGINA \
+	src/VPox/Additions/WINNT/VPoxHook \
+	src/VPox/Additions/WINNT/VPoxTray \
+	src/VPox/Additions/WINNT/VPoxUSB \
+	src/VPox/Additions/WINNT/i8042prt \
+	src/VPox/Additions/WINNT/i8042prt/i386 \
+	src/VPox/Additions/WINNT/i8042prt/include \
+	src/VPox/Additions/WINNT/include \
+	src/VPox/Additions/common \
+	src/VPox/Additions/common/VPoxControl \
+	src/VPox/Additions/common/VPoxGuest \
+	src/VPox/Additions/common/VPoxGuest/freebsd \
+	src/VPox/Additions/common/VPoxGuest/linux \
+	src/VPox/Additions/common/VPoxGuest/win \
+	src/VPox/Additions/common/VPoxGuestLib \
+	src/VPox/Additions/common/VPoxService \
+	src/VPox/Additions/common/VPoxVideo \
+	src/VPox/Additions/common/crOpenGL \
+	src/VPox/Additions/common/crOpenGL/array \
+	src/VPox/Additions/common/crOpenGL/feedback \
+	src/VPox/Additions/common/crOpenGL/pack \
+	src/VPox/Additions/common/crOpenGL/passthrough \
+	src/VPox/Additions/common/pam \
+	src/VPox/Additions/darwin \
+	src/VPox/Additions/freebsd \
+	src/VPox/Additions/freebsd/Installer \
+	src/VPox/Additions/freebsd/drm \
+	src/VPox/Additions/freebsd/vpoxvfs \
+	src/VPox/Additions/linux \
+	src/VPox/Additions/linux/drm \
+	src/VPox/Additions/linux/installer \
+	src/VPox/Additions/linux/selinux-fedora \
+	src/VPox/Additions/linux/sharedfolders \
+	src/VPox/Additions/os2 \
+	src/VPox/Additions/os2/VPoxGradd \
+	src/VPox/Additions/os2/VPoxGradd/graddlib \
+	src/VPox/Additions/os2/VPoxGrext \
+	src/VPox/Additions/os2/VPoxMouse \
+	src/VPox/Additions/os2/VPoxSF \
+	src/VPox/Additions/solaris \
+	src/VPox/Additions/solaris/DRM \
+	src/VPox/Additions/solaris/Installer \
+	src/VPox/Additions/solaris/SharedFolders \
+	src/VPox/Additions/solaris/SharedFolders/solaris10 \
+	src/VPox/Additions/solaris/SharedFolders/solaris10/sys \
+	src/VPox/Additions/solaris/Virtio \
+	src/VPox/Additions/x11 \
+	src/VPox/Additions/x11/Installer \
+	src/VPox/Additions/x11/VPoxClient \
+	src/VPox/Additions/x11/vpoxmouse \
+	src/VPox/Additions/x11/vpoxmouse/xorg70 \
+	src/VPox/Additions/x11/vpoxmouse/xorg71 \
+	src/VPox/Additions/x11/vpoxvideo \
+	src/VPox/NetworkServices \
+	src/VPox/NetworkServices/Dhcpd \
+	src/VPox/NetworkServices/NAT \
+	src/VPox/NetworkServices/NetLib \
+	src/VPox/Storage \
+	src/VPox/ValidationKit/ \
+	src/VPox/ValidationKit/docs/ \
+	src/VPox/ValidationKit/testdriver/ \
+	src/VPox/ValidationKit/bootsectors/ \
+	src/VPox/ValidationKit/bootsectors/bs3kit/ \
+	src/VPox/ValidationKit/tests/ \
+	src/VPox/ValidationKit/tests/additions/ \
+	src/VPox/ValidationKit/tests/api/ \
+	src/VPox/ValidationKit/tests/autostart/ \
+	src/VPox/ValidationKit/tests/benchmarks/ \
+	src/VPox/ValidationKit/tests/cpu/ \
+	src/VPox/ValidationKit/tests/installation/ \
+	src/VPox/ValidationKit/tests/network/ \
+	src/VPox/ValidationKit/tests/selftests/ \
+	src/VPox/ValidationKit/tests/smoketests/ \
+	src/VPox/ValidationKit/tests/storage/ \
+	src/VPox/ValidationKit/tests/teleportation/ \
+	src/VPox/ValidationKit/tests/unittests/ \
+	src/VPox/ValidationKit/tests/usb/ \
+	src/VPox/ValidationKit/common/ \
+	src/VPox/ValidationKit/utils/ \
+	src/VPox/ValidationKit/utils/TestExecServ/ \
+	src/VPox/ValidationKit/utils/cpu/ \
+	src/VPox/ValidationKit/utils/misc/ \
+	src/VPox/ValidationKit/utils/network/ \
+	src/VPox/ValidationKit/utils/nt/ \
+	src/VPox/ValidationKit/utils/usb/ \
+	src/VPox/ValidationKit/vms/ \
+	src/VPox/ValidationKit/testmanager/ \
+	src/VPox/ValidationKit/testmanager/core/ \
+	src/VPox/ValidationKit/testmanager/db/ \
+	src/VPox/ValidationKit/testmanager/debug/ \
+	src/VPox/ValidationKit/testmanager/cgi/ \
+	src/VPox/ValidationKit/testmanager/webui/ \
+	src/VPox/ValidationKit/testboxscript/ \
+
+# These must come first in order to make things look nice.
+VPOX_CORE_DOXYFILE_INPUT_FIRST =\
+	$(PATH_ROOT)/doc/VPox-doc.c \
+	$(PATH_ROOT)/doc/VPox-CodingGuidelines.cpp \
+	$(PATH_ROOT)/doc/VPox-MakefileGuidelines.cpp \
+	$(PATH_ROOT)/src/VPox/VMM/Docs-CodingGuidelines.cpp \
+	$(PATH_ROOT)/src/VPox/VMM/Docs-RawMode.cpp \
+	$(PATH_ROOT)/include/VPox/cdefs.h \
+	$(PATH_ROOT)/include/VPox/vmm/vmm.h \
+	$(PATH_ROOT)/include/VPox/vmm/vmapi.h \
+	$(PATH_ROOT)/include/VPox/vmm/cpum.h \
+	$(PATH_ROOT)/include/VPox/vmm/mm.h \
+	$(PATH_ROOT)/include/VPox/vmm/pgm.h \
+	$(PATH_ROOT)/include/VPox/vmm/selm.h \
+	$(PATH_ROOT)/include/VPox/vmm/trpm.h \
+	$(PATH_ROOT)/include/VPox/vmm/dbgf.h \
+	$(PATH_ROOT)/include/VPox/vmm/stam.h \
+	$(PATH_ROOT)/include/VPox/vmm/em.h \
+	$(PATH_ROOT)/include/VPox/vmm/hm.h \
+	$(PATH_ROOT)/include/VPox/vmm/hm_svm.h \
+	$(PATH_ROOT)/include/VPox/vmm/hm_vmx.h \
+	$(PATH_ROOT)/include/VPox/vmm/iem.h \
+	$(PATH_ROOT)/include/VPox/vmm/nem.h \
+	$(PATH_ROOT)/include/VPox/vmm/pdm.h \
+	$(PATH_ROOT)/include/VPox/vmm/pdmifs.h \
+	$(PATH_ROOT)/include/VPox/vmm/pdmaudioifs.h \
+	$(PATH_ROOT)/include/VPox/vmm/pdmnetifs.h \
+	$(PATH_ROOT)/include/VPox/vmm/pdmserialifs.h \
+	$(PATH_ROOT)/include/VPox/vmm/pdmstorageifs.h \
+	$(PATH_ROOT)/include/VPox/vmm/iom.h \
+	$(PATH_ROOT)/include/VPox/vmm/cfgm.h \
+	$(PATH_ROOT)/include/VPox/vmm/gim.h \
+	$(PATH_ROOT)/include/VPox/vmm/tm.h \
+	$(PATH_ROOT)/include/VPox/vmm/ssm.h \
+	\
+	$(PATH_ROOT)/src/VPox/VMM/include/CFGMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/CPUMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/DBGFInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/EMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/HMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/IEMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/IOMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/MMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/NEMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/PDMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/PGMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/GIMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/SELMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/SSMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/STAMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/TMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/TRPMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/VMInternal.h \
+	$(PATH_ROOT)/src/VPox/VMM/include/VMMInternal.h \
+	\
+	$(PATH_ROOT)/include/VPox/vmm/vm.h \
+	\
+	$(PATH_ROOT)/include/VPox/sup.h \
+	$(PATH_ROOT)/include/VPox/vd.h \
+	$(PATH_ROOT)/include/VPox/types.h \
+	$(PATH_ROOT)/include/VPox/err.h \
+	$(PATH_ROOT)/include/VPox/vmm/cpumdis.h \
+	$(PATH_ROOT)/include/VPox/dbggui.h \
+	$(PATH_ROOT)/include/VPox/dis.h \
+	$(PATH_ROOT)/include/VPox/disopcode.h \
+	$(PATH_ROOT)/include/VPox/intnet.h \
+	$(PATH_ROOT)/include/VPox/settings.h \
+	$(PATH_ROOT)/include/VPox/pci.h \
+	$(PATH_ROOT)/include/VPox/scsi.h \
+	$(PATH_ROOT)/include/VPox/shflsvc.h \
+	$(PATH_ROOT)/include/VPox/hgcmsvc.h \
+	$(PATH_ROOT)/include/VPox/usb.h \
+	$(PATH_ROOT)/include/VPox/vusb.h \
+	\
+	$(PATH_ROOT)/include/VPox/log.h \
+	$(PATH_ROOT)/include/VPox/param.h \
+	$(PATH_ROOT)/include/VPox/version.h \
+       \
+	$(PATH_ROOT)/include/VPox/com/com.h \
+	$(PATH_ROOT)/include/VPox/com/utils.h
+
+VPOX_CORE_DOXYFILE_INPUT := \
+	$(filter-out %.cpp.h, $(sort $(wildcard $(addsuffix /*.h, $(VPOX_CORE_DOXYFILE_INPUT_DIRS)))) ) \
+	$(foreach dir, $(VPOX_CORE_DOXYFILE_INPUT_DIRS) \
+		, $(wildcard $(dir)/*.cpp $(dir)/*.c $(dir)/*.m $(dir)/*.mm $(dir)/*.py $(dir)/.asm))
+VPOX_CORE_DOXYFILE_INPUT := \
+	$(VPOX_CORE_DOXYFILE_INPUT_FIRST) \
+	$(sort $(filter-out $(VPOX_CORE_DOXYFILE_INPUT_FIRST), $(VPOX_CORE_DOXYFILE_INPUT)))
+
+includedep $(VPOX_CORE_DOXYFILE_OUTPUT)/Doxyfile.Core.dep
+
+# Generate the Doxyfile
+$(VPOX_CORE_DOXYFILE_OUTPUT)/Doxyfile.Core: Doxyfile.Core \
+		$(comp-vars VPOX_CORE_DOXYFILE_INPUT,DOXYGEN_CORE_INPUT_PREV,FORCE) \
+		$(comp-vars VPOX_CORE_DOXYFILE_OUTPUT,DOXYGEN_CORE_OUTPUT_PREV,FORCE) \
+		| $$(dir $$@)
+	$(QUIET)$(RM) -f $@ $@.tmp $@.dep
+	$(QUIET)$(CP) -f Doxyfile.Core $@.tmp
+	$(QUIET)$(APPEND) $@.tmp
+	$(QUIET)$(APPEND) $@.tmp "OUTPUT_DIRECTORY = $(VPOX_CORE_DOXYFILE_OUTPUT)"
+	$(QUIET)$(APPEND) $@.tmp "WARN_LOGFILE = $(VPOX_CORE_DOXYFILE_OUTPUT)/errors"
+	$(QUIET)$(APPEND) $@.tmp "INCLUDE_PATH = $(PATH_ROOT)/include $(PATH_ROOT)/src/VPox/VMM $(PATH_ROOT)/src/VPox/Main/include "
+	$(QUIET)$(APPEND) $@.tmp "INCLUDE_FILE_PATTERNS = *.cpp.h"
+	$(QUIET)$(APPEND) $@.tmp "EXCLUDE = " \
+		"$(PATH_ROOT)/src/VPox/Additions/common/crOpenGL/utils.c" \
+		"$(PATH_ROOT)/src/VPox/HostServices/SharedOpenGL/crserver/main.c" \
+		"$(PATH_ROOT)/src/VPox/HostServices/SharedOpenGL/crserverlib/server_main.c" \
+		"$(PATH_ROOT)/src/VPox/HostServices/SharedOpenGL/unpacker/unpack_arrays.c" \
+		"$(PATH_ROOT)/src/VPox/Additions/common/crOpenGL/context.c"
+	$(QUIET)$(APPEND) $@.tmp
+	$(QUIET)$(APPEND) $@.tmp 'INPUT = $(foreach x,$(VPOX_CORE_DOXYFILE_INPUT),\$(NLTAB)$(x))'
+	$(QUIET)$(APPEND) $@.tmp
+	$(QUIET)$(APPEND) $@.tmp "PREDEFINED += $(DEFS) $(DEFS.$(KBUILD_TARGET)) $(DEFS.$(KBUILD_TARGET_ARCH)) $(ARCH_BITS_DEFS)"
+	$(QUIET)$(APPEND) $@.tmp "PREDEFINED += ARCH_BITS=HC_ARCH_BITS R3_ARCH_BITS=HC_ARCH_BITS R0_ARCH_BITS=HC_ARCH_BITS "
+	$(QUIET)$(APPEND) $@.tmp
+	$(QUIET)$(APPEND) $@.tmp "PLANTUML_JAR_PATH = $(firstword $(rsort $(wildcard $(KBUILD_DEVTOOLS)/common/plantuml/v*/plantuml*.jar)))"
+	$(QUIET)$(APPEND) $@.tmp
+	$(QUIET)$(MV) -f $@.tmp $@
+	@$(APPEND) $@.dep "DOXYGEN_CORE_OUTPUT_PREV = $(VPOX_CORE_DOXYFILE_OUTPUT)"
+	@$(APPEND) $@.dep "DOXYGEN_CORE_INPUT_PREV = $(VPOX_CORE_DOXYFILE_INPUT)"
+
+# Do the actual job.
+# Note! We must add the VPOX_JAVA dir to the path so doxygen can run plantuml.jar.
+$(VPOX_CORE_DOXYFILE_OUTPUT)/docs.Core: $(VPOX_CORE_DOXYFILE_OUTPUT)/Doxyfile.Core $$(VPOX_CORE_DOXYFILE_INPUT) \
+		| $(VPOX_CORE_DOXYFILE_OUTPUT)/
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(RM) -Rf $(VPOX_CORE_DOXYFILE_OUTPUT)/html/
+	$(if-expr $(VPOX_JAVA_VERSION)+0 >= 70000, $(REDIRECT) -E "PATH=$(VPOX_JAVA_BIN_PATH)$(HOST_PATH_SEP)$(PATH)" --,) \
+		doxygen $(VPOX_CORE_DOXYFILE_OUTPUT)/Doxyfile.Core
+	$(SED) -n \
+               -e ':nextwarning' \
+               -e '/^ *$(DOLLAR)/d' \
+               -e '/\/src\/VPox\/Main\/.* warning: documented symbol.*::~.* was not declared or defined/b ignore' \
+               -e '/\/src\/VPox\/Main\/.* warning: explicit link request to.* could not be resolved/b ignore' \
+               -e '/\/src\/VPox\/Additions\/common\/crOpenGL\/.* warning/b ignore' \
+               -e '/\/src\/VPox\/Additions\/x11\/VPoxClient\/seamless-x11\.h.* warning/b ignore' \
+               -e '/\/src\/VPox\/HostDrivers\/Support\/win\/SUPR3HardenedMain-win\.cpp.* warning/b ignore' \
+               -e '/\/src\/VPox\/ValidationKit\/.* warning/b ignore' \
+               \
+               -e '/unable to resolve link to .dtrace_pops_t./b ignore' \
+               \
+               -e 'b end' \
+               -e ':ignore' \
+               -e 'n' \
+               -e '/^[[:space:]]/b ignore' \
+               -e '/^Possible candidates/b ignore' \
+               -e '/^def testmanager::webui::wuicontentbase::__init__/b ignore' \
+               -e 'b nextwarning' \
+               -e ':end' \
+               -e 'p' \
+               --output $(VPOX_CORE_DOXYFILE_OUTPUT)/errors2 \
+               $(VPOX_CORE_DOXYFILE_OUTPUT)/errors
+	$(CAT) $(VPOX_CORE_DOXYFILE_OUTPUT)/errors2
+	$(SED) -e "/[^ ]/q 1" $(VPOX_CORE_DOXYFILE_OUTPUT)/errors2
+	$(APPEND) $@
+
+docs.Core docs.core: $(VPOX_CORE_DOXYFILE_OUTPUT)/docs.Core
+
+#
+# This is a bit odd, but we attach the optional scm check run onto the 'docs' pass
+# so the build box output is less confusing on failure.
+#
+ifeq ($(KBUILD_HOST),$(KBUILD_TARGET))
+ ifdef VPOX_WITH_SCM_CHECK_RUN
+  docs: scm.check.run
+ endif
+ .PHONY: scm.check.run
+ scm.check.run: $(VPOX_PATH_TOOLS)/scm$(HOSTSUFF_EXE)
+	$(REDIRECT) -E VPOX_LOG_FLAGS="disabled" -E VPOX_LOG_DEST="nofile" \
+		$(if-expr "$(KBUILD_HOST)" == "darwin",-E DYLD_FALLBACK_LIBRARY_PATH="$(VPOX_PATH_TOOLS)/..",) -- \
+		$(VPOX_PATH_TOOLS)/scm$(HOSTSUFF_EXE) -qvv --check-run $(PATH_ROOT)
+endif
+
+
+#
+# Combined package build (windows only).
+#
+# The combined package is created by the x86 environment, so we do the amd64
+# packaging in the build phase since it's just a few very slow jobs.  We hold
+# back the x86 build until the amd64 packaging starts, to try encourage
+# parallel execution.
+#
+# Note! VPOX_WITH_ADDITIONS_FROM_BUILD_SERVER=1 is required because the additions
+#       packing must be done in amd64 mode as it picks files from the x86 build.
+#
+
+VPOX_COMBINED_PACKAGE_DEFS := \
+	VPOX_WITH_COMBINED_PACKAGE=1 \
+	VPOX_WITH_ALL_DOXYGEN_TARGETS= \
+	VPOX_WITH_ADDITIONS_FROM_BUILD_SERVER=1
+
+combined-package-fetch:
+	+ $(KMK) -C tools $(VPOX_COMBINED_PACKAGE_DEFS) KBUILD_TARGET_ARCH=amd64 BUILD_TARGET_ARCH=amd64
+	+ $(KMK) -C tools $(VPOX_COMBINED_PACKAGE_DEFS) KBUILD_TARGET_ARCH=x86   BUILD_TARGET_ARCH=x86
+
+combined-package-build-amd64:
+	+ $(KMK) docs all $(VPOX_COMBINED_PACKAGE_DEFS) KBUILD_TARGET_ARCH=amd64 BUILD_TARGET_ARCH=amd64
+
+combined-package-build-amd64-packing: combined-package-build-amd64
+	+ $(KMK) packing  $(VPOX_COMBINED_PACKAGE_DEFS) KBUILD_TARGET_ARCH=amd64 BUILD_TARGET_ARCH=amd64
+
+combined-package-build-x86: combined-package-build-amd64
+	+ $(KMK) docs all $(VPOX_COMBINED_PACKAGE_DEFS) KBUILD_TARGET_ARCH=x86 BUILD_TARGET_ARCH=x86
+
+combined-package-build: combined-package-build-amd64-packing combined-package-build-x86
+
+combined-package-packing:
+	+ $(KMK) packing   $(VPOX_COMBINED_PACKAGE_DEFS) KBUILD_TARGET_ARCH=x86   BUILD_TARGET_ARCH=x86
+
+
+
+#
+# Common rsync bits.
+#
+
+
+## Overridable ssh name.
+# On windows build boxes install https://github.com/PowerShell/Win32-OpenSSH/releases
+# and point to it in LocalConfig.  (The cygwin ssh frequently segfaults due to
+# termination race or something along those lines.)
+VPOX_SSH ?= ssh
+VPOX_SSH_FOR_RSYNC ?= $(VPOX_SSH)
+
+## Overridable rsh name.
+VPOX_RSYNC       ?= rsync --rsh="$(VPOX_SSH_FOR_RSYNC)"
+VPOX_RSYNC_NOSSH ?= rsync
+
+##
+# The basic rsync invocation for syncing the tree into a VM; the source and
+# target specs are missing.
+#
+# @param    1   os name.
+# @param    2   arch or *.
+# @param    3   nossh or empty
+#
+VPOX_RSYNC_IN_FN = $(if-expr "$(3)" != "nossh",$(VPOX_RSYNC),$(VPOX_RSYNC_NOSSH))\
+	-a -v --delete --delete-excluded --prune-empty-dirs \
+	--exclude=*.pyc \
+	--exclude=.svn/ \
+	--exclude=doc/Devices/ \
+	--exclude=doc/tg/ \
+	--exclude=doc/vp/ \
+	--exclude=tinderclient.log \
+	--exclude=tools/FetchDir/ \
+	--exclude=webtools/ \
+	--exclude=out/ \
+	$(foreach os,$(filter-out $(1), darwin freebsd linux solaris os2 win), \
+		--exclude=tools/$(os).x86/ \
+		--exclude=tools/$(os).amd64/ )
+
+#
+# VM IP addresses.
+#
+VPOX_BLD_VM_LNX_IP               := 192.168.27.2
+VPOX_BLD_VM_OS2_IP               := 192.168.27.3
+VPOX_BLD_VM_SOLARIS_IP           := 192.168.27.4
+VPOX_BLD_VM_DARWIN_X86_IP        := 192.168.27.5
+VPOX_BLD_VM_DARWIN_AMD64_IP      := 192.168.27.15
+VPOX_BLD_VM_DARWIN_109_AMD64_IP  := 192.168.27.18
+VPOX_BLD_VM_WIN_X86_IP           := 192.168.27.6
+VPOX_BLD_VM_WIN_AMD64_IP         := 192.168.27.16
+VPOX_BLD_VM_FBSD_X86_IP          := 192.168.27.7
+VPOX_BLD_VM_FBSD_AMD64_IP        := 192.168.27.17
+
+VPOX_WITH_OS2_ADD_BUILD=1
+
+#
+# For profiling the VM building steps.
+#
+if 0
+ VPOX_BLD_VM_MSG_BEGIN = $(call MSG_L1,Building $1.)
+ VPOX_BLD_VM_MSG_END__ =
+else
+ VPOX_BLD_VM_MSG_BEGIN = @echo "$(date ) - Start building $1."
+ VPOX_BLD_VM_MSG_END__ = @echo "$(date ) - Done building $1."
+endif
+
+#
+# For killing old build jobs in the OS/2 VM before rsyncing.
+#
+VPOX_BLD_VM_OS2_KKILL_STUFF = $(REDIRECT_EXT) --stdin-pipe -- rsh -l vpox $(VPOX_BLD_VM_OS2_IP) "kkill -All -Tree kmk.exe gcc.exe & sleep.exe 1 & kkill -All gcc.exe emxomfld.exe as.exe kmk.exe "
+
+
+#
+# Build the additions, all of them.
+#
+# This is currently tailored (hardcoded) for the additions
+# build box. Can make it pretty and configurable later.
+#
+# The fetching must be done in serial fashion, while the building
+# should be more flexible wrt to -jN.
+#
+additions-fetch:
+	+ $(KMK) -C tools fetch VPOX_ONLY_ADDITIONS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=darwin  BUILD_TARGET_ARCH=amd64 BUILD_TARGET=darwin   VPOX_ONLY_ADDITIONS=1 VPOX_DEF_MACOSX_VERSION_MIN=10.7
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=darwin  BUILD_TARGET_ARCH=x86   BUILD_TARGET=darwin   VPOX_ONLY_ADDITIONS=1 #VPOX_DEF_MACOSX_VERSION_MIN=10.5
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=linux   BUILD_TARGET_ARCH=amd64 BUILD_TARGET=linux    VPOX_ONLY_ADDITIONS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=linux   BUILD_TARGET_ARCH=x86   BUILD_TARGET=linux    VPOX_ONLY_ADDITIONS=1
+ifdef VPOX_WITH_OS2_ADD_BUILD
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=os2     BUILD_TARGET_ARCH=x86   BUILD_TARGET=os2	     VPOX_ONLY_ADDITIONS=1
+endif
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=solaris BUILD_TARGET_ARCH=amd64 BUILD_TARGET=solaris  VPOX_ONLY_ADDITIONS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=solaris BUILD_TARGET_ARCH=x86   BUILD_TARGET=solaris  VPOX_ONLY_ADDITIONS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=win     BUILD_TARGET_ARCH=amd64 BUILD_TARGET=win	     VPOX_ONLY_ADDITIONS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=win     BUILD_TARGET_ARCH=x86   BUILD_TARGET=win	     VPOX_ONLY_ADDITIONS=1
+
+
+## @todo Currently combined solaris additions building assumes that amd64 is
+# built first. The windows amd64 additions need some x86 files, so don't change
+# the order of the windows builds. TODO: Split building and packing for these two VMs.
+additions-build: \
+	additions-build-rsync-into-vms \
+	additions-build-win.x86 \
+	additions-build-win.amd64 \
+	additions-build-solaris.amd64 \
+	additions-build-solaris.x86 \
+	additions-build-os2.x86 \
+	additions-build-linux \
+	additions-build-darwin.x86 \
+	additions-build-darwin.amd64
+
+additions-build-rsync-into-vms: \
+		additions-build-solaris.rsync-into-vm \
+		additions-build-os2.rsync-into-vm \
+		additions-build-darwin.x86.rsync-into-vm \
+		additions-build-darwin.amd64.rsync-into-vm \
+		additions-build-linux.rsync-into-vm
+	$(call MSG_L1,Rsynced the sources + tools into the VMs.)
+.NOTPARALLEL: additions-build-rsync-into-vms
+.PHONY:       additions-build-rsync-into-vms
+
+
+VPOX_ADDITIONS_BUILD.amd64 = VPOX_ONLY_ADDITIONS=1 VPOX_WITHOUT_ADDITIONS_ISO=1 \
+	KBUILD_TYPE=$(KBUILD_TYPE) BUILD_TYPE=$(KBUILD_TYPE) \
+	KBUILD_TARGET_ARCH=amd64 BUILD_TARGET_ARCH=amd64 \
+	VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+VPOX_ADDITIONS_BUILD.x86 = VPOX_ONLY_ADDITIONS=1 VPOX_WITHOUT_ADDITIONS_ISO=1 \
+	KBUILD_TYPE=$(KBUILD_TYPE) BUILD_TYPE=$(KBUILD_TYPE) \
+	KBUILD_TARGET_ARCH=x86 BUILD_TARGET_ARCH=x86 \
+	VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+# Automatically determine the additions build subdir name. Used for figuring
+# out directory names inside the additions building VMs.
+VPOX_ADDITIONS_BUILD_SUBDIRNAME := $(lastword $(subst /, ,$(PATH_ROOT)))
+
+# When building in parallel on a Windows host, make sure we finish the host
+# bit before kicking off any UNIX guest or we'll run into file sharing issues.
+ifeq ($(KBUILD_TARGET),win)
+VPOX_ADDITIONS_BUILD_WIN_HOST_FIRST = #additions-build-win.x86 additions-build-win.amd64
+else
+VPOX_ADDITIONS_BUILD_WIN_HOST_FIRST =
+endif
+
+# ASSUMES the 32-bit edition has been built already. Also for serializing VM access.
+ifeq ($(KBUILD_TARGET),win)
+additions-build-win.amd64-just-build:
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.amd64) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+additions-build-win.amd64: additions-build-win.x86 additions-build-win.amd64-just-build
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.amd64) packing
+else
+additions-build-win.amd64: additions-build-win.x86
+	$(call VPOX_BLD_VM_MSG_BEGIN,Windows/amd64 additions build+pack)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_WIN_AMD64_IP) ' cd e:/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh kmk $(VPOX_ADDITIONS_BUILD.amd64) all packing '
+	$(call VPOX_BLD_VM_MSG_END__,Windows/amd64 additions build+pack)
+endif
+
+ifeq ($(KBUILD_TARGET),win)
+additions-build-win.x86:
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) packing
+else
+additions-build-win.x86:
+	$(call VPOX_BLD_VM_MSG_BEGIN,Windows/x86 additions build.pack)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_WIN_X86_IP) ' cd e:/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh kmk $(VPOX_ADDITIONS_BUILD.x86) all packing '
+	$(call VPOX_BLD_VM_MSG_END__,Windows/x86 additions build+pack)
+endif
+
+# ASSUMES the 64-bit edition are built first. This also serializes VM access.
+ifeq ($(KBUILD_TARGET),solaris)
+additions-build-solaris.amd64:
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.amd64) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.amd64) packing
+
+additions-build-solaris.x86: additions-build-solaris.amd64
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) VPOX_WITH_COMBINED_SOLARIS_GUEST_PACKAGE=1 all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) VPOX_WITH_COMBINED_SOLARIS_GUEST_PACKAGE=1 packing
+
+additions-build-solaris.rsync-into-vm:
+else
+additions-build-solaris.rsync-into-vm:
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,solaris,*) \
+		'--exclude=src/VPox/Additions/WINNT/**' \
+		'--exclude=src/VPox/Frontends/**' \
+		'--exclude=src/VPox/VMM/**' \
+		. $(VPOX_BLD_VM_SOLARIS_IP):/mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)
+
+additions-build-solaris.build-it: additions-build-solaris.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,Solaris/amd64 additions build+pack)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_SOLARIS_IP) ' cd /mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.amd64) all packing '
+	$(call VPOX_BLD_VM_MSG_END__,Solaris/amd64 additions build+pack)
+	$(call VPOX_BLD_VM_MSG_BEGIN,Solaris/x86 additions build+pack)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_SOLARIS_IP) ' cd /mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.x86) all packing VPOX_WITH_COMBINED_SOLARIS_GUEST_PACKAGE=1 '
+	$(call VPOX_BLD_VM_MSG_END__,Solaris/x86 additions build+pack)
+
+additions-build-solaris.rsync-out-of-vm: additions-build-solaris.build-it
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_SOLARIS_IP):/mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/solaris.x86 out/
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_SOLARIS_IP):/mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/solaris.amd64 out/
+
+.NOTPARALLEL: additions-build-solaris.rsync-into-vm
+.PHONY:       additions-build-solaris.rsync-into-vm additions-build-solaris.rsync-out-of-vm additions-build-solaris.build-it
+
+additions-build-solaris.amd64: additions-build-solaris.rsync-out-of-vm
+additions-build-solaris.x86:   additions-build-solaris.rsync-out-of-vm
+endif
+
+ifdef VPOX_WITH_OS2_ADD_BUILD
+ ifeq ($(KBUILD_TARGET),os2)
+additions-build-os2.x86:
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) packing
+
+additions-build-os2.rsync-into-vm:
+ else
+additions-build-os2.rsync-into-vm:
+	-$(VPOX_BLD_VM_OS2_KKILL_STUFF)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,os2,*,nossh)\
+		'--exclude=src/VPox/Additions/x11/**' \
+		'--exclude=src/VPox/Additions/WINNT/**' \
+		'--exclude=src/VPox/Frontends/**' \
+		'--exclude=src/VPox/VMM/**' \
+		. rsync://vpox@$(VPOX_BLD_VM_OS2_IP)/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)
+
+additions-build-os2.build-it: #additions-build-os2.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,OS/2 additions build+pack)
+	$(TIME) -- $(REDIRECT_EXT) --stdin-pipe -- rsh -l vpox $(VPOX_BLD_VM_OS2_IP) "cd e:\\tinderbox\\$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && e: && kbuild\\bin\\os2.x86\\kmk_ash tools\\env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.x86) all packing"
+	$(call VPOX_BLD_VM_MSG_END__,OS/2 additions build+pack)
+
+additions-build-os2.rsync-out-of-vm: additions-build-os2.build-it
+	-$(VPOX_BLD_VM_OS2_KKILL_STUFF)
+	$(TIME) -- $(VPOX_RSYNC_NOSSH) -v -a --delete rsync://vpox@$(VPOX_BLD_VM_OS2_IP)/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/os2.x86 ./out
+
+.NOTPARALLEL: additions-build-os2.rsync-into-vm
+.PHONY:       additions-build-os2.rsync-into-vm additions-build-os2.rsync-out-of-vm additions-build-os2.build-it
+
+additions-build-os2.x86: additions-build-os2.rsync-out-of-vm
+ endif
+#
+else
+additions-build-os2.x86:
+# Dummy
+endif
+
+# Linux
+ifeq ($(KBUILD_TARGET),linux)
+additions-build-linux.amd64:
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.amd64) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.amd64) packing VPOX_WITHOUT_LINUX_GUEST_PACKAGE=1
+
+additions-build-linux.x86:
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) packing VPOX_WITHOUT_LINUX_GUEST_PACKAGE=1
+
+additions-build-linux: additions-build-linux.x86 additions-build-linux.amd64
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) packing VPOX_WITH_COMBINED_LINUX_GUEST_PACKAGE=1
+else
+additions-build-linux.rsync-into-vm:
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,linux,*) \
+		'--exclude=src/VPox/Additions/WINNT/**' \
+		'--exclude=src/VPox/Frontends/**' \
+		'--exclude=src/VPox/VMM/**' \
+		. $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)
+
+additions-build-linux.build-it: additions-build-linux.rsync-into-vm
+ ifdef VPOX_WITH_LIGHTDM_GREETER_PACKING
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/amd64 additions/greeter)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP)         'dchroot -c ubuntu-11.10-amd64 "cd /mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.amd64) PATH_OUT=/mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/linux.amd64/$(KBUILD_TYPE)/greeter VPOX_WITH_LIGHTDM_GREETER=1 vpox-greeter " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/amd64 additions/greeter)
+ endif
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/amd64 additions build+pack)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP)         'dchroot -c debian-4.0-amd64   "cd /mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.amd64) all packing VPOX_WITHOUT_LINUX_GUEST_PACKAGE=1 VPOX_WITH_LIGHTDM_GREETER_PACKING=$(VPOX_WITH_LIGHTDM_GREETER_PACKING) " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/amd64 additions build+pack)
+ ifdef VPOX_WITH_LIGHTDM_GREETER_PACKING
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/x86 additions/greeter)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP) 'linux32 dchroot -c ubuntu-11.10-i386  "cd /mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && BUILD_PLATFORM_ARCH=x86 tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.x86) PATH_OUT=/mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/linux.x86/$(KBUILD_TYPE)/greeter VPOX_WITH_LIGHTDM_GREETER=1 vpox-greeter " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/x86 additions/greeter)
+ endif
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/x86 additions build+pack)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP) 'linux32 dchroot -c rhel3-i386         "cd /mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.x86) all packing VPOX_WITHOUT_LINUX_GUEST_PACKAGE=1 VPOX_WITH_LIGHTDM_GREETER_PACKING=$(VPOX_WITH_LIGHTDM_GREETER_PACKING) " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/x86 additions build+pack)
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/x86 additions combine)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP) 'linux32 dchroot -c rhel3-i386         "cd /mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.x86) all packing VPOX_WITH_COMBINED_LINUX_GUEST_PACKAGE=1 " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/x86 additions combine)
+
+additions-build-linux.rsync-out-of-vm: additions-build-linux.build-it
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/linux.x86 out/
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/linux.amd64 out/
+
+.NOTPARALLEL: additions-build-linux.rsync-into-vm
+.PHONY:       additions-build-linux.rsync-into-vm additions-build-linux.rsync-out-of-vm additions-build-linux.build-it
+
+additions-build-linux: additions-build-linux.rsync-out-of-vm
+endif
+
+# Darwin
+ifeq ($(KBUILD_TARGET),darwin)
+additions-build-darwin.amd64:
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.amd64) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.amd64) packing
+
+additions-build-darwin.x86:
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) all $(VPOX_ADD_HOST_BUILD_TWEAK)
+	+ $(TIME) -- $(KMK) $(VPOX_ADDITIONS_BUILD.x86) packing
+
+additions-build-darwin:   additions-build-darwin.amd64 additions-build-darwin.x86
+.PHONY:       additions-build-darwin.amd64 additions-build-darwin.x86
+else
+additions-build-darwin.amd64.rsync-into-vm:
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_109_AMD64_IP) 'sudo rm -Rf /Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/'
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,darwin,*) \
+		'--exclude=src/libs/xpcom18a4/**' \
+		'--exclude=src/libs/curl*/**' \
+		'--exclude=src/libs/libxml*/**' \
+		'--exclude=src/libs/libvpx*/**' \
+		'--exclude=src/libs/libopus*/**' \
+		'--exclude=src/VPox/Additions/WINNT/**' \
+		'--exclude=src/VPox/Additions/x11/**' \
+		'--exclude=src/VPox/Artwork/x11/**' \
+		'--exclude=src/VPox/Devices/**' \
+		'--exclude=src/VPox/Disassembler/**' \
+		'--exclude=src/VPox/ExtPacks/**' \
+		'--exclude=src/VPox/Frontends/**' \
+		'--exclude=src/VPox/HostDriver/**' \
+		'--exclude=src/VPox/HostService/**' \
+		'--exclude=src/VPox/ImageMounter/**' \
+		'--exclude=src/VPox/Installer/win/**' \
+		'--exclude=src/VPox/Main/**' \
+		'--exclude=src/VPox/NetworkService/**' \
+		'--exclude=src/VPox/RDP/**' \
+		'--exclude=src/VPox/Storage/**' \
+		'--exclude=src/VPox/ValidationKit/**' \
+		'--exclude=src/VPox/VMM/**' \
+		'--exclude=src/apps/**' \
+		'--exclude=src/recompiler/**' \
+		. $(VPOX_BLD_VM_DARWIN_109_AMD64_IP):/Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)
+
+additions-build-darwin.x86.rsync-into-vm:
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_X86_IP) 'sudo rm -Rf /Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/'
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,darwin,*) \
+		'--exclude=src/libs/xpcom18a4/**' \
+		'--exclude=src/libs/curl*/**' \
+		'--exclude=src/libs/libxml*/**' \
+		'--exclude=src/libs/libvpx*/**' \
+		'--exclude=src/libs/libopus*/**' \
+		'--exclude=src/VPox/Additions/WINNT/**' \
+		'--exclude=src/VPox/Additions/x11/**' \
+		'--exclude=src/VPox/Artwork/x11/**' \
+		'--exclude=src/VPox/Devices/**' \
+		'--exclude=src/VPox/Disassembler/**' \
+		'--exclude=src/VPox/ExtPacks/**' \
+		'--exclude=src/VPox/Frontends/**' \
+		'--exclude=src/VPox/HostDriver/**' \
+		'--exclude=src/VPox/HostService/**' \
+		'--exclude=src/VPox/ImageMounter/**' \
+		'--exclude=src/VPox/Installer/win/**' \
+		'--exclude=src/VPox/Main/**' \
+		'--exclude=src/VPox/NetworkService/**' \
+		'--exclude=src/VPox/RDP/**' \
+		'--exclude=src/VPox/Storage/**' \
+		'--exclude=src/VPox/ValidationKit/**' \
+		'--exclude=src/VPox/VMM/**' \
+		'--exclude=src/apps/**' \
+		'--exclude=src/recompiler/**' \
+		. $(VPOX_BLD_VM_DARWIN_X86_IP):/Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)
+
+additions-build-darwin.amd64.build-it: additions-build-darwin.amd64.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,Darwin/amd64 Additions)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_109_AMD64_IP) 'cd /Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.amd64) all '     # VPOX_DEF_MACOSX_VERSION_MIN=10.7
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_109_AMD64_IP) 'cd /Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.amd64) packing ' # VPOX_DEF_MACOSX_VERSION_MIN=10.7
+	$(call VPOX_BLD_VM_MSG_END__,Darwin/amd64 Additions)
+
+additions-build-darwin.x86.build-it: additions-build-darwin.x86.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,Darwin/x86 Additions)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_X86_IP) 'cd /Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.x86) all '     # VPOX_DEF_MACOSX_VERSION_MIN=10.5
+# no pkgbuild #	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_X86_IP) 'cd /Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_ADDITIONS_BUILD.x86) packing ' # VPOX_DEF_MACOSX_VERSION_MIN=10.5
+	$(call VPOX_BLD_VM_MSG_END__,Darwin/x86 Additions)
+
+additions-build-darwin.amd64.rsync-out-of-vm: additions-build-darwin.amd64.build-it
+	$(TIME) -- $(VPOX_RSYNC) -a -v --delete $(VPOX_BLD_VM_DARWIN_109_AMD64_IP):/Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/darwin.amd64 out/
+
+additions-build-darwin.x86.rsync-out-of-vm: additions-build-darwin.x86.build-it
+	$(TIME) -- $(VPOX_RSYNC) -a -v --delete $(VPOX_BLD_VM_DARWIN_X86_IP):/Users/vpox/tinderbox/$(VPOX_ADDITIONS_BUILD_SUBDIRNAME)/out/darwin.x86 out/
+
+additions-build-darwin.amd64: additions-build-darwin.amd64.rsync-out-of-vm
+additions-build-darwin.x86: additions-build-darwin.x86.rsync-out-of-vm
+additions-build-darwin: additions-build-darwin.x86.rsync-out-of-vm  additions-build-darwin.amd64.rsync-out-of-vm
+
+.PHONY: additions-build-darwin.amd64.rsync-into-vm additions-build-darwin.amd64.rsync-out-of-vm additions-build-darwin.amd64.build-it \
+	additions-build-darwin.x86.rsync-into-vm additions-build-darwin.x86.rsync-out-of-vm additions-build-darwin.x86.build-it
+endif
+
+
+additions-packing:
+	+ $(KMK) VPOX_ONLY_ADDITIONS=1 \
+		VPOX_WITH_ADDITIONS_ISO.darwin.amd64=1 \
+		VPOX_WITH_ADDITIONS_ISO.darwin.x86= \
+		VPOX_WITH_ADDITIONS_ISO.freebsd.amd64= \
+		VPOX_WITH_ADDITIONS_ISO.freebsd.x86= \
+		VPOX_WITH_ADDITIONS_ISO.linux.amd64= \
+		VPOX_WITH_ADDITIONS_ISO.linux.x86=1 \
+		VPOX_WITH_COMBINED_LINUX_GUEST_PACKAGE=1 \
+		VPOX_WITH_ADDITIONS_ISO.os2.x86=1 \
+		VPOX_WITH_ADDITIONS_ISO.solaris.amd64=1 \
+		VPOX_WITH_ADDITIONS_ISO.solaris.x86=1 \
+		VPOX_WITH_COMBINED_SOLARIS_GUEST_PACKAGE=1 \
+		VPOX_WITH_ADDITIONS_ISO.win.amd64=1 \
+		VPOX_WITH_ADDITIONS_ISO.win.x86=1 \
+		-C src/VPox/Additions \
+		$(VPOX_PATH_ADDITIONS)/VPoxGuestAdditions.zip
+
+.PHONY: \
+	additions-build-win.x86 \
+	additions-build-win.amd64 \
+	additions-build-solaris.amd64 \
+	additions-build-solaris.x86 \
+	additions-build-os2.x86 \
+	additions-build-linux \
+	additions-build-linux.amd64 \
+	additions-build-linux.x86 \
+	additions-build-linux.x86.combined \
+	additions-build-darwin \
+	additions-build-darwin.x86 \
+	additions-build-darwin.amd64 \
+	additions-packing
+
+
+#
+# Build the extension packs, all of them.
+#
+# This is tailored (hardcoded) for the extension pack build box.
+#
+# The fetching must be done in serial fashion, while the building should be
+# more flexible wrt to -jN.
+#
+extpacks-fetch:
+	+ $(KMK) -C tools fetch VPOX_ONLY_EXTPACKS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=darwin  BUILD_TARGET_ARCH=amd64 BUILD_TARGET=darwin   VPOX_ONLY_EXTPACKS=1
+#	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=freebsd BUILD_TARGET_ARCH=amd64 BUILD_TARGET=freebsd  VPOX_ONLY_EXTPACKS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=linux   BUILD_TARGET_ARCH=amd64 BUILD_TARGET=linux    VPOX_ONLY_EXTPACKS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=solaris BUILD_TARGET_ARCH=amd64 BUILD_TARGET=solaris  VPOX_ONLY_EXTPACKS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=win     BUILD_TARGET_ARCH=amd64 BUILD_TARGET=win	     VPOX_ONLY_EXTPACKS=1
+if1of (x86, $(VPOX_SUPPORTED_HOST_ARCHS))
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=darwin  BUILD_TARGET_ARCH=x86   BUILD_TARGET=darwin   VPOX_ONLY_EXTPACKS=1
+#	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=freebsd BUILD_TARGET_ARCH=x86   BUILD_TARGET=freebsd  VPOX_ONLY_EXTPACKS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=linux   BUILD_TARGET_ARCH=x86   BUILD_TARGET=linux    VPOX_ONLY_EXTPACKS=1
+#	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=os2     BUILD_TARGET_ARCH=x86   BUILD_TARGET=os2      VPOX_ONLY_EXTPACKS=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=win     BUILD_TARGET_ARCH=x86   BUILD_TARGET=win	     VPOX_ONLY_EXTPACKS=1
+endif
+
+
+extpacks-build: \
+	extpacks-build-win.amd64 \
+	extpacks-build-win.x86 \
+	extpacks-build-solaris.amd64 \
+	extpacks-build-os2.x86 \
+	extpacks-build-linux \
+	extpacks-build-darwin.amd64 \
+	extpacks-build-freebsd.amd64 \
+	extpacks-build-freebsd.x86
+
+VPOX_EXTPACKS_BUILD.amd64 = VPOX_ONLY_EXTPACKS=1 \
+	KBUILD_TYPE=$(KBUILD_TYPE) BUILD_TYPE=$(KBUILD_TYPE) \
+	KBUILD_TARGET_ARCH=amd64 BUILD_TARGET_ARCH=amd64 \
+	VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+VPOX_EXTPACKS_BUILD.x86 = VPOX_ONLY_EXTPACKS=1 \
+	KBUILD_TYPE=$(KBUILD_TYPE) BUILD_TYPE=$(KBUILD_TYPE) \
+	KBUILD_TARGET_ARCH=x86 BUILD_TARGET_ARCH=x86 \
+	VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+# Automatically determine the extpack build subdir name. Used for figuring out
+# directory names inside the extension pack building VMs.
+VPOX_EXTPACKS_BUILD_SUBDIRNAME := $(lastword $(subst /, ,$(PATH_ROOT)))
+
+# When building in parallel on a Windows host, make sure we finish the host
+# bit before kicking off any UNIX guest or we'll run into file sharing issues.
+ifeq ($(KBUILD_TARGET),win)
+VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST = extpacks-build-win.x86 extpacks-build-win.amd64
+else
+VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST =
+endif
+
+extpacks-build-win.amd64:
+ifeq ($(KBUILD_TARGET),win)
+	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.amd64) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+else
+	$(call VPOX_BLD_VM_MSG_BEGIN,Windows/amd64 extension packs)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_WIN_AMD64_IP) 'cd e:/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && tools/env.sh kmk $(VPOX_EXTPACKS_BUILD.amd64) all '
+	$(call VPOX_BLD_VM_MSG_END__,Windows/amd64 extension packs)
+endif
+
+extpacks-build-win.x86:
+if1of (x86, $(VPOX_SUPPORTED_HOST_ARCHS))
+ ifeq ($(KBUILD_TARGET),win)
+	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.x86) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+ else
+	$(call VPOX_BLD_VM_MSG_BEGIN,Windows/x86 extension packs)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_WIN_X86_IP) 'cd e:/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && tools/env.sh kmk $(VPOX_EXTPACKS_BUILD.x86) all '
+	$(call VPOX_BLD_VM_MSG_END__,Windows/x86 extension packs)
+ endif
+else
+	@$(ECHO) "nothing to do for unsupported host $@"
+endif
+
+ifeq ($(KBUILD_TARGET),solaris)
+extpacks-build-solaris.amd64:
+	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.amd64) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+
+else
+# Serialize 32-bit and 64-bit ASSUMING the same VM builds both.
+extpacks-build-solaris.rsync-into-vm: $(VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,solaris,*) . $(VPOX_BLD_VM_SOLARIS_IP):/mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME)
+
+extpacks-build-solaris.build-it: extpacks-build-solaris.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,Solaris/amd64 extension packs)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_SOLARIS_IP)  'cd /mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_EXTPACKS_BUILD.amd64) all '
+	$(call VPOX_BLD_VM_MSG_END__,Solaris/amd64 extension packs)
+
+extpacks-build-solaris.rsync-out-of-vm: extpacks-build-solaris.build-it
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_SOLARIS_IP):/mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME)/out/solaris.amd64 out/
+
+#.NOTPARALLEL: extpacks-build-solaris.rsync-into-vm
+.PHONY:       extpacks-build-solaris.rsync-out-of-vm extpacks-build-solaris.rsync-into-vm extpacks-build-solaris.build-it
+
+extpacks-build-solaris.amd64: extpacks-build-solaris.rsync-out-of-vm
+endif
+
+extpacks-build-os2.x86:
+#ifeq ($(KBUILD_TARGET),os2)
+#	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.x86) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+#else
+#	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_OS2_IP) ' cd /mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_EXTPACKS_BUILD.x86) '
+#endif
+
+ifeq ($(KBUILD_TARGET),linux)
+extpacks-build-linux.amd64:   $(VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST)
+	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.amd64) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+
+extpacks-build-linux.x86:   $(VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST)
+ if1of (x86, $(VPOX_SUPPORTED_HOST_ARCHS))
+	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.x86) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+ else
+	@$(ECHO) "nothing to do for unsupported host $@"
+ endif
+
+extpacks-build-linux: extpacks-build-linux.x86 extpacks-build-linux.amd64
+else
+# Serialize 32-bit and 64-bit ASSUMING the same VM builds both.
+extpacks-build-linux.rsync-into-vm: $(VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,linux,*) . $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME)
+
+extpacks-build-linux.build-it: extpacks-build-linux.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/amd64 extension packs)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP)         'dchroot -c debian-4.0-amd64 "cd /mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_EXTPACKS_BUILD.amd64) all " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/amd64 extension packs)
+ if1of (x86, $(VPOX_SUPPORTED_HOST_ARCHS))
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/x86 extension packs)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP) 'linux32 dchroot -c debian-4.0-i386  "cd /mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_EXTPACKS_BUILD.x86)   all " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/x86 extension packs)
+ endif
+
+extpacks-build-linux.rsync-out-of-vm: extpacks-build-linux.build-it
+ if1of (x86, $(VPOX_SUPPORTED_HOST_ARCHS))
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME)/out/linux.x86 out/
+ endif
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME)/out/linux.amd64 out/
+
+#.NOTPARALLEL: extpacks-build-linux.rsync-into-vm
+.PHONY:       extpacks-build-linux.rsync-out-of-vm extpacks-build-linux.rsync-into-vm extpacks-build-linux.build-it
+
+extpacks-build-linux: extpacks-build-linux.rsync-out-of-vm
+endif
+
+extpacks-build-freebsd.amd64: $(VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST)
+#ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),freebsd.amd64)
+#	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.amd64) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+#else
+#	$(call VPOX_BLD_VM_MSG_BEGIN,FreeBSD/amd64 extension packs)
+#	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_FBSD_AMD64_IP) 'cd /mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_EXTPACKS_BUILD.amd64) all '
+#	$(call VPOX_BLD_VM_MSG_END__,FreeBSD/amd64 extension packs)
+#endif
+
+extpacks-build-freebsd.x86: $(VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST)
+#ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),freebsd.x86)
+#	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.x86) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+#else
+#	$(call VPOX_BLD_VM_MSG_BEGIN,FreeBSD/x86 extension packs)
+#	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_FBSD_X86_IP) 'cd /mnt/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_EXTPACKS_BUILD.x86) all '
+#	$(call VPOX_BLD_VM_MSG_END__,FreeBSD/x86 extension packs)
+#endif
+
+extpacks-build-darwin.amd64: $(VPOX_EXTPACKS_BUILD_WIN_HOST_FIRST)
+ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),darwin.amd64)
+	+ $(TIME) -- $(KMK) $(VPOX_EXTPACKS_BUILD.amd64) all $(VPOX_EXTPACKS_HOST_BUILD_TWEAK)
+else
+	$(call VPOX_BLD_VM_MSG_BEGIN,Darwin/amd64 extension packs)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,darwin,amd64) . $(VPOX_BLD_VM_DARWIN_109_AMD64_IP):/Users/vpox/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_109_AMD64_IP) 'PATH=$$PATH:/opt/local/bin; cd /Users/vpox/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME) && KBUILD_HOST_ARCH=amd64 tools/env.sh --no-wine kmk $(VPOX_EXTPACKS_BUILD.amd64) all '
+	$(TIME) -- $(VPOX_RSYNC) -am -v --delete $(VPOX_BLD_VM_DARWIN_109_AMD64_IP):/Users/vpox/tinderbox/$(VPOX_EXTPACKS_BUILD_SUBDIRNAME)/out/darwin.amd64 out/
+	$(call VPOX_BLD_VM_MSG_END__,Darwin/amd64 extension packs)
+endif
+
+extpacks-packing:
+if1of (x86, $(VPOX_SUPPORTED_HOST_ARCHS))
+	+ $(KMK) VPOX_WITH_EXTPACK_OS_ARCHS="darwin.amd64 linux.amd64 linux.x86 solaris.amd64 win.amd64 win.x86" \
+		VPOX_ONLY_EXTPACKS=1 packing
+else
+	+ $(KMK) VPOX_WITH_EXTPACK_OS_ARCHS="darwin.amd64 linux.amd64 solaris.amd64 win.amd64" \
+		VPOX_ONLY_EXTPACKS=1 packing
+endif
+# +++ freebsd.amd64 ^^^
+
+.PHONY: \
+	extpacks-build-win.x86 \
+	extpacks-build-win.amd64 \
+	extpacks-build-solaris.amd64 \
+	extpacks-build-os2.x86 \
+	extpacks-build-linux \
+	extpacks-build-linux.amd64 \
+	extpacks-build-linux.x86 \
+	extpacks-build-freebsd.amd64 \
+	extpacks-build-freebsd.x86 \
+	extpacks-build-darwin.amd64 \
+	extpacks-packing
+
+
+#
+# Build the test suite, all of it.
+#
+# This is currently tailored (hardcoded) for the additions build box just like
+# the additions build above, which it in fact is a copy of.
+#
+validationkit-fetch:
+	+ $(KMK) -C tools fetch VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=darwin  BUILD_TARGET_ARCH=amd64 BUILD_TARGET=darwin    VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=darwin  BUILD_TARGET_ARCH=x86   BUILD_TARGET=darwin    VPOX_ONLY_VALIDATIONKIT=1
+#	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=freebsd BUILD_TARGET_ARCH=amd64 BUILD_TARGET=freebsd   VPOX_ONLY_VALIDATIONKIT=1
+#	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=freebsd BUILD_TARGET_ARCH=x86   BUILD_TARGET=freebsd   VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=linux   BUILD_TARGET_ARCH=amd64 BUILD_TARGET=linux     VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=linux   BUILD_TARGET_ARCH=x86   BUILD_TARGET=linux     VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=os2     BUILD_TARGET_ARCH=x86   BUILD_TARGET=os2       VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=solaris BUILD_TARGET_ARCH=amd64 BUILD_TARGET=solaris   VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=solaris BUILD_TARGET_ARCH=x86   BUILD_TARGET=solaris   VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=amd64 KBUILD_TARGET=win     BUILD_TARGET_ARCH=amd64 BUILD_TARGET=win       VPOX_ONLY_VALIDATIONKIT=1
+	+ $(KMK) -C tools fetch KBUILD_TARGET_ARCH=x86   KBUILD_TARGET=win     BUILD_TARGET_ARCH=x86   BUILD_TARGET=win       VPOX_ONLY_VALIDATIONKIT=1
+
+
+validationkit-build: \
+	validationkit-build-rsync-into-vms \
+	validationkit-build-solaris.amd64 \
+	validationkit-build-solaris.x86 \
+	validationkit-build-win.x86 \
+	validationkit-build-win.amd64 \
+	validationkit-build-os2.x86 \
+	validationkit-build-linux \
+	validationkit-build-freebsd.amd64 \
+	validationkit-build-freebsd.x86 \
+	validationkit-build-darwin.amd64 \
+	validationkit-build-darwin.x86
+
+validationkit-build-rsync-into-vms: \
+		validationkit-build-solaris.rsync-into-vm \
+		validationkit-build-os2.rsync-into-vm \
+		validationkit-build-linux.rsync-into-vm
+	$(call MSG_L1,Rsynced the sources + tools into the VMs.)
+.NOTPARALLEL: validationkit-build-rsync-into-vms
+.PHONY:       validationkit-build-rsync-into-vms
+
+
+VPOX_VALIDATIONKIT_BUILD.amd64 = VPOX_ONLY_VALIDATIONKIT=1 \
+	KBUILD_TYPE=$(KBUILD_TYPE) BUILD_TYPE=$(KBUILD_TYPE) \
+	KBUILD_TARGET_ARCH=amd64 BUILD_TARGET_ARCH=amd64 \
+	VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+VPOX_VALIDATIONKIT_BUILD.x86 = VPOX_ONLY_VALIDATIONKIT=1 \
+	KBUILD_TYPE=$(KBUILD_TYPE) BUILD_TYPE=$(KBUILD_TYPE) \
+	KBUILD_TARGET_ARCH=x86 BUILD_TARGET_ARCH=x86 \
+	VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+# Automatically determine the Validation Kit build subdir name. Used for figuring
+# out directory names inside the test suite building VMs.
+VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME := $(lastword $(subst /, ,$(PATH_ROOT)))
+
+# When building in parallel on a Windows host, make sure we finish the host
+# bit before kicking off any UNIX guest or we'll run into file sharing issues.
+ifeq ($(KBUILD_TARGET),win)
+VPOX_VALIDATIONKIT_BUILD_WIN_HOST_FIRST = validationkit-build-win.x86 validationkit-build-win.amd64
+else
+VPOX_VALIDATIONKIT_BUILD_WIN_HOST_FIRST =
+endif
+
+validationkit-build-win.amd64:
+ifeq ($(KBUILD_TARGET),win)
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.amd64) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+else
+	$(call VPOX_BLD_VM_MSG_BEGIN,Windows/amd64 Validation Kit)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_WIN_X86_IP) 'cd e:/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh kmk $(VPOX_VALIDATIONKIT_BUILD.amd64) all '
+	$(call VPOX_BLD_VM_MSG_END__,Windows/amd64 Validation Kit)
+endif
+
+validationkit-build-win.x86:
+ifeq ($(KBUILD_TARGET),win)
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.x86) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+else
+	$(call VPOX_BLD_VM_MSG_BEGIN,Windows/x86 Validation Kit)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_WIN_AMD64_IP) 'cd e:/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh kmk $(VPOX_VALIDATIONKIT_BUILD.x86) all '
+	$(call VPOX_BLD_VM_MSG_END__,Windows/x86 Validation Kit)
+endif
+
+ifeq ($(KBUILD_TARGET),solaris)
+validationkit-build-solaris.amd64:
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.amd64) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+
+validationkit-build-solaris.x86:
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.x86)   all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+
+else
+validationkit-build-solaris.rsync-into-vm: $(VPOX_VALIDATIONKIT_BUILD_WIN_HOST_FIRST)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,solaris,*) \
+		'--exclude=src/VPox/Additions/WINNT/**' \
+		'--exclude=src/VPox/Frontends/**' \
+		'--exclude=src/VPox/VMM/**' \
+		. $(VPOX_BLD_VM_SOLARIS_IP):/mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)
+
+validationkit-build-solaris.build-it: validationkit-build-solaris.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,Solaris/amd64 Validation Kit)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_SOLARIS_IP) 'cd /mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.amd64) all '
+	$(call VPOX_BLD_VM_MSG_END__,Solaris/amd64 Validation Kit)
+	$(call VPOX_BLD_VM_MSG_BEGIN,Solaris/x86 Validation Kit)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_SOLARIS_IP) 'cd /mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.x86) all '
+	$(call VPOX_BLD_VM_MSG_END__,Solaris/x86 Validation Kit)
+
+validationkit-build-solaris.rsync-out-of-vm: validationkit-build-solaris.build-it
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_SOLARIS_IP):/mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)/out/solaris.x86   out/
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_SOLARIS_IP):/mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)/out/solaris.amd64 out/
+
+.PHONY:       validationkit-build-solaris.rsync-out-of-vm validationkit-build-solaris.rsync-into-vm validationkit-build-solaris.build-it
+
+validationkit-build-solaris.amd64: validationkit-build-solaris.rsync-out-of-vm
+validationkit-build-solaris.x86:   validationkit-build-solaris.rsync-out-of-vm
+endif
+
+ifeq ($(KBUILD_TARGET),os2)
+validationkit-build-os2.x86:
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.x86) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+validationkit-build-os2.rsync-into-vm:
+else # !OS/2
+validationkit-build-os2.rsync-into-vm:
+	-$(VPOX_BLD_VM_OS2_KKILL_STUFF)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,os2,*,nossh) \
+		'--exclude=src/VPox/Additions/x11/**' \
+		'--exclude=src/VPox/Additions/WINNT/**' \
+		'--exclude=src/VPox/Frontends/**' \
+		'--exclude=src/VPox/VMM/**' \
+		. rsync://vpox@$(VPOX_BLD_VM_OS2_IP)/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)
+
+validationkit-build-os2.build-it: validationkit-build-os2.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,OS/2 Validation Kit)
+	$(TIME) -- $(REDIRECT_EXT) --stdin-pipe -- rsh -l vpox $(VPOX_BLD_VM_OS2_IP) "cd e:\\tinderbox\\$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && e: && kbuild\\bin\\os2.x86\\kmk_ash tools\\env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.x86) all"
+	$(call VPOX_BLD_VM_MSG_END__,OS/2 Validation Kit)
+
+validationkit-build-os2.rsync-out-of-vm: validationkit-build-os2.build-it
+	-$(VPOX_BLD_VM_OS2_KKILL_STUFF)
+	$(TIME) -- $(VPOX_RSYNC_NOSSH) -v -a --delete rsync://vpox@$(VPOX_BLD_VM_OS2_IP)/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)/out/os2.x86 ./out
+
+.PHONY:       validationkit-build-os2.rsync-into-vm validationkit-build-os2.rsync-out-of-vm validationkit-build-os2.build-it
+
+validationkit-build-os2.x86: validationkit-build-os2.rsync-out-of-vm
+endif # !OS/2
+
+ifeq ($(KBUILD_TARGET),linux)
+validationkit-build-linux.amd64:
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.amd64) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+
+validationkit-build-linux.x86:
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.x86)   all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+
+validationkit-build-linux: validationkit-build-linux.x86 validationkit-build-linux.amd64
+else
+validationkit-build-linux.rsync-into-vm: $(VPOX_VALIDATIONKIT_BUILD_WIN_HOST_FIRST)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,linux,*) \
+		'--exclude=src/VPox/Additions/WINNT/**' \
+		'--exclude=src/VPox/Frontends/**' \
+		'--exclude=src/VPox/VMM/**' \
+		. $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)
+
+validationkit-build-linux.build-it: validationkit-build-linux.rsync-into-vm
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/amd64 Validation Kit)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP)         'dchroot -c debian-4.0-amd64 "cd /mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.amd64) all " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/amd64 Validation Kit)
+	$(call VPOX_BLD_VM_MSG_BEGIN,Linux/x86 Validation Kit)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_LNX_IP) 'linux32 dchroot -c rhel3-i386       "cd /mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.x86)   all " '
+	$(call VPOX_BLD_VM_MSG_END__,Linux/x86 Validation Kit)
+
+validationkit-build-linux.rsync-out-of-vm: validationkit-build-linux.build-it
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)/out/linux.x86   out/
+	$(TIME) -- $(VPOX_RSYNC) -a --delete $(VPOX_BLD_VM_LNX_IP):/mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)/out/linux.amd64 out/
+
+.PHONY:       validationkit-build-linux.rsync-out-of-vm validationkit-build-linux.rsync-into-vm validationkit-build-linux.build-it
+
+validationkit-build-linux: validationkit-build-linux.rsync-out-of-vm
+endif
+
+validationkit-build-freebsd.amd64:   $(VPOX_VALIDATIONKIT_BUILD_WIN_HOST_FIRST)
+#ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),freebsd.amd64)
+#	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.amd64) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+#else
+#	$(call VPOX_BLD_VM_MSG_BEGIN,Freebsd/amd64 Validation Kit)
+#	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_FBSD_AMD64_IP) 'cd /mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.amd64) all '
+#	$(call VPOX_BLD_VM_MSG_END__,Freebsd/amd64 Validation Kit)
+#endif
+
+validationkit-build-freebsd.x86:   $(VPOX_VALIDATIONKIT_BUILD_WIN_HOST_FIRST)
+#ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),freebsd.x86)
+#	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.x86) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+#else
+#	$(call VPOX_BLD_VM_MSG_BEGIN,Freebsd/x86 Validation Kit)
+#	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_FBSD_X86_IP) 'cd /mnt/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.x86) all '
+#	$(call VPOX_BLD_VM_MSG_END__,Freebsd/x86 Validation Kit)
+#endif
+
+validationkit-build-darwin.amd64:   $(VPOX_VALIDATIONKIT_BUILD_WIN_HOST_FIRST)
+ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),darwin.amd64)
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.amd64) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+else
+	$(call VPOX_BLD_VM_MSG_BEGIN,Darwin/amd64 Validation Kit)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,darwin,amd64) . $(VPOX_BLD_VM_DARWIN_AMD64_IP):/Users/vpox/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_AMD64_IP) 'cd /Users/vpox/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.amd64) all '
+	$(TIME) -- $(VPOX_RSYNC) -am -v --delete $(VPOX_BLD_VM_DARWIN_AMD64_IP):/Users/vpox/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)/out/darwin.amd64 out/
+	$(call VPOX_BLD_VM_MSG_END__,Darwin/amd64 Validation Kit)
+endif
+
+validationkit-build-darwin.x86:   $(VPOX_VALIDATIONKIT_BUILD_WIN_HOST_FIRST)
+ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),darwin.x86)
+	+ $(TIME) -- $(KMK) $(VPOX_VALIDATIONKIT_BUILD.x86) all $(VPOX_VALIDATIONKIT_HOST_BUILD_TWEAK)
+else
+	$(call VPOX_BLD_VM_MSG_BEGIN,Darwin/x86 Validation Kit)
+	$(TIME) -- $(call VPOX_RSYNC_IN_FN,darwin,x86) . $(VPOX_BLD_VM_DARWIN_X86_IP):/Users/vpox/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)
+	$(TIME) -- $(VPOX_SSH) vpox@$(VPOX_BLD_VM_DARWIN_X86_IP) 'cd /Users/vpox/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME) && tools/env.sh --no-wine kmk $(VPOX_VALIDATIONKIT_BUILD.x86) all '
+	$(TIME) -- $(VPOX_RSYNC) -am -v --delete $(VPOX_BLD_VM_DARWIN_X86_IP):/Users/vpox/tinderbox/$(VPOX_VALIDATIONKIT_BUILD_SUBDIRNAME)/out/darwin.x86 out/
+	$(call VPOX_BLD_VM_MSG_END__,Darwin/x86 Validation Kit)
+endif
+
+
+validationkit-packing:
+	+ $(KMK) VPOX_ONLY_VALIDATIONKIT=1 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.darwin.amd64=1 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.darwin.x86=2 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.freebsd.amd64= \
+		VPOX_WITH_VALIDATIONKIT_PACKING.freebsd.x86= \
+		VPOX_WITH_VALIDATIONKIT_PACKING.linux.amd64=1 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.linux.x86=1 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.os2.x86=1 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.solaris.amd64=1 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.solaris.x86=1 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.win.amd64=1 \
+		VPOX_WITH_VALIDATIONKIT_PACKING.win.x86=1 \
+		-C src/VPox/ValidationKit \
+		$(PATH_OUT)/VPoxValidationKit.zip \
+		$(PATH_OUT)/VPoxTestBoxScript.zip
+
+.PHONY: \
+	validationkit-build-win.x86 \
+	validationkit-build-win.amd64 \
+	validationkit-build-solaris.amd64 \
+	validationkit-build-solaris.x86 \
+	validationkit-build-os2.x86 \
+	validationkit-build-linux \
+	validationkit-build-linux.amd64 \
+	validationkit-build-linux.x86 \
+	validationkit-build-freebsd.amd64 \
+	validationkit-build-freebsd.x86 \
+	validationkit-build-darwin.amd64 \
+	validationkit-build-darwin.x86 \
+	validationkit-packing
+
+
+#
+# Build the EFI firmware, all of it.
+#
+efi-fetch:
+	+ $(KMK) -C tools fetch VPOX_ONLY_EXTPACKS=1
+
+efi-build: $(VPOX_VERSION_HEADER)
+	+ $(KMK) -C src/VPox/Devices/EFI/Firmware$(VPOX_EFI_FIRMWARE_SUFFIX)
+
+efi-packing:
+	+ $(KMK) -C src/VPox/Devices/EFI/Firmware$(VPOX_EFI_FIRMWARE_SUFFIX) $(PATH_STAGE)/VPoxEfiFirmware.zip
+
+
+#
+# Generate VirtualPox-x.x.x.zip (PUEL) snapshot archive for internal use only
+# - includes kBuild
+# - must be executed on an PUEL checkout
+#
+
+# the path where to store the zip archive
+ZIPPATH ?= $(abspath $(PATH_ROOT)/..)
+# the root directory inside the zip archive
+ZIPROOT ?= VirtualPox-$(VPOX_VERSION_STRING)
+# the name of the zip archive
+ZIPNAME ?= VirtualPox-$(VPOX_VERSION_STRING).zip
+snapshot-puel:
+	@$(call MSG_L1,Creating zip $(ZIPPATH)/$(ZIPNAME))
+	@if [ ! -r "$(PATH_ROOT)/src/VPox/RDP/server/server.cpp" ]; then \
+	    echo; \
+	    echo "Did not find RDP stuff, is this an OSE branch?"; \
+	    echo; \
+	    exit 1; \
+	 fi
+	@if [ -z "$(PASSWORD)" ]; then \
+	    echo; \
+	    echo "Please specify a password with PASSWORD=..."; \
+	    echo; \
+	    exit 1; \
+	 fi
+	$(QUIET)$(MKDIR) -p $(ZIPPATH)
+	$(QUIET)$(RM) -f $(ZIPPATH)/$(ZIPROOT)
+	$(QUIET)$(RM) -f $(ZIPPATH)/$(ZIPNAME)
+	$(QUIET)$(LN_SYMLINK) $(PATH_ROOT) $(ZIPPATH)/$(ZIPROOT)
+	$(QUIET)(cd $(ZIPPATH); 7z a \
+	    -l -tzip -mmt=on -mx=7 -p$(PASSWORD) \
+	    -xr!.svn \
+	    -i!$(ZIPROOT)/Config.kmk \
+	    -i!$(ZIPROOT)/Doxyfile.Core \
+	    -i!$(ZIPROOT)/Makefile.kmk \
+	    -i!$(ZIPROOT)/configure \
+	    -i!$(ZIPROOT)/configure.vbs \
+	    -i!$(ZIPROOT)/doc \
+	    -i!$(ZIPROOT)/include \
+	    -i!$(ZIPROOT)/kBuild \
+	    -i!$(ZIPROOT)/src \
+	    -i!$(ZIPROOT)/tools/env.sh \
+	    -i!$(ZIPROOT)/tools/linux.x86/bin/* \
+	    -i!$(ZIPROOT)/tools/linux.amd64/bin/* \
+	    -x!$(ZIPROOT)/doc/Devices \
+	    -x!$(ZIPROOT)/doc/\*pdf \
+	    -x!$(ZIPROOT)/doc/VMM \
+	    -x!$(ZIPROOT)/doc/licenses_old \
+	    -x!$(ZIPROOT)/doc/manual/de_DE \
+	    -x!$(ZIPROOT)/doc/manual/fr_FR \
+	    -x!$(ZIPROOT)/src/tests \
+	    -x!$(ZIPROOT)/src/VPox/Artwork/2008-\* \
+	    -x!$(ZIPROOT)/src/VPox/Installer/AMI \
+	    -x!$(ZIPROOT)/src/VPox/Installer/Avanquest \
+	    -x!$(ZIPROOT)/src/VPox/Installer/Encore \
+	    -x!$(ZIPROOT)/src/VPox/Installer/linux/debian \
+	    -x!$(ZIPROOT)/src/VPox/Installer/linux/rpm \
+	    $(ZIPPATH)/$(ZIPNAME))
+	$(QUIET)$(RM) $(ZIPPATH)/$(ZIPROOT)
+
+
+#
+# Generate VirtualPox-x.x.x.tar.bz2 (OSE) snapshot archive
+# - includes kBuild
+#
+
+snapshot-ose:
+ifndef VPOX_OSE
+	$(QUIET)$(RM) -Rf $(wildcard $(PATH_OUT)/vpox-ose-snap-*) $(wildcard $(PATH_OUT)/VirtualPox-*.tar.bz2)
+	$(call MSG_L1,Making OSE snapshot at $(PATH_OUT)/vpox-ose-snap-$(VPOX_VERSION_STRING))
+	$(PATH_DEVTOOLS)/bin/ose-snapshot.sh $(PATH_OUT)/vpox-ose-snap-$(VPOX_VERSION_STRING)
+	$(call MSG_L1,Creating OSE tarball $(PATH_OUT)/VirtualPox-$(VPOX_VERSION_STRING)-r$(VPOX_SVN_REV).tar.bz2)
+	$(REDIRECT) -C $(PATH_OUT)/vpox-ose-snap-$(VPOX_VERSION_STRING) -- \
+		$(PATH_DEVTOOLS)/bin/ose-tarball.sh $(PATH_OUT)/VirtualPox-$(VPOX_VERSION_STRING)-r$(VPOX_SVN_REV).tar.bz2
+else
+	$(QUIET)$(RM) $(wildcard $(PATH_OUT)/VirtualPox-*.tar.bz2)
+	$(call MSG_L1,Creating OSE tarball $(PATH_OUT)/VirtualPox-$(VPOX_VERSION_STRING)-r$(VPOX_SVN_REV).tar.bz2)
+	$(REDIRECT) -C $(PATH_ROOT) -- \
+		$(PATH_DEVTOOLS)/bin/ose-tarball.sh $(PATH_OUT)/VirtualPox-$(VPOX_VERSION_STRING)-r$(VPOX_SVN_REV).tar.bz2
+endif
+
+
+#
+# Generate ALL the rules.
+#
+include $(FILE_KBUILD_SUB_FOOTER)
+
+
+#
+# Generate x86.mac and err.mac.
+#
+incs:
+	$(SED) -f include/VPox/err.sed     --output include/VPox/err.mac           include/VPox/err.h
+	$(APPEND) include/VPox/err.mac '%include "iprt/err.mac"'
+	$(SED) -f include/VPox/err.sed     --output include/iprt/err.mac           include/iprt/err.h
+	$(SED) -f include/VPox/various.sed --output include/iprt/x86.mac           include/iprt/x86.h
+	$(SED) -f include/VPox/various.sed --output include/iprt/formats/dwarf.mac include/iprt/formats/dwarf.h
+	$(APPEND) include/iprt/x86.mac '%include "iprt/x86extra.mac"'
+	$(SED) -f include/VPox/various.sed --output include/VPox/apic.mac          include/VPox/apic.h
+	$(SED) -f include/VPox/various.sed --output include/VPox/bios.mac          include/VPox/bios.h
+	$(SED) -f include/VPox/various.sed --output include/VPox/param.mac         include/VPox/param.h
+	$(SED) -f include/VPox/various.sed --output include/VPox/VMMDevTesting.mac include/VPox/VMMDevTesting.h
+
+
+#
+# Legacy.
+#
+vslick.h:
+	$(ECHO) This is now done by gen-slickedit-workspace.sh/cmd.
+	exit 1
+
+
+#
+# Add fetching of the tools to the 'up[date][2]' targets.
+#
+up update up2 update2::
+ifndef VPOX_OSE
+	+$(MAKE) -C tools fetch
+else
+	$(MAKE) -C tools -f Makefile-ose.kmk fetch
+endif
+
+
+
+#
+# Aliases for building the SDK.
+#
+.NOTPARALLEL: sdk sdk-fetch
+sdk:
+	+ $(KMK) VPOX_ONLY_SDK=1 \
+		pass_bldprogs pass_others pass_installs pass_packing
+
+sdk-fetch:
+	+ $(KMK) VPOX_ONLY_SDK=1 -C tools
+
+
+#
+# Build the essentials to run a VM.  Incomplete. Use with care!
+#
+quick: \
+	VPoxRT \
+	VPoxVMM \
+	VMMR0 \
+	VPoxDD \
+	VPoxDDR0 \
+	VPoxDD2 \
+	VPoxDD2R0 \
+	VPoxC \
+	VPoxSVC \
+	$(if-expr defined(VPOX_WITH_RAW_MODE),VMMRC VPoxDDRC VPoxDD2RC,) \
+	$(if-expr defined(VPOX_WITH_MIDL_PROXY_STUB) && "$(KBUILD_TARGET)" == "win",VPoxProxyStub,) \
+	$(if-expr defined(VPOX_WITH_SDS),VPoxSDS,) \
+	$(if-expr defined(VPOX_WITH_QTGUI),VirtualPox,)
+

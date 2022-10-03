@@ -1,0 +1,54 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Shared Clipboard Host Service testcases.
+#
+
+#
+# Copyright (C) 2011-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+if defined(VPOX_WITH_TESTCASES) && !defined(VPOX_ONLY_ADDITIONS) && !defined(VPOX_ONLY_SDK)
+
+ PROGRAMS += tstClipboardServiceHost
+
+ tstClipboardServiceHost_TEMPLATE = VPOXR3TSTEXE
+ tstClipboardServiceHost_DEFS     = VPOX_WITH_HGCM UNIT_TEST
+ tstClipboardServiceHost_SOURCES  = \
+	../VPoxSharedClipboardSvc.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-common.cpp \
+	$(PATH_ROOT)/src/VPox/HostServices/common/message.cpp \
+	tstClipboardServiceHost.cpp
+ tstClipboardServiceHost_SOURCES.win = \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-win.cpp
+
+ if defined(VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS)
+  tstClipboardServiceHost_DEFS    += VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+  tstClipboardServiceHost_SOURCES += \
+	../VPoxSharedClipboardSvc-transfers.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/ClipboardArea.cpp
+ endif
+
+ if defined(VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS)
+  PROGRAMS += tstClipboardTransfers
+  tstClipboardTransfers_TEMPLATE = VPOXR3TSTEXE
+  tstClipboardTransfers_DEFS     = VPOX_WITH_HGCM UNIT_TEST VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+  tstClipboardTransfers_SOURCES  = \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-common.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-transfers.cpp \
+	tstClipboardTransfers.cpp
+ endif
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)

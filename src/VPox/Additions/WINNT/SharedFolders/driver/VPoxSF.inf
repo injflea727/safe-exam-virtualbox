@@ -1,0 +1,74 @@
+; $Id: VPoxSF.inf $
+;; @file
+; INF file for installing the VirtualPox Windows guest driver
+;
+
+;
+; Copyright (C) 2006-2020 Oracle Corporation
+;
+; This file is part of VirtualPox Open Source Edition (OSE), as
+; available from http://www.virtualpox.org. This file is free software;
+; you can redistribute it and/or modify it under the terms of the GNU
+; General Public License (GPL) as published by the Free Software
+; Foundation, in version 2 as it comes in the "COPYING" file of the
+; VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+; hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+;
+
+[Version]
+Signature="$Windows NT$"
+Class=System
+ClassGuid={ce4a90b5-1d8c-435d-b349-232ce55cb17f}
+Provider=%ORACLE%
+;edit-DriverVer=08/26/2008,2.00.0000
+DriverPackageType=Network
+;cat CatalogFile=VPoxSF.cat
+
+;cat [SourceDisksNames]
+;cat 1 = %VPoxSF.MediaDesc%
+;cat
+;cat [SourceDisksFiles]
+;cat VPoxSF.sys = 1
+
+[DestinationDirs]
+DefaultDestDir      = 12 ; drivers
+VPoxMRXNP_CopyFiles = 11 ; system32
+
+[Manufacturer]
+;x86   %ORACLE%=VPoxSF
+;amd64 %ORACLE%=VPoxSF, NTamd64
+
+;x86   [VPoxSF]
+;amd64 [VPoxSF.NTamd64]
+%VPoxSF.DeviceDesc%=VPoxSF_Install,PCI\VEN_80ee&DEV_cafe
+
+[VPoxSF_Install]
+CopyFiles = VPoxSF_CopyFiles, VPoxMRXNP_CopyFiles
+AddReg = VPoxMRXNP_Add_Reg
+
+[VPoxSF_CopyFiles]
+VPoxSF.sys
+
+[VPoxMRXNP_CopyFiles]
+VPoxMRXNP.dll
+
+[VPoxSF_Install.Services]
+AddService = VPoxSF, 0x00000002, VPoxSF_ServiceInstallSection
+DelService = VPoxMRXNP, 0x00000004
+
+[VPoxSF_ServiceInstallSection]
+DisplayName    = %VPoxSF_svcdesc%
+ServiceType    = 0x00000001 ; kernel driver
+StartType      = 0x00000003 ; demand start
+ErrorControl   = 0x00000001 ; normal error handling
+ServiceBinary  = %12%\VPoxSF.sys
+
+[VPoxMRXNP_Add_Reg]
+HKLM, SOFTWARE\Microsoft\Windows\CurrentVersion\Run, VPoxMRXNP, 0x00000000, %11%\VPoxMRXNP.exe
+
+[Strings]
+ORACLE = "Oracle Corporation"
+VPoxSF.DeviceDesc = "VirtualPox Device"
+VPoxSF_svcdesc = "VirtualPox Shared Folders Driver"
+VPoxMRXNP_svcdesc = "VirtualPox Network Provider Service"
+

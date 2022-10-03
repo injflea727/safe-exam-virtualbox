@@ -1,0 +1,131 @@
+# $Id: Config.kmk $
+## @file
+# kBuild Configuration file for the installers
+#
+
+#
+# Copyright (C) 2015-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+VPOX_INSTALLER_CONFIG_KMK_INCLUDED = 1
+
+# Include the top-level configure file.
+ifndef VPOX_ROOT_CONFIG_KMK_INCLUDED
+ include $(PATH_ROOT)/Config.kmk
+endif
+
+#
+# Generic stuff.
+#
+VPOX_PATH_INST_COMMON_SRC := $(PATH_ROOT)/src/VPox/Installer/common
+
+
+ifdef VPOX_WITH_PYTHON
+ VPOXINST_SDK_BINDINGS_XPCOM_PYTHON_FILES = \
+ 	sdk/bindings/xpcom/python/xpcom/__init__.py \
+ 	sdk/bindings/xpcom/python/xpcom/primitives.py \
+ 	sdk/bindings/xpcom/python/xpcom/file.py \
+ 	sdk/bindings/xpcom/python/xpcom/xpcom_consts.py \
+ 	sdk/bindings/xpcom/python/xpcom/nsError.py \
+ 	sdk/bindings/xpcom/python/xpcom/xpt.py \
+ 	sdk/bindings/xpcom/python/xpcom/components.py \
+ 	sdk/bindings/xpcom/python/xpcom/vpoxxpcom.py \
+ 	sdk/bindings/xpcom/python/xpcom/client/__init__.py \
+ 	sdk/bindings/xpcom/python/xpcom/server/__init__.py \
+ 	sdk/bindings/xpcom/python/xpcom/server/enumerator.py \
+ 	sdk/bindings/xpcom/python/xpcom/server/factory.py \
+ 	sdk/bindings/xpcom/python/xpcom/server/loader.py \
+ 	sdk/bindings/xpcom/python/xpcom/server/module.py \
+ 	sdk/bindings/xpcom/python/xpcom/server/policy.py
+ VPOXINST_SDK_INSTALLER_PYTHON_FILES = \
+ 	sdk/installer/vpoxapisetup.py \
+ 	sdk/installer/vpoxapi/__init__.py \
+ 	sdk/installer/vpoxapi/VirtualPox_constants.py
+endif
+
+
+#
+# List of unattended installation script templates (lives in
+# src/VPox/Main/UnattendedTemplates).
+#
+ifdef VPOX_WITH_UNATTENDED
+ VPOX_UNATTENDED_TEMPLATES := \
+ 	debian_preseed.cfg \
+ 	ubuntu_preseed.cfg \
+ 	fedora_ks.cfg \
+ 	ol_ks.cfg \
+ 	rhel3_ks.cfg \
+ 	rhel4_ks.cfg \
+ 	rhel5_ks.cfg \
+ 	redhat67_ks.cfg \
+ 	win_nt5_unattended.sif \
+ 	win_nt6_unattended.xml \
+       \
+ 	debian_postinstall.sh \
+ 	redhat_postinstall.sh \
+ 	win_postinstall.cmd
+ ifndef VPOX_OSE
+  VPOX_UNATTENDED_TEMPLATES += \
+ 	lgw_ks.cfg \
+ 	lgw_postinstall.sh
+ endif
+else
+ VPOX_UNATTENDED_TEMPLATES :=
+endif
+
+
+#
+# DTrace globals.
+#
+ifdef VPOX_WITH_DTRACE
+ ## List of files in the per arch DTrace library directory.
+ VPOXINST_DTRACE_LIB_ARCH_FILES := \
+ 	 vpox-types.d \
+ 	 vpox-arch-types.d \
+ 	 vm.d \
+ 	 cpumctx.d \
+ 	 CPUMInternal.d \
+ 	 x86.d
+ ## List of files in the per arch DTrace testcase directory.
+ VPOXINST_DTRACE_TESTCASE_ARCH_FILES := \
+ 	vpox-vm-struct-test.d
+ ## List of file in the DTrace scripts directory.
+ VPOXINST_DTRACE_SCRIPTS_FILES :=
+else
+ VPOXINST_DTRACE_LIB_ARCH_FILES :=
+ VPOXINST_DTRACE_TESTCASE_ARCH_FILES :=
+ VPOXINST_DTRACE_SCRIPTS_FILES :=
+endif
+
+
+#
+# Some combined package (CP) globals.
+#
+ifeq ($(KBUILD_TARGET_ARCH),x86)
+ VPOX_CP_THIS_BITS   := 32
+ ifdef VPOX_WITH_COMBINED_PACKAGE
+  VPOX_CP_OTHER_ARCH := amd64
+  VPOX_CP_OTHER_BITS := 64
+ else
+  VPOX_CP_OTHER_ARCH = $(error VPOX_CP_OTHER_ARCH used in without VPOX_WITH_COMBINED_PACKAGE set)
+  VPOX_CP_OTHER_BITS = $(error VPOX_CP_OTHER_ARCH used in without VPOX_CP_OTHER_BITS set)
+ endif
+else
+  VPOX_CP_THIS_BITS  := 64
+ ifdef VPOX_WITH_COMBINED_PACKAGE
+  VPOX_CP_OTHER_ARCH := x86
+  VPOX_CP_OTHER_BITS := 32
+ else
+  VPOX_CP_OTHER_ARCH = $(error VPOX_CP_OTHER_ARCH used in without VPOX_WITH_COMBINED_PACKAGE set)
+  VPOX_CP_OTHER_BITS = $(error VPOX_CP_OTHER_ARCH used in without VPOX_CP_OTHER_BITS set)
+ endif
+endif
+

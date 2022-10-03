@@ -1,0 +1,47 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the VirtualPox Guest Addition Darwin Client.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# VPoxClient - shared clipboard support.
+#
+
+PROGRAMS += VPoxClient
+
+VPoxClient_TEMPLATE = NewVPoxGuestR3Exe
+VPoxClient_DEFS    += VPOX_WITH_HGCM
+
+VPoxClient_SOURCES  = \
+    VPoxClient.cpp
+
+ifdef VPOX_WITH_SHARED_CLIPBOARD
+ VPoxClient_DEFS   += \
+	VPOX_WITH_SHARED_CLIPBOARD
+ VPoxClient_SOURCES += \
+	VPoxClientClipboard.cpp \
+	VPoxClientClipboardHostToGuest.cpp \
+	VPoxClientClipboardGuestToHost.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-common.cpp
+endif
+
+VPoxClient_LDFLAGS  = -framework IOKit -framework ApplicationServices
+VPoxClient_INST     = $(INST_ADDITIONS)
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

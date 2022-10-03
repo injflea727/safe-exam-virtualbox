@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<VirtualPoxExtensionPack xmlns="http://www.virtualpox.org/VirtualPoxExtensionPack" version="1.0">
+    <Name>Oracle VPoxDTrace Extension Pack</Name>
+    <Description>Experimental and unsupported extension pack providing DTrace features to VirtualPox.</Description>
+    <Version revision="@VPOX_SVN_REV@">@VPOX_VERSION_STRING@</Version>
+    <MainModule>VPoxDTraceMain</MainModule>
+</VirtualPoxExtensionPack>
+

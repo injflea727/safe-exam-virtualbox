@@ -1,0 +1,272 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the VPox API testcases.
+#
+
+#
+# Copyright (C) 2004-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# Target and globals (small mess)
+#
+ifndef VPOX_ONLY_SDK
+ if defined(VPOX_WITH_TESTCASES)
+  PROGRAMS       += \
+  	tstAPI \
+  	tstVPoxAPI \
+  	tstVPoxAPIPerf \
+	tstVPoxMultipleVM \
+  	$(if $(VPOX_OSE),,tstOVF) \
+  	$(if $(VPOX_WITH_XPCOM),tstVPoxAPIXPCOM,tstVPoxAPIWin msiDarwinDescriptorDecoder) \
+  	$(if $(VPOX_WITH_RESOURCE_USAGE_API),tstCollector,) \
+  	$(if $(VPOX_WITH_GUEST_CONTROL),tstGuestCtrlParseBuffer,) \
+  	$(if $(VPOX_WITH_GUEST_CONTROL),tstGuestCtrlContextID,) \
+  	tstMediumLock \
+	tstBstr \
+  	tstGuid
+  PROGRAMS.linux += \
+  	$(if $(VPOX_WITH_USB),tstUSBProxyLinux,)
+ endif # !VPOX_WITH_TESTCASES
+endif # !VPOX_ONLY_SDK
+if defined(VPOX_ONLY_SDK) || !defined(VPOX_WITH_XPCOM)
+ INSTALLS += samplesMSCOM
+endif
+if defined(VPOX_ONLY_SDK) || defined(VPOX_WITH_XPCOM)
+ INSTALLS += samplesXPCOM
+endif
+
+
+#
+# The samples
+#
+samplesMSCOM_MODE = a+r,u+w
+samplesMSCOM_INST = $(INST_SDK)bindings/mscom/samples/
+samplesMSCOM_SOURCES = tstVPoxAPIWin.cpp makefile.tstVPoxAPIWin=>Makefile
+
+samplesXPCOM_MODE = a+r,u+w
+samplesXPCOM_INST = $(INST_SDK)bindings/xpcom/samples/
+samplesXPCOM_SOURCES = tstVPoxAPIXPCOM.cpp makefile.tstVPoxAPIXPCOM=>Makefile
+
+#
+# tstVPoxMultipleVM
+#
+tstVPoxMultipleVM_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstVPoxMultipleVM_SOURCES  = tstVPoxMultipleVM.cpp
+
+#
+# tstAPI
+#
+tstAPI_TEMPLATE = VPOXMAINCLIENTTSTEXE
+#tstAPI_INST = $(INST_SDK)bindings/gluecom/samples/
+tstAPI_SOURCES  = tstAPI.cpp
+
+#
+# tstVPoxAPI
+#
+tstVPoxAPI_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstVPoxAPI_SOURCES  = \
+	tstVPoxAPI.cpp
+
+#
+# tstVPoxAPIPerf
+#
+tstVPoxAPIPerf_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstVPoxAPIPerf_SOURCES  = \
+	tstVPoxAPIPerf.cpp
+
+#
+# tstOVF
+#
+tstOVF_TEMPLATE = VPOXMAINCLIENTTSTEXE
+#tstOVF_INST = $(INST_SDK)bindings/gluecom/samples/
+tstOVF_SOURCES  = tstOVF.cpp
+
+ifndef VPOX_OSE
+#
+# OVF test data.
+#
+INSTALLS += ovf-testcases
+ovf-testcases_MODE = a+r,u+w
+ovf-testcases_INST = $(INST_TESTCASE)ovf-testcases/
+ovf-testcases_SOURCES = \
+	ovf-dummy.vmdk \
+	ovf-joomla-0.9/joomla-1.1.4-ovf.ovf=>ovf-joomla-0.9/joomla-1.1.4-ovf.ovf \
+	ovf-winhost-audio-nodisks/WinXP.ovf=>ovf-winhost-audio-nodisks/WinXP.ovf \
+	ovf-winxp-vpox-sharedfolders/winxp.ovf=>ovf-winxp-vpox-sharedfolders/winxp.ovf
+endif
+
+
+#
+# tstVPoxAPIXPCOM
+#
+# We only build the testcase here to make sure it builds.
+# It comes with a custom makefile which should be tested as well!
+#
+# Use very generic template to make the build environment similar
+# to the standalone case, to detect if IPRT or glue use sneaks in.
+#
+tstVPoxAPIXPCOM_TEMPLATE = VPOXR3EXE
+tstVPoxAPIXPCOM_INST = $(INST_TESTCASE)
+tstVPoxAPIXPCOM_SOURCES  = tstVPoxAPIXPCOM.cpp
+tstVPoxAPIXPCOM_INCS = \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/nsprpub \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/string \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/xpcom \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/ipcd
+tstVPoxAPIXPCOM_LIBS = \
+	$(LIB_XPCOM) \
+	$(LIB_RUNTIME)
+tstVPoxAPIXPCOM_CXXFLAGS = -fshort-wchar
+ifdef VPOX_WITH_RUNPATH
+ tstVPoxAPIXPCOM_LDFLAGS = '$(VPOX_GCC_RPATH_OPT)$(VPOX_WITH_RUNPATH)' $(TEMPLATE_VPoxBldProg_LDFLAGS)
+else ifdef VPOX_WITH_RELATIVE_RUNPATH
+ tstVPoxAPIXPCOM_LDFLAGS = '$(VPOX_GCC_RPATH_OPT)$(VPOX_WITH_RELATIVE_RUNPATH)/..' $(TEMPLATE_VPoxBldProg_LDFLAGS)
+endif
+tstVPoxAPIXPCOM_INTERMEDIATES = \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/VirtualPox_XPCOM.h
+ifdef VPOX_WITH_XPCOM_NAMESPACE_CLEANUP
+ tstVPoxAPIXPCOM_DEFS += VPOX_WITH_XPCOM_NAMESPACE_CLEANUP
+endif
+
+
+#
+# tstVPoxAPIWin
+#
+# Use very generic template to make the build environment similar
+# to the standalone case, to detect if IPRT or glue use sneaks in.
+#
+tstVPoxAPIWin_TEMPLATE = VPOXR3EXE
+tstVPoxAPIWin_INST = $(INST_TESTCASE)
+tstVPoxAPIWin_SOURCES  = \
+	tstVPoxAPIWin.cpp \
+	$(VPOX_PATH_SDK)/bindings/mscom/lib/VirtualPox_i.c
+tstVPoxAPIWin_INCS = \
+	$(VPOX_PATH_SDK)/bindings/mscom/include
+tstVPoxAPIWin_INTERMEDIATES = \
+	$(VPOX_PATH_SDK)/bindings/mscom/include/VirtualPox.h
+
+
+#
+# msiDarwinDescriptorDecoder
+#
+# Use very generic template to make the build environment similar
+# to the standalone case, to detect if IPRT or glue use sneaks in.
+#
+msiDarwinDescriptorDecoder_TEMPLATE = VPOXR3EXE
+msiDarwinDescriptorDecoder_INST = $(VPOX_INST_TOOLS)
+msiDarwinDescriptorDecoder_SOURCES  = \
+	msiDarwinDescriptorDecoder.cpp
+
+
+#
+# tstCollector
+#
+# Note! VPOX_MAIN_APIWRAPPER_GEN_HDRS is only defined if kmk is executed a
+#       parent directory.  Since the rules for generating the files listed by
+#       the variable lives in the parent makefile, this is not a problem.
+#
+tstCollector_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstCollector_SOURCES  = \
+	tstCollector.cpp \
+	../src-server/Performance.cpp
+tstCollector_INCS            = \
+	../include \
+	$(VPOX_MAIN_APIWRAPPER_INCS)
+tstCollector_INTERMEDIATES   = $(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+tstCollector_DEFS            = VPOX_COLLECTOR_TEST_CASE
+tstCollector_LDFLAGS.darwin  = -lproc
+tstCollector_LDFLAGS.solaris = -lkstat -lnvpair
+tstCollector_LDFLAGS.win     = psapi.lib powrprof.lib
+
+
+#
+# tstGuestCtrlParseBuffer
+#
+tstGuestCtrlParseBuffer_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstGuestCtrlParseBuffer_INTERMEDIATES   = $(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+tstGuestCtrlParseBuffer_DEFS    += VPOX_WITH_HGCM VPOX_WITH_GUEST_CONTROL VPOX_GUESTCTRL_TEST_CASE
+tstGuestCtrlParseBuffer_SOURCES  = \
+	tstGuestCtrlParseBuffer.cpp \
+	../src-client/GuestCtrlPrivate.cpp
+tstGuestCtrlParseBuffer_INCS     = ../include \
+    $(VPOX_MAIN_APIWRAPPER_INCS)
+
+
+#
+# tstGuestCtrlContextID
+#
+tstGuestCtrlContextID_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstGuestCtrlContextID_INTERMEDIATES   = $(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+tstGuestCtrlContextID_DEFS    += VPOX_WITH_HGCM VPOX_WITH_GUEST_CONTROL VPOX_GUESTCTRL_TEST_CASE
+tstGuestCtrlContextID_SOURCES  = \
+	tstGuestCtrlContextID.cpp \
+	../src-client/GuestCtrlPrivate.cpp
+tstGuestCtrlContextID_INCS     = ../include \
+     $(VPOX_MAIN_APIWRAPPER_INCS)
+
+
+#
+# tstUSBProxyLinux
+#
+tstUSBProxyLinux_TEMPLATE  = VPOXMAINCLIENTTSTEXE
+tstUSBProxyLinux_INTERMEDIATES = $(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+tstUSBProxyLinux_SOURCES   = \
+	tstUSBProxyLinux.cpp \
+	../src-server/linux/USBGetDevices.cpp
+tstUSBProxyLinux_INCS      = \
+	. \
+	../include \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/nsprpub \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/xpcom \
+	$(VPOX_MAIN_APIWRAPPER_INCS)
+tstUSBProxyLinux_DEFS      = \
+	UNIT_TEST \
+	VPOX_WITH_USB \
+	VPOX_USB_WITH_SYSFS \
+	VPOX_WITH_XPCOM
+tstUSBProxyLinux_DEPS     = \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/VirtualPox_XPCOM.h
+tstUSBProxyLinux_LIBS     += \
+	$(PATH_OUT)/lib/USBLib.a \
+	$(PATH_OUT)/lib/VPoxCOM.a
+
+
+#
+# tstMediumLock
+#
+tstMediumLock_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstMediumLock_SOURCES  = tstMediumLock.cpp
+
+
+#
+# tstBstr
+#
+tstBstr_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstBstr_SOURCES  = tstBstr.cpp
+
+
+#
+# tstGuid
+#
+tstGuid_TEMPLATE = VPOXMAINCLIENTTSTEXE
+tstGuid_SOURCES  = tstGuid.cpp
+
+
+# generate rules.
+include $(FILE_KBUILD_SUB_FOOTER)
+

@@ -1,0 +1,23 @@
+application/x-virtualpox-vpox:
+    ext: vpox
+
+application/x-virtualpox-vpox-extpack:
+    ext: vpox-extpack
+
+application/x-virtualpox-ovf:
+    ext: ovf
+
+application/x-virtualpox-ova:
+    ext: ova
+
+application/x-virtualpox-vdi:
+    ext: vdi
+
+application/x-virtualpox-vmdk:
+    ext: vmdk
+
+application/x-virtualpox-vhd:
+    ext: vhd
+
+application/x-virtualpox-hdd:
+    ext: hdd

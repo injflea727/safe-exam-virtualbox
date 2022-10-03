@@ -1,0 +1,56 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VPoxCredProv.
+#
+
+#
+# Copyright (C) 2009-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Do we want to use Windows SENS (System Event Notification Service)?
+VPOX_WITH_WIN_SENS := 1
+
+DLLS += VPoxCredProv
+VPoxCredProv_TEMPLATE    = VPoxGuestR3Dll
+VPoxCredProv_DEFS        = VBGL_VPOXGUEST VPOX_WITH_HGCM UNICODE
+ifdef VPOX_WITH_WIN_SENS
+ VPoxCredProv_DEFS      += VPOX_WITH_WIN_SENS
+endif
+VPoxCredProv_SDKS        = ReorderCompilerIncs $(VPOX_WINPSDK_GST_WLH)
+VPoxCredProv_SOURCES  = \
+	VPoxCredentialProvider.cpp \
+	VPoxCredentialProvider.def \
+	VPoxCredentialProvider.rc \
+	VPoxCredProvFactory.cpp \
+	VPoxCredProvProvider.cpp \
+	VPoxCredProvCredential.cpp \
+	VPoxCredProvPoller.cpp \
+	VPoxCredProvUtils.cpp
+
+ifdef VPOX_WITH_WIN_SENS
+ # To use com::Bstr for BSTR handling.
+ VPoxCredProv_SOURCES += \
+	$(PATH_ROOT)/src/VPox/Main/glue/string.cpp
+endif
+
+VPoxCredProv_LIBS     = \
+	$(VPOX_LIB_IPRT_GUEST_R3) \
+	$(VPOX_LIB_VBGL_R3)
+VPoxCredProv_LIBS    += \
+	$(PATH_SDK_$(VPOX_WINPSDK_GST_WLH)_LIB)/credui.lib \
+	$(PATH_SDK_$(VPOX_WINPSDK_GST_WLH)_LIB)/Secur32.Lib \
+	$(PATH_SDK_$(VPOX_WINPSDK_GST_WLH)_LIB)/NetAPI32.Lib
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

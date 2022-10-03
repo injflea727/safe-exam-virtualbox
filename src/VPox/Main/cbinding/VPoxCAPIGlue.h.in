@@ -1,0 +1,68 @@
+/* $Id: VPoxCAPIGlue.h.in $ */
+/** @file VPoxCAPIGlue.h
+ * Glue for dynamically linking with VPoxCAPI.
+ */
+
+/*
+ * Copyright (C) 2008-2020 Oracle Corporation
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#ifndef ___VPoxCAPIGlue_h
+#define ___VPoxCAPIGlue_h
+#ifndef RT_WITHOUT_PRAGMA_ONCE
+# pragma once
+#endif
+
+#undef VPOX_WITH_GLUE
+#define VPOX_WITH_GLUE
+#include "VPoxCAPI_v@VPOX_API_VERSION@.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** The so/dynsym/dll handle for VPoxCAPI. */
+#ifndef WIN32
+extern void *g_hVPoxCAPI;
+#else
+extern HMODULE g_hVPoxCAPI;
+#endif
+/** The last load error. */
+extern char g_szVPoxErrMsg[256];
+/** Pointer to the VPOXCAPI function table. */
+extern PCVPOXCAPI g_pVPoxFuncs;
+/** Pointer to VPoxGetCAPIFunctions for the loaded VPoxCAPI so/dylib/dll. */
+extern PFNVPOXGETCAPIFUNCTIONS g_pfnGetFunctions;
+
+
+int VPoxCGlueInit(void);
+void VPoxCGlueTerm(void);
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* !___VPoxCAPIGlue_h */
+

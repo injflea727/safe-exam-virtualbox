@@ -1,0 +1,28 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the stub builder.
+#
+
+#
+# Copyright (C) 2009-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Not a build program as it is needed for repacking after we Get the MS driver blessing.
+PROGRAMS += VPoxStubBld
+VPoxStubBld_TEMPLATE= VPoxBldProg
+VPoxStubBld_DEFS    = _WIN32_WINNT=0x0400 VPOX_SVN_REV=$(VPOX_SVN_REV) $(VPOX_SVN_REV_KMK)
+VPoxStubBld_SOURCES = VPoxStubBld.cpp
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

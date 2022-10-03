@@ -1,0 +1,16 @@
+PKG="SUNWvpox"
+NAME="@VPOX_PRODUCT@"
+SUNW_PRODNAME="@VPOX_PRODUCT@"
+ARCH="@UNAME_P@"
+VERSION="@VPOX_VERSION_STRING@,REV=@VPOX_VERSION_REVSTAMP@"
+SUNW_PRODVERS="@VPOX_VERSION_STRING@"
+SUNW_PKGVERS=1.0
+CATEGORY="application"
+VENDOR="@VPOX_VENDOR@"
+HOTLINE="Please contact your local service provider"
+BASEDIR="/"
+MAXINST=1
+EMAIL="info@virtualpox.org"
+CLASSES=none manifest
+DESC="A powerful PC virtualization solution"
+PSTAMP="@VPOX_PSTAMP@"

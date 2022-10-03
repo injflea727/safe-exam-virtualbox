@@ -1,0 +1,98 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for OpenSSL ssl.
+#
+
+#
+# Copyright (C) 2006-2016 Oracle Corporation
+#
+# Oracle Corporation confidential
+# All rights reserved
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# The main target: libssl.
+#
+if "$(SDK_VPOX_OPENSSL_INCS)" == "$(SDK_VPOX_OPENSSL_VPOX_DEFAULT_INCS)"
+ LIBRARIES += VPox-libssl
+endif
+VPox-libssl_TEMPLATE = LIBCRYPTO
+VPox-libssl_DEFS.win = NOCRYPT # Exclude WinCrypt.h
+VPox-libssl_DEFS = OPENSSL_NO_DEPRECATED
+VPox-libssl_SOURCES  = \
+	bio_ssl.c \
+	d1_lib.c \
+	d1_msg.c \
+	d1_srtp.c \
+	methods.c \
+	packet.c \
+	pqueue.c \
+	record/dtls1_bitmap.c \
+	record/rec_layer_d1.c \
+	record/rec_layer_s3.c \
+	record/ssl3_buffer.c \
+	record/ssl3_record.c \
+	record/ssl3_record_tls13.c \
+	s3_cbc.c \
+	s3_enc.c \
+	s3_lib.c \
+	s3_msg.c \
+	ssl_asn1.c \
+	ssl_cert.c \
+	ssl_ciph.c \
+	ssl_conf.c \
+	ssl_err.c \
+	ssl_init.c \
+	ssl_lib.c \
+	ssl_mcnf.c \
+	ssl_rsa.c \
+	ssl_sess.c \
+	ssl_stat.c \
+	ssl_txt.c \
+	ssl_utst.c \
+	statem/extensions.c \
+	statem/extensions_clnt.c \
+	statem/extensions_cust.c \
+	statem/extensions_srvr.c \
+	statem/statem.c \
+	statem/statem_clnt.c \
+	statem/statem_dtls.c \
+	statem/statem_lib.c \
+	statem/statem_srvr.c \
+	t1_enc.c \
+	t1_lib.c \
+	t1_trce.c \
+	tls13_enc.c \
+	tls_srp.c
+
+ifdef VPOX_WITH_32_ON_64_MAIN_API # 32-bit edition.
+ LIBRARIES += VPox-libssl-x86
+ VPox-libssl-x86_TEMPLATE = VPoxLibCrypto-x86
+ VPox-libssl-x86_EXTENDS = VPox-libssl
+endif
+
+
+ifdef VPOX_NEED_EXTPACK_OPENSSL
+ #
+ # For the extension pack.
+ #
+ LIBRARIES += VPoxExtPack-libssl
+ VPoxExtPack-libssl_EXTENDS = VPox-libssl
+ VPoxExtPack-libssl_DEFS = VPOX_IN_EXTPACK
+endif
+
+
+ifdef VPOX_WITH_BLD_RTSIGNTOOL_SIGNING
+ #
+ # The build program version.
+ #
+ LIBRARIES += VPoxBldProg-libssl
+ VPoxBldProg-libssl_EXTENDS = VPox-libssl
+ VPoxBldProg-libssl_TEMPLATE = VPoxLibCryptoBldProg
+endif # VPOX_WITH_BLD_RTSIGNTOOL_SIGNING
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

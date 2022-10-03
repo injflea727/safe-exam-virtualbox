@@ -1,0 +1,66 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the VPox RDP authentication plugins.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# The plugin.
+ifndef VPOX_ONLY_SDK
+ if ("$(KBUILD_TARGET)" != "linux" && "$(KBUILD_TARGET)" != "solaris") || defined(VPOX_WITH_PAM)
+  DLLS += VPoxAuth
+ endif
+endif
+VPoxAuth_TEMPLATE = VPOXR3
+VPoxAuth_SOURCES.linux = pam/VPoxAuthPAM.c
+VPoxAuth_SOURCES.solaris = pam/VPoxAuthPAM.c
+VPoxAuth_SOURCES.freebsd = pam/VPoxAuthPAM.c
+VPoxAuth_SOURCES.win = winlogon/winlogon.cpp winlogon/VPoxAuth.rc
+VPoxAuth_SOURCES.darwin = directoryservice/directoryservice.cpp
+VPoxAuth_CXXFLAGS.darwin = -Wno-deprecated-declarations
+VPoxAuth_LIBS.linux = $(LIB_RUNTIME) dl
+VPoxAuth_LIBS.solaris = $(LIB_RUNTIME) dl
+VPoxAuth_LIBS.freebsd = $(LIB_RUNTIME)
+VPoxAuth_LIBS.darwin = $(LIB_RUNTIME)
+VPoxAuth_LDFLAGS.darwin = -framework DirectoryService
+
+# The simple plugin.
+ifndef VPOX_ONLY_SDK
+ if defined(VPOX_WITH_MAIN)
+  DLLS += VPoxAuthSimple
+ endif
+endif
+VPoxAuthSimple_TEMPLATE = VPOXMAINCLIENTDLL
+VPoxAuthSimple_SOURCES = simple/VPoxAuthSimple.cpp
+VPoxAuthSimple_SOURCES.win = simple/VPoxAuthSimple.rc
+
+# Install the SDK samples.
+INSTALLS += VPoxAuth-samples
+VPoxAuth-samples_INST = $(INST_SDK)bindings/auth/
+VPoxAuth-samples_MODE = a+r,u+w
+VPoxAuth-samples_SOURCES = simple/VPoxAuthSimple.cpp
+VPoxAuth-samples_SOURCES.linux = pam/VPoxAuthPAM.c
+VPoxAuth-samples_SOURCES.win = winlogon/winlogon.cpp
+
+# Install the SDK header.
+INSTALLS += VPoxAuth-sdkhdr
+VPoxAuth-sdkhdr_INST = $(INST_SDK)bindings/auth/include/
+VPoxAuth-sdkhdr_MODE = a+r,u+w
+VPoxAuth-sdkhdr_SOURCES = $(PATH_ROOT)/include/VPox/VPoxAuth.h=>VPoxAuth.h
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

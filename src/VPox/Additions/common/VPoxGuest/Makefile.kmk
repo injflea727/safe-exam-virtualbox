@@ -1,0 +1,269 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the Cross Platform Guest Additions Driver.
+#
+
+#
+# Copyright (C) 2007-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include sub-makefile.
+include $(PATH_SUB_CURRENT)/lib/Makefile.kmk
+
+
+if1of ($(KBUILD_TARGET), darwin freebsd haiku netbsd os2 solaris win)
+ #
+ # VPoxGuest - The Guest Additions Driver.
+ #
+ SYSMODS += VPoxGuest
+ VPoxGuest_TEMPLATE      = VPOXGUESTR0
+ VPoxGuest_NAME.freebsd  = vpoxguest
+ VPoxGuest_NAME.haiku    = vpoxguest
+ VPoxGuest_NAME.netbsd   = vpoxguest
+ VPoxGuest_NAME.solaris  = vpoxguest
+ VPoxGuest_INST.darwin   = $(INST_ADDITIONS)VPoxGuest.kext/Contents/MacOS/
+ ifdef VPOX_SIGN_ADDITIONS # See Additions/WINNT/Makefile.kmk?
+  VPoxGuest_INSTTYPE.win = none
+  VPoxGuest_DEBUG_INSTTYPE.win = both
+ endif
+ VPoxGuest_DEFS.haiku    = VPOX_SVN_REV=$(VPOX_SVN_REV) _KERNEL_MODE=1
+ VPoxGuest_DEFS.solaris  = VPOX_SVN_REV=$(VPOX_SVN_REV)
+ VPoxGuest_DEFS.win      = VPOX_GUESTDRV_WITH_RELEASE_LOGGER
+ VPoxGuest_DEFS.win.x86  = TARGET_NT4 TARGET_NT3 RT_WITHOUT_NOCRT_WRAPPERS
+ VPoxGuest_DEFS.darwin   = VPOX_GUESTDRV_WITH_RELEASE_LOGGER
+ ifeq ($(KBUILD_TYPE),release)
+  # Allow stopping/removing the driver without a reboot
+  # in debug mode; this is very useful for testing the shutdown stuff!
+  VPoxGuest_DEFS.win    += VPOX_REBOOT_ON_UNINSTALL
+ endif
+ ifdef VPOX_WITH_GUEST_BUGCHECK_DETECTION
+  VPoxGuest_DEFS.win    += VPOX_WITH_GUEST_BUGCHECK_DETECTION
+ endif
+ #VPoxGuest_DEFS.win     += LOG_ENABLED LOG_TO_BACKDOOR
+ VPoxGuest_DEFS.win += \
+	$(if $(VPOX_WITH_DPC_LATENCY_CHECKER),VPOX_WITH_DPC_LATENCY_CHECKER,)
+ VPoxGuest_DEPS.solaris += $(VPOX_SVN_REV_KMK)
+ VPoxGuest_DEPS.haiku   += $(VPOX_SVN_REV_HEADER)
+ VPoxGuest_DEPS.freebsd += $(VPOX_SVN_REV_HEADER)
+ VPoxGuest_DEPS.netbsd  += $(VPOX_SVN_REV_HEADER)
+ VPoxGuest_DEPS.darwin  += $(VPOX_SVN_REV_HEADER)
+ VPoxGuest_DEFS          = VBGL_VPOXGUEST VPOX_WITH_HGCM
+ VPoxGuest_INCS          = .
+ VPoxGuest_INCS.freebsd  = $(VPoxGuest_0_OUTDIR) $(PATH_STAGE)/gen-sys-hdrs
+ VPoxGuest_INCS.netbsd   = $(VPoxGuest_0_OUTDIR) netbsd
+ ifeq ($(KBUILD_HOST),solaris)
+  VPoxGuest_LDFLAGS.solaris         += -N misc/ctf
+ else
+  VPoxGuest_SOURCES.solaris          = solaris/deps.asm
+  VPoxGuest_solaris/deps.asm_ASFLAGS = -f bin -g null
+ endif
+ ifneq ($(KBUILD_TARGET),os2)
+  ifeq ($(KBUILD_TARGET),win)
+   VPoxGuest_LDFLAGS.x86 = -Entry:DriverEntry@8
+   VPoxGuest_LDFLAGS.amd64 = -Entry:DriverEntry
+   ifeq ($(KBUILD_TARGET_ARCH),x86)
+    VPoxGuest_SDKS       = ReorderCompilerIncs $(VPOX_WINDDK_GST_NT4)
+    VPoxGuest_LIBS       = \
+    	$(VPOX_LIB_VBGL_R0BASE) \
+    	$(VPOX_LIB_IPRT_GUEST_R0) \
+    	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/exsup.lib \
+    	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/int64.lib \
+    	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/ntoskrnl.lib \
+    	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/hal.lib
+   else
+    VPoxGuest_LIBS        = \
+    	$(PATH_SDK_$(VPOX_WINDDK_GST)_LIB)/ntoskrnl.lib \
+    	$(PATH_SDK_$(VPOX_WINDDK_GST)_LIB)/hal.lib
+   endif
+   VPoxGuest_USES.win += vpoximportchecker
+   VPoxGuest_VPOX_IMPORT_CHECKER.win.x86 = nt31/r0
+   VPoxGuest_VPOX_IMPORT_CHECKER.win.amd64 = xp64/r0
+  endif # win
+  ifn1of ($(KBUILD_TARGET), linux freebsd netbsd solaris haiku)
+   VPoxGuest_SOURCES    = VPoxGuest-$(KBUILD_TARGET).cpp
+  else
+   VPoxGuest_SOURCES    = VPoxGuest-$(KBUILD_TARGET).c
+   VPoxGuest_$(KBUILD_TARGET).c_DEPS = $(VPOX_SVN_REV_HEADER)
+   ifeq ($(KBUILD_TARGET),freebsd)
+    VPoxGuest-$(KBUILD_TARGET).c_CFLAGS = -Wno-sign-compare # /usr/src/sys/sys/vmmeter.h: In function 'vm_paging_needed'
+   endif
+  endif
+  VPoxGuest_SOURCES     += \
+  	VPoxGuest.cpp
+  VPoxGuest_SOURCES.win += \
+  	win/VPoxGuest.rc
+  VPoxGuest_SOURCES.win.x86 += \
+       ../../../Runtime/common/string/strcmp.asm \
+       ../../../Runtime/common/string/strchr.asm \
+       ../../../Runtime/r0drv/nt/nt3fakes-r0drv-nt.cpp \
+       ../../../Runtime/r0drv/nt/nt3fakesA-r0drv-nt.asm
+  VPoxGuest_LIBS        += \
+  	$(VPOX_LIB_VBGL_R0BASE) \
+  	$(VPOX_LIB_IPRT_GUEST_R0)
+  VPoxGuest_ORDERDEPS.freebsd = \
+  	$(PATH_STAGE)/gen-sys-hdrs/pci_if.h \
+  	$(PATH_STAGE)/gen-sys-hdrs/bus_if.h \
+  	$(PATH_STAGE)/gen-sys-hdrs/device_if.h
+  ifeq ($(KBUILD_TARGET),haiku)
+   # Haiku drivers cannot export symbols for other drivers, but modules can.
+   # Therefore vpoxguest is a module containing the ring-0 guest lib, and vpoxdev/vpoxsf
+   # use this module to access the guest lib
+   SYSMODS += VPoxDev
+   VPoxDev_TEMPLATE      = VPOXGUESTR0
+   VPoxDev_NAME          = vpoxdev
+   VPoxDev_DEFS          = VPOX_SVN_REV=$(VPOX_SVN_REV) _KERNEL_MODE=1 VBGL_VPOXGUEST VPOX_WITH_HGCM IN_RING0
+   VPoxDev_SOURCES       = VPoxDev-haiku.c VPoxGuest-haiku-stubs.c
+  endif
+ else # OS/2:
+  # The library order is crucial, so a bit of trickery is necessary.
+  # A library is used to make sure that VPoxGuestA-os2.asm is first in the link. (temporary hack?)
+VPoxGuest_SOURCES        = \
+  	VPoxGuestA-os2.asm
+  ifdef VPOX_USE_WATCOM_FOR_OS2
+VPoxGuest_LIBS           = \
+	$(VPoxGuestLibOs2Hack_1_TARGET) \
+	$(VPOX_LIB_VBGL_R0BASE) \
+	$(VPOX_LIB_IPRT_GUEST_R0) \
+	$(PATH_IGCC)/lib/libend.lib
+  else
+VPoxGuest_SOURCES       += \
+	VPoxGuest-os2.def
+#VPoxGuest_LDFLAGS        = -s -t -v
+VPoxGuest_LIBS           = \
+	$(VPoxGuestLibOs2Hack_1_TARGET) \
+	$(VPOX_LIB_VBGL_R0BASE) \
+	$(VPOX_LIB_IPRT_GUEST_R0) \
+	$(VPOX_GCC_LIBGCC) \
+	end
+  endif
+## When debugging init with kDrvTest:
+#VPoxGuest_NAME          = VPoxGst
+
+# See above.
+LIBRARIES += VPoxGuestLibOs2Hack
+VPoxGuestLibOs2Hack_TEMPLATE = VPOXGUESTR0LIB
+VPoxGuestLibOs2Hack_INSTTYPE = none
+VPoxGuestLibOs2Hack_DEFS = $(VPoxGuest_DEFS)
+VPoxGuestLibOs2Hack_INCS = \
+	. \
+	$(PATH_ROOT)/src/VPox/Runtime/include # for the os2ddk
+VPoxGuestLibOs2Hack_SOURCES = \
+	VPoxGuest-os2.cpp \
+	VPoxGuest.cpp
+ endif # OS/2
+
+ VPoxGuest.cpp_DEFS     = VPOX_SVN_REV=$(VPOX_SVN_REV)
+endif # enabled
+
+
+ifeq ($(KBUILD_TARGET), darwin)
+ # Files necessary to make a darwin kernel extension bundle.
+ INSTALLS += VPoxGuest.kext
+ VPoxGuest.kext_INST     = $(INST_ADDITIONS)/VPoxGuest.kext/Contents/
+ VPoxGuest.kext_SOURCES  = $(VPoxGuest.kext_0_OUTDIR)/Contents/Info.plist
+ VPoxGuest.kext_CLEAN    = $(VPoxGuest.kext_0_OUTDIR)/Contents/Info.plist
+ VPoxGuest.kext_BLDDIRS  = $(VPoxGuest.kext_0_OUTDIR)/Contents/
+
+$$(VPoxGuest.kext_0_OUTDIR)/Contents/Info.plist: \
+		$(PATH_SUB_CURRENT)/darwin/Info.plist \
+		$(VPOX_VERSION_MK) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxGuest,$@,$<)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $@ \
+		$<
+
+$(evalcall2 VPOX_TEST_SIGN_KEXT,VPoxGuest)
+endif # darwin
+
+
+ifeq ($(KBUILD_TARGET),linux)
+ #
+ # Install the source files and script(s).
+ #
+ include $(PATH_SUB_CURRENT)/linux/files_vpoxguest
+ # sources and stuff.
+ INSTALLS += vpoxguest-src
+ vpoxguest-src_INST     = $(INST_ADDITIONS)src/vpoxguest/
+ vpoxguest-src_MODE     = a+r,u+w
+ vpoxguest-src_SOURCES  = $(subst ",,$(FILES_VPOXGUEST_NOBIN))
+
+ INSTALLS += vpoxguest-scripts
+ vpoxguest-scripts_INST    = $(INST_ADDITIONS)src/
+ vpoxguest-scripts_MODE    = a+rx,u+w
+ vpoxguest-scripts_SOURCES = ../../../HostDrivers/linux/build_in_tmp
+
+ # scripts.
+ INSTALLS += vpoxguest-sh
+ vpoxguest-sh_INST      = $(INST_ADDITIONS)src/vpoxguest/
+ vpoxguest-sh_MODE      = a+rx,u+w
+ vpoxguest-sh_SOURCES   = $(subst ",,$(FILES_VPOXGUEST_BIN))
+
+ #
+ # Build test for the Guest Additions kernel module (kmk check).
+ #
+$(evalcall2 VPOX_LINUX_KMOD_TEST_BUILD_RULE_FN,vpoxguest-src,,save_symvers)
+endif # Linux
+
+ifeq ($(KBUILD_TARGET),freebsd)
+ #
+ # Install the source files and script(s).
+ #
+ include $(PATH_SUB_CURRENT)/freebsd/files_vpoxguest
+ # sources and stuff.
+ INSTALLS += vpoxguest-src
+ vpoxguest-src_INST     = $(INST_ADDITIONS)src/vpoxguest/
+ vpoxguest-src_MODE     = a+r,u+w
+ vpoxguest-src_SOURCES  = $(subst ",,$(FILES_VPOXGUEST_NOBIN))
+
+endif # FreeBSD
+
+ifeq ($(KBUILD_TARGET),win)
+ #
+ # VPoxGuestInst - The installer.
+ #
+ PROGRAMS.win.x86 += VPoxGuestInstNT
+ VPoxGuestInstNT_TEMPLATE = VPoxGuestR3Exe
+ VPoxGuestInstNT_SOURCES  = win/VPoxGuestInst.cpp
+ VPoxGuestInstNT_USES     = vpoximportchecker
+ VPoxGuestInstNT_VPOX_IMPORT_CHECKER.win.x86 = nt31
+endif
+
+
+#
+# Helper script.
+#
+INSTALLS.solaris += VPoxGuestLoad
+VPoxGuestLoad_TEMPLATE = VPOXGUESTR0
+VPoxGuestLoad_EXEC_SOURCES = solaris/load.sh
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

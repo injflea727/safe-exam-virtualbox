@@ -1,0 +1,87 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Darwin VPoxUSB kernel extension.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# VPoxUSB.kext - The Darwin Kernel Extension.
+#
+
+# Leopard (x86) and Snow Leopard (x86/amd64)
+SYSMODS.darwin       += VPoxUSB
+VPoxUSB_TEMPLATE      = VPOXR0DRV
+VPoxUSB_INST          = $(INST_VPOXUSB)Contents/MacOS/
+VPoxUSB_DEBUG_INST.darwin = $(patsubst %/,%,$(INST_VPOXUSB))
+VPoxUSB_INCS          = \
+	. \
+	..
+#VPoxUSB_LDFLAGS       = -v -Wl,-whyload -Wl,-v -Wl,-whatsloaded
+VPoxUSB_SOURCES      := \
+	VPoxUSB.cpp \
+	../USBFilter.cpp \
+	../VPoxUSBFilterMgr.cpp
+
+INSTALLS += VPoxUSB.kext
+VPoxUSB.kext_INST     = $(INST_VPOXUSB)Contents/
+VPoxUSB.kext_SOURCES  = $(VPoxUSB.kext_0_OUTDIR)/Contents/Info.plist
+VPoxUSB.kext_CLEAN    = $(VPoxUSB.kext_0_OUTDIR)/Contents/Info.plist
+VPoxUSB.kext_BLDDIRS  = $(VPoxUSB.kext_0_OUTDIR)/Contents/
+
+$$(VPoxUSB.kext_0_OUTDIR)/Contents/Info.plist: $(PATH_SUB_CURRENT)/Info.plist $(VPOX_VERSION_MK) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxUSB,$@,$<)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $@ \
+		$<
+
+$(evalcall2 VPOX_TEST_SIGN_KEXT,VPoxUSB)
+
+# Common manual loader script.
+INSTALLS += ScriptsUSB
+ScriptsUSB_INST     = $(INST_DIST)
+ScriptsUSB_EXEC_SOURCES  = \
+	loadusb.sh
+
+ifdef VPOX_WITH_TESTCASES
+#
+# Testcase for doing some manual driver testing...
+#
+PROGRAMS += tstOpenUSBDev
+tstOpenUSBDev_TEMPLATE = VPOXR3TSTEXE
+tstOpenUSBDev_SOURCES = testcase/tstOpenUSBDev.cpp
+tstOpenUSBDev_LDFLAGS = -framework CoreFoundation -framework IOKit
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

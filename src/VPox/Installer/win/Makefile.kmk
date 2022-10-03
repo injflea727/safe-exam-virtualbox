@@ -1,0 +1,1248 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the Windows installer.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifneq ($(KBUILD_HOST),win)
+ $(error "The Windows installer can only be built on Windows!")
+endif
+
+
+#
+# Include Sub-Makefiles.
+#
+include $(PATH_SUB_CURRENT)/InstallHelper/Makefile.kmk
+
+include $(PATH_SUB_CURRENT)/Stub/Makefile.kmk
+include $(PATH_SUB_CURRENT)/StubBld/Makefile.kmk
+include $(PATH_SUB_CURRENT)/Resources/Makefile.kmk
+ifdef VPOX_WITH_MSI_HACK
+ include $(PATH_SUB_CURRENT)/MsiHack/Makefile.kmk
+endif
+
+#
+# Profile for quickly testing the actual mechanisms of our installer.
+# This leaves out most of the optional stuff to make compilation / linking much
+# faster for development cycles. Tweak to your likings if needed.
+#
+# Note! Rather hacky approach -- this *only* works when 'packing' is executed
+#       directly in the VPox\Installer directory; otherwise with WILL break the
+#       build mostly likely, as we mess with dependencies between components.
+#
+#       A better appraoch would be to define separate packing defines for dependencies
+#       to decouple the building process from the packing more in such a scenario.
+#
+#       Use with care!
+#
+ifdef VPOX_INSTALLER_QUICK
+ VPOX_INSTALLER_LANGUAGES    := en_US
+ VPOX_WITH_ADDITIONS_PACKING :=
+ VPOX_WITH_DEBUGGER_GUI      :=
+ VPOX_WITH_EFIFW_PACKING     :=
+ VPOX_WITH_EXTPACK           :=
+ VPOX_WITH_NETADP            :=
+ VPOX_WITH_NETFLT            :=
+ VPOX_WITH_PYTHON            :=
+ VPOX_WITH_SDS               :=
+ VPOX_WITH_WEBSERVICES       :=
+ VPOX_WITH_UNATTENDED        :=
+ VPOX_WITH_DOCS_PACKING      :=
+ VPOX_WITH_QTGUI             :=
+ VPOX_WITH_USB               :=
+ VPOX_WITH_VPOX_IMG          :=
+ VPOX_WITH_VPOXSDL           :=
+endif
+
+#
+# Globals.
+#
+# Tip: Use VPOX_CAB_COMPRESSION_LEVEL=none on the kmk command line when working
+#      on the installer.
+#
+VPOX_WIN_INST_MAKEFILE_DEP := $(MAKEFILE_CURRENT)
+VPOX_CAB_COMPRESSION_LEVEL := high
+
+VPOX_PATH_WIN_INST_SRC     := $(PATH_SUB_CURRENT)
+VPOX_WIN_INST_OUT_DIR      := $(PATH_TARGET)/Installer/win
+VPOX_WIN_INST_REPACK_DIR   := $(PATH_OUT)/repack
+
+# Note: en_US *must* come first for the dependency file generation.
+ifndef VPOX_INSTALLER_LANGUAGES
+ VPOX_INSTALLER_LANGUAGES   = en_US de_DE el_GR fr_FR it_IT tr_TR zh_TW zh_CN
+ VPOX_INSTALLER_LANGUAGES  += $(VPOX_INSTALLER_ADD_LANGUAGES)
+endif
+
+
+#
+# List of merge modules to use.
+#
+ifndef VPOX_INSTALLER_MERGE_MODULES
+ VPOX_INSTALLER_MERGE_MODULES = App
+ ifdef VPOX_WITH_NETADP
+  VPOX_INSTALLER_MERGE_MODULES += NetAdp NetAdp6
+ endif
+ ifdef VPOX_WITH_NETFLT
+  VPOX_INSTALLER_MERGE_MODULES += NetLwf NetFlt
+ endif
+ ifdef VPOX_WITH_USB
+  VPOX_INSTALLER_MERGE_MODULES += USB
+ endif
+ ifdef VPOX_WITH_PYTHON
+  VPOX_INSTALLER_MERGE_MODULES += Python
+ endif
+endif
+ifeq ($(KBUILD_TARGET_ARCH),amd64)
+ VPOX_INSTALLER_MERGE_MODULES += COM32On64
+endif
+
+# We only ship the merge modules in locale en_US for the moment.
+ifdef VPOX_WITH_MSM_INSTALL
+ VPOX_INSTALLER_LANGUAGES := en_US
+ VPOX_INSTALLER_MERGE_LANGUAGES = $(VPOX_INSTALLER_LANGUAGES)
+endif
+
+#
+# Language IDs (LCID, decimal)
+#
+VPOX_BRAND_en_US_LANG_ID ?= 1033
+VPOX_BRAND_de_DE_LANG_ID ?= 1031
+VPOX_BRAND_el_GR_LANG_ID ?= 1032
+VPOX_BRAND_fa_IR_LANG_ID ?= 1065
+VPOX_BRAND_fr_FR_LANG_ID ?= 1036
+VPOX_BRAND_it_IT_LANG_ID ?= 1040
+VPOX_BRAND_tr_TR_LANG_ID ?= 1055
+VPOX_BRAND_zh_TW_LANG_ID ?= 1028
+VPOX_BRAND_zh_CN_LANG_ID ?= 2052
+
+# Standard language names (in the native language), to be extended as we go.
+# VPOX_BRAND_$(lang)_LANG_NAME must be defined for each language which occurs
+# in either VPOX_LICENSE_ADD_LANGUAGES or VPOX_MANUAL_ADD_LANGUAGES.
+VPOX_BRAND_en_US_LANG_NAME := English
+VPOX_BRAND_de_DE_LANG_NAME := Deutsch
+VPOX_BRAND_el_GR_LANG_NAME := Ελληνικά
+VPOX_BRAND_fr_FR_LANG_NAME := Français
+VPOX_BRAND_it_IT_LANG_NAME := Italiano
+VPOX_BRAND_tr_TR_LANG_NAME := Türkçe
+VPOX_BRAND_zh_TW_LANG_NAME := 正體中文
+VPOX_BRAND_zh_CN_LANG_NAME := 简体中文
+
+
+#
+# We don't have the license text in another language than English yet,
+# so just define the branding targets to use the English one for now.
+# The installer generation assumes that there is a translation for each
+# of VPOX_INSTALLER_LANGUAGES.
+#
+$(foreach lang,$(VPOX_INSTALLER_LANGUAGES), \
+	$(eval VPOX_BRAND_$(lang)_LICENSE_RTF := $(VPOX_BRAND_LICENSE_RTF)))
+
+#
+# Set the codepage for all languages to 1252, covers most cases.
+#
+$(foreach lang,$(sort $(VPOX_INSTALLER_LANGUAGES) $(VPOX_LICENSE_ADD_LANGUAGES) $(VPOX_MANUAL_ADD_LANGUAGES)), \
+	$(eval VPOX_BRAND_$(lang)_LANGUAGE_CODEPAGE := 1252))
+# Exceptions:
+VPOX_BRAND_zh_TW_LANGUAGE_CODEPAGE := 950
+VPOX_BRAND_zh_CN_LANGUAGE_CODEPAGE := 936
+VPOX_BRAND_fa_IR_LANGUAGE_CODEPAGE := 1256
+VPOX_BRAND_tr_TR_LANGUAGE_CODEPAGE := 1254
+
+#
+# If we want to build a combined package, we separate all common stuff
+# (that is all 100% identical content between 32-/64-bit builds)
+# into an own .cab file to save space. This .cab file then gets included
+# and used by the 32-/64-bit installers.
+#
+ifdef VPOX_WITH_COMBINED_PACKAGE
+  VPOX_INSTALLER_COMMON_DISKID := 2
+else
+  VPOX_INSTALLER_COMMON_DISKID := 1
+endif
+
+## @todo VPOX_ prefixes!
+PACKAGE_BASE                := VirtualPox-$(VPOX_VERSION_STRING)
+PACKAGE_NAME_LANG           := $(PACKAGE_BASE)-r$(VPOX_SVN_REV)
+PACKAGE_NAME_FINAL          := $(PATH_STAGE_BIN)/$(PACKAGE_NAME_LANG).msi
+
+ifdef VPOX_WITH_COMBINED_PACKAGE
+ PATH_MULTIARCH_TEMP                := $(PATH_OUT_BASE)/win.x86/$(KBUILD_TYPE)/obj/Installer
+ PATH_MULTIARCH_GUEST_ADDITIONS_ISO := $(PATH_OUT_BASE)/win.amd64/$(KBUILD_TYPE)/bin/additions
+ PACKAGE_NAME_MULTIARCH             := $(PACKAGE_NAME_LANG)-MultiArch
+ PACKAGE_NAME_MULTIARCH.x86         := $(PACKAGE_NAME_MULTIARCH)_x86.msi
+ PACKAGE_NAME_MULTIARCH.amd64       := $(PACKAGE_NAME_MULTIARCH)_amd64.msi
+ PACKAGE_NAME_FINAL                 := $(PATH_MULTIARCH_TEMP)/$(PACKAGE_NAME_MULTIARCH.$(KBUILD_TARGET_ARCH))
+ PACKAGE_NAME_MULTIARCH_FINAL       := $(PACKAGE_NAME_MULTIARCH).exe
+ # Always take the common.cab from the amd64 build, as it
+ # might contain certain files for x86 compatibility such
+ # as our 32-on-64-bit COM stuff.
+ PACKAGE_NAME_MULTIARCH_COMMONCAB   := $(PATH_OUT_BASE)/win.amd64/$(KBUILD_TYPE)/obj/Installer/win/common.cab
+
+ BLDDIRS += $(PATH_MULTIARCH_TEMP)
+ PACKING += $(PACKAGE_NAME_FINAL)
+ ifeq ($(KBUILD_TARGET_ARCH),x86)
+  PACKING += $(PATH_STAGE_BIN)/$(PACKAGE_NAME_MULTIARCH_FINAL)
+ endif
+else
+ PACKAGE_NAME_MULTIARCH             := $(PACKAGE_NAME_LANG)-MultiArch
+ PACKAGE_NAME_MULTIARCH_FINAL       := $(PACKAGE_NAME_MULTIARCH).exe
+ PACKING += $(PACKAGE_NAME_FINAL) $(PATH_STAGE_BIN)/$(PACKAGE_NAME_MULTIARCH_FINAL)
+endif
+BLDDIRS += \
+	$(VPOX_WIN_INST_OUT_DIR) \
+	$(VPOX_WIN_INST_REPACK_DIR)/ \
+	$(foreach lang,$(VPOX_INSTALLER_LANGUAGES), \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/ \
+		$(VPOX_WIN_INST_REPACK_DIR)/files-VirtualPox_$(lang)/ )\
+	$(VPOX_WIN_INST_OUT_DIR)/NLS/
+
+OTHER_CLEAN += \
+	$(VPOX_WIN_INST_OUT_DIR)/VirtualPox.wixobj \
+	$(VPOX_WIN_INST_OUT_DIR)/VirtualPox.wix \
+	$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox.wix \
+	$(VPOX_WIN_INST_OUT_DIR)/VirtualPox.wixobj.dep \
+	$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib_x86.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_ProxyStub.wxi \
+	$(if $(VPOX_WITH_QTGUI),$(VPOX_WIN_INST_OUT_DIR)/VPoxGuiNLS.wxi) \
+	$(VPOX_WIN_INST_OUT_DIR)/VPoxKey.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/VPoxUnattendedTemplateComponent.wxi \
+	$(foreach lang,$(VPOX_INSTALLER_LANGUAGES), \
+		$(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl \
+		$(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/$(lang).mst \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/$(PACKAGE_NAME_LANG)_$(lang).wixpdb \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/$(PACKAGE_NAME_LANG)_$(lang).msi \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wix \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wixobj \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wixobj.dep \
+		$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).wix \
+		$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).files \
+		$(VPOX_WIN_INST_REPACK_DIR)/2-link-$(PACKAGE_NAME_LANG).cmd \
+		$(VPOX_WIN_INST_REPACK_DIR)/files-VirtualPox_$(lang)/Language_$(lang).wxl \
+		$(VPOX_WIN_INST_REPACK_DIR)/files-VirtualPox_$(lang)/License_$(lang).wxl )\
+	$(VPOX_WIN_INST_OUT_DIR)/DirComponentsAndFiles_DTrace.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/Files_Main.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/Files_Doc.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/Files_License.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/Shortcuts_StartMenu.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/$(PACKAGE_NAME_LANG).msi \
+	$(VPOX_WIN_INST_REPACK_DIR)/3-multilingual-$(PACKAGE_NAME_LANG).cmd \
+	$(PATH_STAGE_BIN)/$(PACKAGE_NAME_MULTIARCH_FINAL)
+
+ifdef VPOX_WITH_COMBINED_PACKAGE
+ ifeq ($(KBUILD_TARGET_ARCH),x86)
+  OTHER_CLEAN += \
+  	$(VPOX_WIN_INST_REPACK_DIR)/4-multiarch-$(PACKAGE_NAME_MULTIARCH_FINAL).cmd \
+  	$(PATH_MULTIARCH_TEMP)/$(PACKAGE_NAME_MULTIARCH.x86)
+ endif
+ ifndef VPOX_WITH_MSM_INSTALL
+  OTHER_CLEAN += \
+  	$(VPOX_WIN_INST_OUT_DIR)/common.cab
+ endif
+else
+ OTHER_CLEAN += \
+  	$(VPOX_WIN_INST_REPACK_DIR)/4-multiarch-$(PACKAGE_NAME_MULTIARCH_FINAL).cmd \
+	$(PACKAGE_NAME_FINAL)
+endif
+
+ifdef VPOX_WITH_MSM_INSTALL
+ OTHER_CLEAN += \
+  $(foreach module,$(VPOX_INSTALLER_MERGE_MODULES), \
+   $(foreach lang,$(VPOX_INSTALLER_MERGE_LANGUAGES), \
+		$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang)_$(KBUILD_TARGET_ARCH).msm \
+		$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wixobj \
+		$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wixobj.dep \
+		$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wixpdb \
+		$(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).wix \
+		$(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).files)
+	BLDDIRS += $foreach lang,$(VPOX_INSTALLER_MERGE_LANGUAGES), \
+		$(VPOX_WIN_INST_REPACK_DIR)/files-VPoxMerge$(module)_$(lang)/)
+endif
+
+#
+# Suppress/skip the following ICE (Internal Consistency Evaluators):
+# - ICE64: Checks that new directories in the user profile are removed correctly in roaming scenarios.
+#          -> We don't want to remove system folders (like "Microsoft/Internet Explorer/Quick Launch").
+# - ICE69: Checks if file references are within the same component.
+#          -> We reference to files within different components, but these components are installed using
+#             the same feature, so that's fine.
+#
+VPOX_MSI_ICE_IGNORE := \
+	-ice:64 \
+	-ice:69
+
+#
+# Create intermediate XML file for languages (needed for .MSI linking).
+#
+# Note: The double escaping of $(dir $@) in the prereq/dep list is because we first have
+#       to escape the expansion of the $(eval ) argument and then the definition of the
+#       rule. The statement is finally expanded during second dependency expansion, which
+#       takes place after all makefiles has been loaded and with the @ variable defined.
+#
+define def_vpox_lang_xml
+$(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl: $(VPOX_PATH_WIN_INST_SRC)/NLS/$(lang).wxl | $$$$(dir $$$$@)
+	$$(call MSG_GENERATE,,$$@,$$<)
+	$(QUIET)$(INSTALL) -m 0644 $$< $$@
+endef
+
+$(foreach lang,$(VPOX_INSTALLER_LANGUAGES), \
+	$(eval $(def_vpox_lang_xml)))
+
+#
+# Create intermediate XML file for licenses (needed for .MSI linking).
+# These files are created from the original .RTF files in the /docs directory.
+#
+# Note: The redirect command below will open $$@ as stdout in append+text mode
+#       and then exec cat, thus appending the license file to the result file.
+#
+# Note: The license_file variable has to be created before def_vpox_license_xml
+#       is expanded by the 2nd eval because we rely on the that expansion
+#       replacing all $(license_file) (and $(lang)) references before evaluation.
+#
+# Note: The REDIRECT + ECHO_EXT is because WiX gets upset if there a newline
+#       between the tag and the RTF license text.
+#
+define def_vpox_license_xml
+$(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl: $(license_file) $(VPOX_WIN_INST_MAKEFILE_DEP) | $$$$(dir $$$$@)
+	$$(call MSG_GENERATE,,$$@,$$<)
+	$(APPEND) -t $$@ '<?xml version="1.0" encoding="utf-8"?>'
+	$(APPEND) $$@ '<WixLocalization xmlns="http://schemas.microsoft.com/wix/2006/localization" Codepage="$(VPOX_BRAND_$(lang)_LANGUAGE_CODEPAGE)" Culture="$(lang)">'
+
+	$(REDIRECT) -a+to $$@ -- $(ECHO_EXT) -n '<String Id="LicenseText">'
+	$(REDIRECT) -a+to $$@ -- $(SED) -e "s|<|\&lt;|g" -e "s|>|\&gt;|g" $(license_file)
+	$(APPEND) $$@ '</String>'
+
+	$(APPEND) $$@ '<String Id="LicenseFile">$(license_file)</String>'
+	$(APPEND) $$@ '<String Id="LicenseInstallFileLong">License_$(lang).rtf</String>'
+	$(APPEND) $$@ '<String Id="LicenseInstallFileShort">L_$(lang).rtf</String>'
+
+	$(APPEND) $$@ '</WixLocalization>'
+endef
+
+$(foreach lang,$(VPOX_INSTALLER_LANGUAGES), \
+	$(eval local license_file := $(VPOX_BRAND_$(subst en_US_,,$(lang)_)LICENSE_RTF)) \
+	$(eval $(def_vpox_license_xml)))
+
+#
+# Create one intermediate WXI (Windows Installer Include) file for all installers (needed for .MSI compiling).
+# This file includes all language-specific files (PDFs, CHMs, ...) to install.
+#
+# Note: When using the -n switch, append will append a new line after each
+#       argument. The -t switch makes it truncate the file.
+#
+$(VPOX_WIN_INST_OUT_DIR)/Files_Main.wxi: $(VPOX_WIN_INST_MAKEFILE_DEP) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$<)
+	$(APPEND) -t $@ '<?xml version="1.0" ?>'
+	$(APPEND) $@ '<Include xmlns="http://schemas.microsoft.com/wix/2006/wi">'
+ifdef VPOX_WITH_DOCS_PACKING
+	$(APPEND) $@ '	<File Id="file_VirtualPox.chm" Name="VirtualPox.chm" DiskId="$(VPOX_INSTALLER_COMMON_DISKID)" Vital="yes" Source="$(subst /,\,$(PATH_STAGE_BIN)/VirtualPox.chm)"></File>'
+	$(APPEND) -n $@ $(foreach lang,$(VPOX_MANUAL_ADD_LANGUAGES), \
+		     '	<File Id="file_VirtualPox_$(lang).chm" Name="VirtualPox_$(lang).chm" DiskId="$(VPOX_INSTALLER_COMMON_DISKID)" Vital="yes" Source="$(subst /,\,$(PATH_STAGE_BIN)/VirtualPox_$(lang).chm)"></File>')
+endif
+	$(APPEND) $@ '</Include>'
+
+$(VPOX_WIN_INST_OUT_DIR)/Files_Doc.wxi: $(VPOX_WIN_INST_MAKEFILE_DEP) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$<)
+	$(APPEND) -t $@ '<?xml version="1.0" ?>'
+	$(APPEND) $@ '<Include xmlns="http://schemas.microsoft.com/wix/2006/wi">'
+ifdef VPOX_WITH_DOCS_PACKING
+	$(APPEND) $@ '	<File Id="file_UserManual.pdf" Name="UserManual.pdf" DiskId="$(VPOX_INSTALLER_COMMON_DISKID)" Vital="yes" Source="$(subst /,\,$(PATH_STAGE_BIN)/UserManual.pdf)">'
+	$(APPEND) $@ '	</File>'
+	$(APPEND) -n $@ $(foreach lang,$(VPOX_MANUAL_ADD_LANGUAGES), \
+	             '	<File Id="file_UserManual_$(lang).pdf" Name="UserManual_$(lang).pdf" DiskId="$(VPOX_INSTALLER_COMMON_DISKID)" Vital="yes" Source="$(subst /,\,$(PATH_STAGE_BIN)/UserManual_$(lang).pdf)">' \
+	             '	</File>')
+endif
+	$(APPEND) $@ '</Include>'
+
+$(VPOX_WIN_INST_OUT_DIR)/Files_License.wxi: $(VPOX_WIN_INST_MAKEFILE_DEP) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$<)
+	$(APPEND) -t $@ '<?xml version="1.0" ?>'
+	$(APPEND) $@ '<Include xmlns="http://schemas.microsoft.com/wix/2006/wi">'
+	$(APPEND) $@ '	<File Id="file_License_en_US.rtf" Name="License_en_US.rtf" DiskId="$(VPOX_INSTALLER_COMMON_DISKID)" Vital="yes" Source="$(subst /,\,$(VPOX_BRAND_LICENSE_RTF))">' \
+	             '	</File>'
+	$(APPEND) -n $@ $(foreach lang,$(VPOX_LICENSE_ADD_LANGUAGES), \
+	             '	<File Id="file_License_$(lang).rtf" Name="License_$(lang).rtf" DiskId="$(VPOX_INSTALLER_COMMON_DISKID)" Vital="yes" Source="$(subst /,\,$(VPOX_BRAND_$(lang)_LICENSE_RTF))">' \
+	             '	</File>')
+	$(APPEND) $@ '</Include>'
+
+$(VPOX_WIN_INST_OUT_DIR)/DirComponentsAndFiles_DTrace.wxi: $(VPOX_WIN_INST_MAKEFILE_DEP) $(PATH_SUB_CURRENT)/../Config.kmk | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$<)
+	$(QUIET)$(APPEND) -nt "$@" \
+		'<?xml version="1.0" ?>' \
+		'<Include xmlns="http://schemas.microsoft.com/wix/2006/wi">'
+ifdef VPOX_WITH_DTRACE
+	$(QUIET)$(APPEND) -n "$@" \
+		'<Directory Id="dir_DTrace" Name="dtrace">' \
+		'  <Directory Id="dir_DTrace_lib" Name="lib">' \
+		'    <Directory Id="dir_DTrace_lib_arch" Name="$(KBUILD_TARGET_ARCH)">' \
+		'      <Component Id="cp_dir_DTrace_lib_arch" Guid="7476CDF6-4157-2E17-5CCC-FF92528D2854" Win64="$$(var.Property_Win64)">' \
+		$(foreach file, $(VPOXINST_DTRACE_LIB_ARCH_FILES) \
+                	, '        <File Id="file_dtrace_lib_arch_$(subst -,_,$(file))" Name="$(file)" Vital="yes" ' \
+			  '              Source="$(subst /,\,$(PATH_STAGE_BIN)/dtrace/lib/$(KBUILD_TARGET_ARCH)/$(file))" />' ) \
+		'      </Component>' \
+		'    </Directory>' \
+		'  </Directory>' \
+        $(if $(VPOXINST_DTRACE_TESTCASE_ARCH_FILES), \
+		'  <Directory Id="dir_DTrace_testcase" Name="testcase">' \
+		'    <Directory Id="dir_DTrace_testcase_arch" Name="$(KBUILD_TARGET_ARCH)">' \
+		'      <Component Id="cp_dir_DTrace_testcase_arch" Guid="45DF7014-4431-6C40-6DB0-35AF7C690EE1" Win64="$$(var.Property_Win64)">' \
+		$(foreach file, $(VPOXINST_DTRACE_TESTCASE_ARCH_FILES) \
+                	, '        <File Id="file_dtrace_testcase_arch_$(subst -,_,$(file))" Name="$(file)" Vital="yes" ' \
+			  '              Source="$(subst /,\,$(PATH_STAGE_BIN)/dtrace/testcase/$(KBUILD_TARGET_ARCH)/$(file))" />' ) \
+		'      </Component>' \
+		'    </Directory>' \
+		'  </Directory>') \
+        $(if $(VPOXINST_DTRACE_SCRIPTS_FILES), \
+		'  <Directory Id="dir_DTrace_scripts" Name="scripts">' \
+		'    <Component Id="cp_dir_DTrace_scripts" Guid="AE07F9D5-4FD9-ACC7-C760-E9923CE01E16" Win64="$$(var.Property_Win64)">' \
+		$(foreach file, $(VPOXINST_DTRACE_SCRIPTS_FILES) \
+                	, '      <File Id="file_dtrace_scripts_$(subst -,_,$(file))" Name="$(file)" Vital="yes" ' \
+			  '            Source="$(subst /,\,$(PATH_STAGE_BIN)/dtrace/scripts/$(file))" />' ) \
+		'    </Component>' \
+		'  </Directory>') \
+		'</Directory>'
+endif
+	$(QUIET)$(APPEND) "$@" '</Include>'
+
+
+$(VPOX_WIN_INST_OUT_DIR)/Shortcuts_StartMenu.wxi: $(VPOX_WIN_INST_MAKEFILE_DEP) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$<)
+	$(APPEND) -t $@ '<?xml version="1.0" ?>'
+	$(APPEND) $@ '<Include xmlns="http://schemas.microsoft.com/wix/2006/wi">'
+	#
+	# Documentation (PDF/CHM)
+	#
+ifdef VPOX_WITH_DOCS_PACKING
+	$(APPEND) $@ '	<Shortcut Id="sc_StartMenu_ManualCHM_en_US" Directory="dir_StartMenuVPox" Name="!(loc.StartMenu_UserManual) (CHM, English)" Description="!(loc.StartMenu_UserManual)"' \
+	             '            Target="[INSTALLDIR]\VirtualPox.chm" WorkingDirectory="dir_Documents" Advertise="no"/>'
+	$(APPEND) -n $@ $(foreach lang,$(VPOX_MANUAL_ADD_LANGUAGES), \
+	             '	<Shortcut Id="sc_StartMenu_ManualCHM_$(lang)" Directory="dir_StartMenuVPox" Name="!(loc.StartMenu_UserManual) (CHM, $(VPOX_BRAND_$(lang)_LANG_NAME))"' \
+		     '            Description="!(loc.StartMenu_UserManual) ($(VPOX_BRAND_$(lang)_LANG_NAME))" Target="[INSTALLDIR]\VirtualPox_$(lang).chm" WorkingDirectory="dir_Documents"/>')
+endif
+	$(APPEND) $@ '	<Shortcut Id="sc_StartMenu_ManualPDF_en_US" Directory="dir_StartMenuVPox" Name="!(loc.StartMenu_UserManual) (PDF, English)" Description="!(loc.StartMenu_UserManual)"' \
+	             '            Target="[INSTALLDIR]\doc\UserManual.pdf" WorkingDirectory="dir_Documents" Advertise="no"/>'
+	$(APPEND) -n $@ $(foreach lang,$(VPOX_MANUAL_ADD_LANGUAGES), \
+	             '	<Shortcut Id="sc_StartMenu_ManualPDF_$(lang)" Directory="dir_StartMenuVPox" Name="!(loc.StartMenu_UserManual) (PDF, $(VPOX_BRAND_$(lang)_LANG_NAME))"' \
+		     '            Description="!(loc.StartMenu_UserManual) ($(VPOX_BRAND_$(lang)_LANG_NAME))" Target="[INSTALLDIR]\doc\UserManual_$(lang).pdf" WorkingDirectory="dir_Documents"/>')
+	#
+	# License(s) (RTF)
+	#
+	$(APPEND) $@ '	<Shortcut Id="sc_StartMenu_License_en_US" Directory="dir_StartMenuVPox" Name="!(loc.StartMenu_License) (English)" Description="!(loc.StartMenu_License)"' \
+	             '            Target="[INSTALLDIR]License_en_US.rtf" WorkingDirectory="INSTALLDIR" Advertise="no"/>'
+	$(APPEND) -n $@ $(foreach lang,$(VPOX_LICENSE_ADD_LANGUAGES), \
+	             '	<Shortcut Id="sc_StartMenu_License_$(lang)" Directory="dir_StartMenuVPox" Name="!(loc.StartMenu_License) ($(VPOX_BRAND_$(lang)_LANG_NAME))"' \
+		     '            Description="!(loc.StartMenu_License) ($(VPOX_BRAND_$(lang)_LANG_NAME))" Target="License_$(lang).rtf" WorkingDirectory="INSTALLDIR"/>')
+	$(APPEND) $@ '</Include>'
+
+#
+# .MSI linking of the main installer (en_US).
+#
+# Note: This will clean up any previous .msi and .wixpdb files to prevent dep
+#       build boxes from filling up with old files.
+#
+define def_vpox_link_msi
+$(VPOX_WIN_INST_OUT_DIR)/$(lang)/$(PACKAGE_NAME_LANG)_$(lang).msi \
+$(if-expr defined(VPOX_WITH_COMBINED_PACKAGE) && !defined(VPOX_WITH_MSM_INSTALL), + $(VPOX_WIN_INST_OUT_DIR)/common.cab,): \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wixobj \
+		$(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl \
+		$(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl \
+		$(PATH_STAGE_BIN)/VPoxInstallHelper.dll \
+		$(VPOX_SVN_REV_KMK) \
+		$(VPOX_WIN_INST_MAKEFILE_DEP) \
+		$(if-expr defined(VPOX_WITH_MSI_HACK),$(MsiHack_0_OUTDIR)/MsiHack.dll,) \
+		$(if-expr defined(VPOX_WITH_MSI_HACK),$(MsiHack_0_OUTDIR)/MsiHackExtension.dll,) \
+		| $$$$(dir $$$$@)
+	$$(call MSG_L1,Linking installer $$@)
+	$(QUIET)$(RM) -f $$(wildcard $$(subst r$$(VPOX_SVN_REV),r*,\
+		$$@ \
+		$$(basename $$@).wixpdb \
+		$$(VPOX_WIN_INST_REPACK_DIR)/2-link-$$(PACKAGE_NAME_LANG).cmd ))
+	kmk_time $(VPOX_PATH_WIX)/light.exe -v -nologo \
+		-loc $(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl \
+		-loc $(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl \
+		-ext $(VPOX_PATH_WIX)/WixUIExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixUtilExtension.dll \
+               $(if-expr defined(VPOX_WITH_MSI_HACK),-ext $(MsiHack_0_OUTDIR)/MsiHackExtension.dll,) \
+		$(VPOX_MSI_ICE_IGNORE) \
+		-out $$@ \
+		$$< \
+		$(VPOX_PATH_WIX)/difxapp_$(if-expr "$(KBUILD_TARGET_ARCH)" == "x86",x86,x64).wixlib
+if defined(VPOX_WITH_COMBINED_PACKAGE) && !defined(VPOX_WITH_MSM_INSTALL)
+	$(MV) -f -- $$(@D)/common.cab $$(@D)/../common.cab
+endif
+ifeq ($(lang),en_US)
+	$(CP) -f -- "$(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl" "$(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl" \
+       	"$(VPOX_WIN_INST_REPACK_DIR)/files-VirtualPox_$(lang)/"
+# Create repack script for this step.
+	$(APPEND) -tn "$$(VPOX_WIN_INST_REPACK_DIR)/2-link-$$(PACKAGE_NAME_LANG).cmd" \
+       	'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b1)' \
+		$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%,\
+		'$(VPOX_PATH_WIX)/light.exe -v -nologo ^' \
+		'  -loc files-VirtualPox_$(lang)/Language_$(lang).wxl ^' \
+		'  -loc files-VirtualPox_$(lang)/License_$(lang).wxl ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixUIExtension.dll ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixUtilExtension.dll ^' \
+               $(if-expr defined(VPOX_WITH_MSI_HACK),'-ext $(MsiHack_0_OUTDIR)/MsiHackExtension.dll ^',) \
+		'  $(VPOX_MSI_ICE_IGNORE) ^' \
+		'  -out $$(@F) ^' \
+		'  $$(<F) ^' \
+		'  $(VPOX_PATH_WIX)/difxapp_$(if-expr "$(KBUILD_TARGET_ARCH)" == "x86",x86,x64).wixlib ^' \
+               '  || exit /b1' \
+               ) \
+               '@echo Created MSI installer: $$(@F)' \
+		$(if-expr defined(VPOX_WITH_COMBINED_PACKAGE) && !defined(VPOX_WITH_MSM_INSTALL),'@echo Created: common.cab',)
+
+endif
+endef
+
+$(foreach lang, en_US, $(eval $(def_vpox_link_msi)))
+
+
+#
+# Merge module linking (all languages).
+#
+# Note: This will clean up any previous .msm to prevent dep build boxes from
+#       filling up with old files.
+#
+define def_vpox_link_msm
+$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang)_$(KBUILD_TARGET_ARCH).msm: \
+		$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wixobj \
+		$(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl \
+		$(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl \
+		$(PATH_STAGE_BIN)/VPoxInstallHelper.dll \
+		$(VPOX_SVN_REV_KMK) \
+		$(VPOX_WIN_INST_MAKEFILE_DEP) \
+		| $$$$(dir $$$$@)
+	$$(call MSG_L1,Linking installer $$@)
+	$(QUIET)$(RM) -f $$(wildcard $(VPOX_WIN_INST_OUT_DIR)/$(PACKAGE_BASE)-r*_$(lang).msi)
+	$(VPOX_PATH_WIX)/light.exe -v -nologo \
+		-loc $(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl \
+		-loc $(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl \
+		-ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixUtilExtension.dll \
+		$(VPOX_MSI_ICE_IGNORE) \
+		-out $$@ \
+		$$< \
+		$(VPOX_PATH_WIX)/difxapp_$(if-expr "$(KBUILD_TARGET_ARCH)" == "x86",x86,x64).wixlib
+	$(RM) -f $(VPOX_WIN_INST_OUT_DIR)/NLS/$(lang).mst
+	$(call VPOX_SIGN_FILE_FN,$$@,$(VPOX_PRODUCT) $(VPOX_VERSION_STRING)r$(VPOX_SVN_REV) ($(KBUILD_TARGET_ARCH)),,,disable-dual-signing)
+# Create repack script for this step.
+	$(APPEND) -tn "$$(VPOX_WIN_INST_REPACK_DIR)/2-link-VPoxMerge$(module)_$(lang).cmd" \
+       	'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b1)' \
+		$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%,\
+		'$(VPOX_PATH_WIX)/light.exe -v -nologo ^' \
+		'  -loc files-VirtualPox_$(lang)/Language_$(lang).wxl ^' \
+		'  -loc files-VirtualPox_$(lang)/License_$(lang).wxl ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixUtilExtension.dll ^' \
+		'  $(VPOX_MSI_ICE_IGNORE) ^' \
+		'  -out $$(@F) ^' \
+		'  $$(<F) ^' \
+		'  $(VPOX_PATH_WIX)/difxapp_$(if-expr "$(KBUILD_TARGET_ARCH)" == "x86",x86,x64).wixlib ^' \
+               '  || exit /b1' \
+		'call sign-sha1.cmd $$(@F) || exit /b1' \
+               ) \
+               '@echo Created MSM module: $$(@F)'
+endef
+
+$(if-expr defined(VPOX_WITH_MSM_INSTALL), \
+	$(foreach module,$(VPOX_INSTALLER_MERGE_MODULES), \
+		$(foreach lang,$(VPOX_INSTALLER_MERGE_LANGUAGES), \
+			$(eval $(def_vpox_link_msm)))),)
+
+
+#
+# Add dependencies that makes sure necessary bits gets built.
+# For combined packages we always use the .ISO from the amd64 build.
+#
+ifdef VPOX_WITH_COMBINED_PACKAGE
+ VPOX_MSI_DEPENDENCIES := \
+	$(if $(VPOX_WITH_ADDITIONS_PACKING),$(PATH_MULTIARCH_GUEST_ADDITIONS_ISO)/VPoxGuestAdditions.iso)
+else
+ VPOX_MSI_DEPENDENCIES := \
+	$(if $(VPOX_WITH_ADDITIONS_PACKING),$(VPOX_PATH_ADDITIONS_ISO)/VPoxGuestAdditions.iso)
+endif
+
+#
+# A few manual dependencies to make sure everything is rebuilt when they should.
+#
+$(PATH_SUB_CURRENT)/VirtualPox.wxs: \
+	$(PATH_SUB_CURRENT)/CommonProperties.wxi \
+	$(PATH_SUB_CURRENT)/Defines.wxi \
+	$(PATH_SUB_CURRENT)/VPoxMergeApp.wxi
+
+$(PATH_SUB_CURRENT)/VPoxMergeApp.wxi $(PATH_SUB_CURRENT)/VirtualPox.wxs: \
+	$(VPOX_WIN_INST_OUT_DIR)/Files_Doc.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/DirComponentsAndFiles_DTrace.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/Files_License.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/Files_Main.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/VPoxKey.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/VPoxGuiNLS.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib.wxi \
+	$(VPOX_WIN_INST_OUT_DIR)/VPoxUnattendedTemplateComponent.wxi
+
+#
+# MSI compile.
+# We've separated the processing from the compilation for repacking reasons.
+#
+define def_vpox_compile_wixobj
+includedep $(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wixobj.dep
+$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wixobj \
++ $(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wix \
+$(if-expr "$(lang)" != "en_US",, \
++ $(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).wix $(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).files ): \
+			$(PATH_SUB_CURRENT)/VirtualPox.wxs \
+			$(PATH_SUB_CURRENT)/UserInterface.wxi \
+			$(if-expr defined(VPOX_WITH_MSM_INSTALL), \
+				$(foreach module,$(VPOX_INSTALLER_MERGE_MODULES), \
+					$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang)_$(KBUILD_TARGET_ARCH).msm), \
+				$(VPOX_WIN_INST_OUT_DIR)/Shortcuts_StartMenu.wxi \
+				$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib.wxi \
+				$(if $(VPOX_WITH_32_ON_64_MAIN_API),$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib_x86.wxi,) \
+				$(VPOX_WIN_INST_OUT_DIR)/VPoxKey.wxi \
+				$(VPOX_WIN_INST_OUT_DIR)/VPoxUnattendedTemplateComponent.wxi \
+				$(if $(VPOX_WITH_QTGUI),$(VPOX_WIN_INST_OUT_DIR)/VPoxGuiNLS.wxi) \
+				$(VPOX_MSI_DEPENDENCIES)) \
+			$(VPOX_VERSION_STAMP) \
+			| $$$$(dir $$$$@) $(if-expr "$(lang)" != "en_US",, \
+			$(VPOX_WIN_INST_REPACK_DIR)/ $(VPOX_WIN_INST_REPACK_DIR)/files-VirtualPox_$(lang)/ )
+	$(QUIET)$(RM) -f -- "$$@"  "$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wix" "$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).wix"
+	$(REDIRECT) \
+		-E 'PATH_OUT=$(subst /,\,$(PATH_OUT))' \
+		-E 'PATH_TARGET=$(subst /,\,$(VPOX_WIN_INST_OUT_DIR))' \
+		-E 'PATH_ROOT=$(subst /,\,$(PATH_ROOT))' \
+		-E 'PATH_MULTIARCH_GUEST_ADDITIONS_ISO=$(subst /,\,$(PATH_MULTIARCH_GUEST_ADDITIONS_ISO))' \
+		-E 'VPOX_PATH_WIN_INST_SRC=$(subst /,\,$(VPOX_PATH_WIN_INST_SRC))' \
+		-E 'VPOX_BRAND_WIN_INST_DLGJPG=$(subst /,\,$(VPOX_BRAND_WIN_INST_DLGJPG))' \
+		-E 'VPOX_ADD_LANGUAGES=$(VPOX_INSTALLER_ADD_LANGUAGES)' \
+		-E 'VPOX_BRAND_LICENSE_RTF=$(subst /,\,$(VPOX_BRAND_LICENSE_RTF))' \
+		$(foreach lang,$(VPOX_INSTALLER_LANGUAGES), \
+			-E 'VPOX_BRAND_$(lang)_LICENSE_RTF=$(subst /,\,$(VPOX_BRAND_$(subst en_US_,,$(lang)_)LICENSE_RTF))') \
+		-E 'VPOX_BUILD_NR_FOR_INST=$(VPOX_VERSION_BUILD)' \
+		-E 'VPOX_VENDOR=$(VPOX_VENDOR)' \
+		-E 'VPOX_VENDOR_SHORT=$(VPOX_VENDOR_SHORT)' \
+		-E 'VPOX_PRODUCT=$(VPOX_PRODUCT)' \
+		-E 'VPOX_C_YEAR=$(VPOX_C_YEAR)' \
+		-E 'VPOX_VERSION_STRING=$(VPOX_VERSION_STRING)' \
+		-E 'VPOX_VERSION_STRING_RAW=$(VPOX_VERSION_STRING_RAW)' \
+		-E 'VPOX_VERSION_MAJOR_INST=$(VPOX_VERSION_MAJOR)' \
+		-E 'VPOX_VERSION_MINOR_INST=$(VPOX_VERSION_MINOR)' \
+		-E 'VPOX_SIGNING_MODE=$(strip $(if $(VPOX_SIGNING_MODE),$(VPOX_SIGNING_MODE),none))' \
+		-E 'VPOX_CAB_COMPRESSION_LEVEL=$(if-expr $(lang) == "en_US",$(VPOX_CAB_COMPRESSION_LEVEL),none)' \
+		-E 'VPOX_CAB_COMPRESSION_LEVEL_COMMON=$(if-expr $(lang) == "en_US" && $(KBUILD_TARGET_ARCH) == "amd64",$(VPOX_CAB_COMPRESSION_LEVEL),none)' \
+		-E 'VPOX_GUI_USE_QGL=$(if $(VPOX_GUI_USE_QGL),yes,no)' \
+		-E 'VPOX_MIDL_PROXY_CLSID=$(VPOX_MIDL_PROXY_CLSID)' \
+		$(if-expr defined(VPOX_WITH_MSM_INSTALL), \
+			$(foreach module,$(VPOX_INSTALLER_MERGE_MODULES), \
+				-E 'VPOX_WIN_INST_MERGE_$(toupper $(module))=$(subst /,\,$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang)_$(KBUILD_TARGET_ARCH).msm')),) \
+		-E 'VPOX_WINDOWS_ICON_FILE=$(subst /,\,$(VPOX_WINDOWS_ICON_FILE))' \
+		-E 'VPOX_QT_INFIX=$(VPOX_QT_INFIX)' \
+		-E 'VPOX_WITH_32_ON_64_MAIN_API=$(if $(VPOX_WITH_32_ON_64_MAIN_API),yes,no)' \
+		-E 'VPOX_WITH_ADDITIONS_PACKING=$(if $(VPOX_WITH_ADDITIONS_PACKING),yes,no)' \
+		-E 'VPOX_WITH_COMBINED_PACKAGE=$(if-expr defined(VPOX_WITH_COMBINED_PACKAGE),yes,no)' \
+		-E 'VPOX_WITH_DEBUGGER_GUI=$(if-expr defined(VPOX_WITH_DEBUGGER_GUI) && defined(VPOX_WITH_QTGUI),yes,no)' \
+		-E 'VPOX_WITH_DOCS_PACKING=$(if $(VPOX_WITH_DOCS_PACKING),yes,no)' \
+		-E 'VPOX_WITH_DRAG_AND_DROP=$(if $(VPOX_WITH_DRAG_AND_DROP),yes,no)' \
+		-E 'VPOX_WITH_DTRACE=$(if $(VPOX_WITH_DTRACE),yes,no)' \
+		-E 'VPOX_WITH_EFIFW_PACKING=$(if $(VPOX_WITH_EFIFW_PACKING),yes,no)' \
+		-E 'VPOX_WITH_EXTPACK=$(if $(VPOX_WITH_EXTPACK),yes,no)' \
+		-E 'VPOX_WITH_GUEST_CONTROL=$(if $(VPOX_WITH_GUEST_CONTROL),yes,no)' \
+		-E 'VPOX_WITH_GUEST_PROPS=$(if $(VPOX_WITH_GUEST_PROPS),yes,no)' \
+		-E 'VPOX_WITH_HARDENING=$(if $(VPOX_WITH_HARDENING),yes,no)' \
+		-E 'VPOX_WITH_LICENSE_DISPLAY=$(if $(VPOX_WITH_LICENSE_DISPLAY),yes,no)' \
+		-E 'VPOX_WITH_MIDL_PROXY_STUB=$(if $(VPOX_WITH_MIDL_PROXY_STUB),yes,no)' \
+		-E 'VPOX_WITH_MSM_INSTALL=$(if-expr defined(VPOX_WITH_MSM_INSTALL),yes,no)' \
+		-E 'VPOX_WITH_NETADP=$(if $(VPOX_WITH_NETADP),yes,no)' \
+		-E 'VPOX_WITH_NETFLT=$(if $(VPOX_WITH_NETFLT),yes,no)' \
+		-E 'VPOX_WITH_PYTHON=$(if $(VPOX_WITH_PYTHON),yes,no)' \
+		-E 'VPOX_WITH_QTGUI=$(if $(VPOX_WITH_QTGUI),yes,no)' \
+		-E 'VPOX_WITH_RAW_MODE=$(if $(VPOX_WITH_RAW_MODE),yes,no)' \
+		-E 'VPOX_WITH_SECURELABEL=$(if $(VPOX_WITH_SECURELABEL),yes,no)' \
+		-E 'VPOX_WITH_SERIALNUMBER_INSTALL=$(if $(VPOX_WITH_SERIALNUMBER_INSTALL),yes,no)' \
+		-E 'VPOX_WITH_VIDEOHWACCEL=$(if $(VPOX_WITH_VIDEOHWACCEL),yes,no)' \
+		-E 'VPOX_WITH_VRDP=$(if-expr defined(VPOX_WITH_VRDP) && !defined(VPOX_WITH_EXTPACK_PUEL),yes,no)' \
+		-E 'VPOX_WITH_WEBSERVICES=$(if $(VPOX_WITH_WEBSERVICES),yes,no)' \
+		-E 'VPOX_WITH_SDS=$(if $(VPOX_WITH_SDS),yes,no)' \
+		-E 'VPOX_WITH_UNATTENDED=$(if $(VPOX_WITH_UNATTENDED),yes,no)' \
+		-E 'VPOX_WITH_USB=$(if $(VPOX_WITH_USB),yes,no)' \
+		-E 'VPOX_WITH_VPOX_IMG=$(if $(VPOX_WITH_VPOX_IMG)$(VPOX_WITH_TESTCASES),yes,no)' \
+		-E 'VPOX_WITH_VPOXSDL=$(if $(VPOX_WITH_VPOXSDL),yes,no)' \
+		-E 'BUILD_TYPE=$(KBUILD_TYPE)' \
+		-E 'BUILD_TARGET_ARCH=$(KBUILD_TARGET_ARCH)' \
+		-E 'VPOX_INSTALLER_QUICK=$(VPOX_INSTALLER_QUICK)' \
+		-E 'VPOX_VCC_TOOL_STEM=$(VPOX_VCC_TOOL_STEM)' \
+		-- \
+		$(VPOX_PATH_WIX)/candle.exe $(filter-out $(VPOX_VERSION_STAMP),$$<) \
+			-ext $(VPOX_PATH_WIX)/WixUIExtension.dll \
+			-ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll \
+			-ext $(VPOX_PATH_WIX)/WixUtilExtension.dll \
+			-p$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wix
+	$(VPOX_PATH_WIX)/candle.exe $(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wix \
+		-ext $(VPOX_PATH_WIX)/WixUIExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixUtilExtension.dll \
+		-out $$@
+ ifeq ($(lang),en_US)
+# Copy preprocessed wix and change source paths to be relative.  Stuff not in ../bin needs copying.
+	$(SED)	-e 's,$(subst /,\\,$(PATH_OUT))\\bin,..\\bin,g' \
+		-e 's,$(subst /,\\,$(PATH_OUT_BASE))\\win.amd64\\$(KBUILD_TYPE)\\bin,..\\..\\..\\win.amd64\\$(KBUILD_TYPE)\\bin,g' \
+		-e 's,$(subst /,\\,$(PATH_OUT_BASE))\\win.x86\\$(KBUILD_TYPE)\\bin,..\\..\\..\\win.x86\\$(KBUILD_TYPE)\\bin,g' \
+               \
+		-e 's,$(subst /,\\,$(PATH_ROOT))\\doc\\,files-VirtualPox_$(lang)\\,g' \
+		-e 's,$(subst /,\\,$(VPOX_PATH_WIN_INST_SRC))\\Binary\\,files-VirtualPox_$(lang)\\,g' \
+		-e 's,$(subst /,\\,$(VPOX_WIN_INST_OUT_DIR))\\,,g' \
+		-e 's,$(subst /,\\,$(dir $(VPOX_WINDOWS_ICON_FILE))),files-VirtualPox_$(lang)\\,g' \
+		--output "$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).wix" \
+		"$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wix"
+	$(SED)	-n \
+		-e '/<\?ln /d' \
+		-e '/$(subst /,\\,$(PATH_ROOT))/p' \
+		-e '/$(subst /,\\,$(PATH_ROOT))/q2' \
+		"$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).wix"
+	$(SED)	-n \
+		-e '/<\?ln /d' \
+		-e 's/\\/\//g' \
+		-e 's,^.*"\($(PATH_ROOT)/doc/[^"]*\)".*$$(DOLLAR),\1,p' \
+		-e 's,^.*"\($(VPOX_PATH_WIN_INST_SRC)/Binary/[^"]*\)".*$$(DOLLAR),\1,p' \
+		-e 's,^.*"\($(dir $(VPOX_WINDOWS_ICON_FILE))[^"]*\)".*$$(DOLLAR),\1,p' \
+		--output "$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).files" \
+		"$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wix"
+	set -xe && for file in  `$(CAT_EXT) "$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).files"`; \
+		do $(CP_EXT) -f -- "$$(DOLLAR){file}" "$(VPOX_WIN_INST_REPACK_DIR)/files-VirtualPox_$(lang)/"; done
+# Create repack script for this step.
+	$(APPEND) -tn "$(VPOX_WIN_INST_REPACK_DIR)/1-compile-VirtualPox_$(lang).cmd" \
+       	'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b1)' \
+		$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%,\
+		'$(VPOX_PATH_WIX)/candle.exe VirtualPox_$(lang).wix ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixUIExtension.dll ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixUtilExtension.dll ^' \
+		'  -out $$(@F) || exit /b1' \
+               ) \
+               '@echo Created: $$(@F)'
+ endif
+# Generate wxi dependencies based on the sourceLineNumber references in the output.  Add repack file list for cleanup.
+	$(QUIET)$(APPEND) -t '$$@.dep' '$$@: \'
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOX_PATH_WIN_INST_SRC)/dep.xsl "$$@" >> "$$@.dep"
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOX_PATH_WIN_INST_SRC)/dep2.xsl "$$@" | sort  | $(SED) '$!N; /^\(.*\)\n\1$$$$/!P; D' >> "$$@.dep"
+	$(QUIET)$(APPEND) -n '$$@.dep' '' ''
+ ifeq ($(lang),en_US)
+	$(QUIET)$(APPEND) -n '$$@.dep' 'define VPOX_REPACK_FILES_VirtualPox_$(lang)'
+	$(QUIET)$(CAT_EXT) "$(VPOX_WIN_INST_REPACK_DIR)/VirtualPox_$(lang).files" >> '$$@.dep'
+	$(QUIET)$(APPEND) -n '$$@.dep' '' 'endef'
+ endif
+
+$(eval OTHER_CLEAN += $(VPOX_REPACK_FILES_VirtualPox_$(lang)))
+endef
+
+$(foreach lang,$(VPOX_INSTALLER_LANGUAGES), \
+	$(eval $(def_vpox_compile_wixobj)))
+
+#
+# MSM (merge module) compile.
+#
+define def_vpox_compile_msm
+includedep $(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wixobj.dep
+$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wixobj \
++ $(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wix \
+$(if-expr "$(lang)" != "en_US",, \
++ $(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).wix): \
+		$(PATH_SUB_CURRENT)/VPoxMerge$(module).wxs \
+		$(PATH_SUB_CURRENT)/VPoxMerge$(module).wxi \
+		$(PATH_SUB_CURRENT)/VPoxMerge$(module)CA.wxi \
+		$(PATH_SUB_CURRENT)/VPoxMerge$(module)Seq.wxi \
+		$(PATH_SUB_CURRENT)/UserInterface.wxi \
+		$(VPOX_WIN_INST_OUT_DIR)/Shortcuts_StartMenu.wxi \
+		$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib.wxi \
+		$(if $(VPOX_WITH_32_ON_64_MAIN_API),$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib_x86.wxi,) \
+		$(VPOX_WIN_INST_OUT_DIR)/VPoxKey.wxi \
+		$(VPOX_WIN_INST_OUT_DIR)/VPoxUnattendedTemplateComponent.wxi \
+		$(if $(VPOX_WITH_QTGUI),$(VPOX_WIN_INST_OUT_DIR)/VPoxGuiNLS.wxi) \
+		$(VPOX_MSI_DEPENDENCIES) \
+		$(VPOX_VERSION_STAMP) \
+		| $$$$(dir $$$$@) $(VPOX_WIN_INST_REPACK_DIR)/
+	$(QUIET)$(RM) -f -- "$$@" "$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wix" "$(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).wix"
+	$(REDIRECT) \
+		-E 'PATH_OUT=$(subst /,\,$(PATH_OUT))' \
+		-E 'PATH_TARGET=$(subst /,\,$(VPOX_WIN_INST_OUT_DIR))' \
+		-E 'PATH_ROOT=$(subst /,\,$(PATH_ROOT))' \
+		-E 'PATH_MULTIARCH_GUEST_ADDITIONS_ISO=$(subst /,\,$(PATH_MULTIARCH_GUEST_ADDITIONS_ISO))' \
+		-E 'VPOX_PATH_WIN_INST_SRC=$(subst /,\,$(VPOX_PATH_WIN_INST_SRC))' \
+		-E 'VPOX_BRAND_WIN_INST_DLGJPG=$(subst /,\,$(VPOX_BRAND_WIN_INST_DLGJPG))' \
+		-E 'VPOX_ADD_LANGUAGES=$(VPOX_INSTALLER_ADD_LANGUAGES)' \
+		-E 'VPOX_BRAND_LICENSE_RTF=$(subst /,\,$(VPOX_BRAND_LICENSE_RTF))' \
+		$(foreach lang,$(VPOX_INSTALLER_LANGUAGES), \
+			-E 'VPOX_BRAND_$(lang)_LICENSE_RTF=$(subst /,\,$(VPOX_BRAND_$(subst en_US_,,$(lang)_)LICENSE_RTF))') \
+		-E 'VPOX_BUILD_NR_FOR_INST=$(VPOX_VERSION_BUILD)' \
+		-E 'VPOX_VENDOR=$(VPOX_VENDOR)' \
+		-E 'VPOX_VENDOR_SHORT=$(VPOX_VENDOR_SHORT)' \
+		-E 'VPOX_PRODUCT=$(VPOX_PRODUCT)' \
+		-E 'VPOX_C_YEAR=$(VPOX_C_YEAR)' \
+		-E 'VPOX_VERSION_STRING=$(VPOX_VERSION_STRING)' \
+		-E 'VPOX_VERSION_STRING_RAW=$(VPOX_VERSION_STRING_RAW)' \
+		-E 'VPOX_VERSION_MAJOR_INST=$(VPOX_VERSION_MAJOR)' \
+		-E 'VPOX_VERSION_MINOR_INST=$(VPOX_VERSION_MINOR)' \
+		-E 'VPOX_SIGNING_MODE=$(strip $(if $(VPOX_SIGNING_MODE),$(VPOX_SIGNING_MODE),none))' \
+		-E 'VPOX_CAB_COMPRESSION_LEVEL=$(VPOX_CAB_COMPRESSION_LEVEL)' \
+		-E 'VPOX_CAB_COMPRESSION_LEVEL_COMMON=$(VPOX_CAB_COMPRESSION_LEVEL)' \
+		-E 'VPOX_GUI_USE_QGL=$(if $(VPOX_GUI_USE_QGL),yes,no)' \
+		-E 'VPOX_MIDL_PROXY_CLSID=$(VPOX_MIDL_PROXY_CLSID)' \
+		-E 'VPOX_WINDOWS_ICON_FILE=$(subst /,\,$(VPOX_WINDOWS_ICON_FILE))' \
+		-E 'VPOX_QT_INFIX=$(VPOX_QT_INFIX)' \
+		-E 'VPOX_WITH_32_ON_64_MAIN_API=$(if $(VPOX_WITH_32_ON_64_MAIN_API),yes,no)' \
+		-E 'VPOX_WITH_ADDITIONS_PACKING=$(if $(VPOX_WITH_ADDITIONS_PACKING),yes,no)' \
+		-E 'VPOX_WITH_COMBINED_PACKAGE=$(if-expr defined(VPOX_WITH_COMBINED_PACKAGE),yes,no)' \
+		-E 'VPOX_WITH_DEBUGGER_GUI=$(if-expr defined(VPOX_WITH_DEBUGGER_GUI) && defined(VPOX_WITH_QTGUI),yes,no)' \
+		-E 'VPOX_WITH_DOCS_PACKING=$(if $(VPOX_WITH_DOCS_PACKING),yes,no)' \
+		-E 'VPOX_WITH_DRAG_AND_DROP=$(if $(VPOX_WITH_DRAG_AND_DROP),yes,no)' \
+		-E 'VPOX_WITH_DTRACE=$(if $(VPOX_WITH_DTRACE),yes,no)' \
+		-E 'VPOX_WITH_EFIFW_PACKING=$(if $(VPOX_WITH_EFIFW_PACKING),yes,no)' \
+		-E 'VPOX_WITH_EXTPACK=$(if $(VPOX_WITH_EXTPACK),yes,no)' \
+		-E 'VPOX_WITH_GUEST_CONTROL=$(if $(VPOX_WITH_GUEST_CONTROL),yes,no)' \
+		-E 'VPOX_WITH_GUEST_PROPS=$(if $(VPOX_WITH_GUEST_PROPS),yes,no)' \
+		-E 'VPOX_WITH_HARDENING=$(if $(VPOX_WITH_HARDENING),yes,no)' \
+		-E 'VPOX_WITH_LICENSE_DISPLAY=$(if $(VPOX_WITH_LICENSE_DISPLAY),yes,no)' \
+		-E 'VPOX_WITH_MIDL_PROXY_STUB=$(if $(VPOX_WITH_MIDL_PROXY_STUB),yes,no)' \
+		-E 'VPOX_WITH_MSM_INSTALL=$(if-expr defined(VPOX_WITH_MSM_INSTALL),yes,no)' \
+		-E 'VPOX_WITH_NETADP=$(if $(VPOX_WITH_NETADP),yes,no)' \
+		-E 'VPOX_WITH_NETFLT=$(if $(VPOX_WITH_NETFLT),yes,no)' \
+		-E 'VPOX_WITH_PYTHON=$(if $(VPOX_WITH_PYTHON),yes,no)' \
+		-E 'VPOX_WITH_QTGUI=$(if $(VPOX_WITH_QTGUI),yes,no)' \
+		-E 'VPOX_WITH_RAW_MODE=$(if $(VPOX_WITH_RAW_MODE),yes,no)' \
+		-E 'VPOX_WITH_SECURELABEL=$(if $(VPOX_WITH_SECURELABEL),yes,no)' \
+		-E 'VPOX_WITH_SERIALNUMBER_INSTALL=$(if $(VPOX_WITH_SERIALNUMBER_INSTALL),yes,no)' \
+		-E 'VPOX_WITH_VIDEOHWACCEL=$(if $(VPOX_WITH_VIDEOHWACCEL),yes,no)' \
+		-E 'VPOX_WITH_VRDP=$(if-expr defined(VPOX_WITH_VRDP) && !defined(VPOX_WITH_EXTPACK_PUEL),yes,no)' \
+		-E 'VPOX_WITH_WEBSERVICES=$(if $(VPOX_WITH_WEBSERVICES),yes,no)' \
+		-E 'VPOX_WITH_SDS=$(if $(VPOX_WITH_SDS),yes,no)' \
+		-E 'VPOX_WITH_UNATTENDED=$(if $(VPOX_WITH_UNATTENDED),yes,no)' \
+		-E 'VPOX_WITH_VPOX_IMG=$(if $(VPOX_WITH_VPOX_IMG),yes,no)' \
+		-E 'VPOX_WITH_VPOXSDL=$(if $(VPOX_WITH_VPOXSDL),yes,no)' \
+		-E 'BUILD_TYPE=$(KBUILD_TYPE)' \
+		-E 'BUILD_TARGET_ARCH=$(KBUILD_TARGET_ARCH)' \
+		-E 'VPOX_INSTALLER_QUICK=$(VPOX_INSTALLER_QUICK)' \
+		-E 'VPOX_VCC_TOOL_STEM=$(VPOX_VCC_TOOL_STEM)' \
+		-- \
+		$(VPOX_PATH_WIX)/candle.exe $(filter-out $(VPOX_VERSION_STAMP),$$<) \
+			-ext $(VPOX_PATH_WIX)/WixUIExtension.dll \
+			-ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll \
+			-ext $(VPOX_PATH_WIX)/WixUtilExtension.dll \
+			-p$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wix
+	$(VPOX_PATH_WIX)/candle.exe $(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wix \
+		-ext $(VPOX_PATH_WIX)/WixUIExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixUtilExtension.dll \
+		-out $$@
+ ifeq ($(lang),en_US)
+# Copy preprocessed wix and change source paths to be relative.  Stuff not in ../bin needs copying.
+	$(SED)	-e 's,$(subst /,\\,$(PATH_OUT))\\bin,..\\bin,g' \
+		-e 's,$(subst /,\\,$(PATH_OUT_BASE))\\win.amd64\\$(KBUILD_TYPE)\\bin,..\\..\\..\\win.amd64\\$(KBUILD_TYPE)\\bin,g' \
+		-e 's,$(subst /,\\,$(PATH_OUT_BASE))\\win.x86\\$(KBUILD_TYPE)\\bin,..\\..\\..\\win.x86\\$(KBUILD_TYPE)\\bin,g' \
+		-e 's,$(subst /,\\,$(PATH_ROOT))\\doc\\,files-VPoxMerge$(module)_$(lang)\\,g' \
+		-e 's,$(subst /,\\,$(VPOX_PATH_WIN_INST_SRC))\\Binary\\,files-VPoxMerge$(module)_$(lang)\\,g' \
+		-e 's,$(subst /,\\,$(dir $(VPOX_WINDOWS_ICON_FILE))),files-VPoxMerge$(module)_$(lang)\\,g' \
+		-e 's,$(subst /,\\,$(VPOX_PATH_WIN_INST_SRC))\\,,g' \
+		--output "$(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).wix" \
+		"$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wix"
+	$(SED)	-n \
+		-e '/<\?ln /d' \
+		-e '/$(subst /,\\,$(PATH_ROOT))/p' \
+		-e '/$(subst /,\\,$(PATH_ROOT))/q2' \
+		"$(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).wix"
+	$(SED)	-n \
+		-e '/<\?ln /d' \
+		-e 's/\\/\//g' \
+		-e 's,^.*"\($(PATH_ROOT)/doc/[^"]*\)".*$$(DOLLAR),\1,p' \
+		-e 's,^.*"\($(VPOX_PATH_WIN_INST_SRC)/Binary/[^"]*\)".*$$(DOLLAR),\1,p' \
+		-e 's,^.*"\($(dir $(VPOX_WINDOWS_ICON_FILE))[^"]*\)".*$$(DOLLAR),\1,p' \
+		--output "$(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).files" \
+		"$(VPOX_WIN_INST_OUT_DIR)/VPoxMerge$(module)_$(lang).wix"
+	$(MKDIR) -p -- "$(VPOX_WIN_INST_REPACK_DIR)/files-VPoxMerge$(module)_$(lang)/"
+	set -xe && for file in  `$(CAT_EXT) "$(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).files"`; \
+		do $(CP_EXT) -f -- "$$(DOLLAR){file}" "$(VPOX_WIN_INST_REPACK_DIR)/files-VPoxMerge$(module)_$(lang)/"; done
+# Create repack script for this step.
+	$(APPEND) -tn "$(VPOX_WIN_INST_REPACK_DIR)/1-compile-VPoxMerge$(module)_$(lang).cmd" \
+       	'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b1)' \
+		$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%,\
+		'$(VPOX_PATH_WIX)/candle.exe VPoxMerge$(module)_$(lang).wix ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixUIExtension.dll ^'\
+		'  -ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll ^' \
+		'  -ext $(VPOX_PATH_WIX)/WixUtilExtension.dll ^' \
+		'  -out $$(@F) || exit /b1' \
+               ) \
+               '@echo Created: $$(@F)'
+ endif
+# Generate wxi dependencies based on the sourceLineNumber references in the output.  Add repack file list for cleanup.
+	$(QUIET)$(APPEND) -t '$$@.dep' '$$@: \'
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOX_PATH_WIN_INST_SRC)/dep.xsl "$$@" >> "$$@.dep"
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOX_PATH_WIN_INST_SRC)/dep2.xsl "$$@" | sort  | $(SED) '$!N; /^\(.*\)\n\1$$$$/!P; D' >> "$$@.dep"
+	$(QUIET)$(APPEND) -n '$$@.dep' '' ''
+ ifeq ($(lang),en_US)
+	$(QUIET)$(APPEND) -n '$$@.dep' 'define VPOX_REPACK_FILES_VPoxMerge$(module)_$(lang)'
+	$(QUIET)$(CAT_EXT) "$(VPOX_WIN_INST_REPACK_DIR)/VPoxMerge$(module)_$(lang).files" >> '$$@.dep'
+	$(QUIET)$(APPEND) -n '$$@.dep' '' 'endef'
+ endif
+
+$(eval OTHER_CLEAN += $(VPOX_REPACK_FILES_VPoxMerge$(module)_$(lang)))
+endef
+
+$(foreach module,$(VPOX_INSTALLER_MERGE_MODULES), \
+	$(foreach lang,$(VPOX_INSTALLER_MERGE_LANGUAGES), \
+		$(eval $(def_vpox_compile_msm))))
+
+#
+# VirtualPox Type Library definition.
+#
+$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib.wxi: \
+		$(PATH_SUB_CURRENT)/$(if-expr defined(VPOX_WITH_MIDL_PROXY_STUB),VirtualPox_TypeLibWithInterfaces.xsl,VirtualPox_TypeLib.xsl) \
+		$(VPOX_XIDL_FILE) \
+		$(MAKEFILE) \
+		| $$(dir $$@)
+	$(VPOX_XSLTPROC) \
+		$(if-expr defined(VPOX_WITH_MIDL_PROXY_STUB),--stringparam "a_sProxyStubClsid" "$(VPOX_MIDL_PROXY_CLSID)",) \
+		$(if-expr defined(VPOX_WITH_SDS),--stringparam "a_sWithSDS" "yes",) \
+		-o $@ $< $(VPOX_XIDL_FILE)
+
+$(VPOX_WIN_INST_OUT_DIR)/VirtualPox_TypeLib_x86.wxi: \
+		$(PATH_SUB_CURRENT)/$(if-expr defined(VPOX_WITH_MIDL_PROXY_STUB),VirtualPox_TypeLibWithInterfaces.xsl,VirtualPox_TypeLib.xsl) \
+		$(VPOX_XIDL_FILE) \
+		| $$(dir $$@)
+	$(VPOX_XSLTPROC) --stringparam "a_sTarget" "VPoxClient-x86" \
+		$(if-expr defined(VPOX_WITH_MIDL_PROXY_STUB),--stringparam "a_sProxyStubClsid" "$(VPOX_MIDL_PROXY_CLSID)",) \
+		$(if-expr defined(VPOX_WITH_SDS),--stringparam "a_sWithSDS" "yes",) \
+ 		-o $@ $< $(VPOX_XIDL_FILE)
+
+#
+# Construct the list of GUI translations.
+# ('-t' -- truncate file; '-n' -- new line between arguments)
+#
+include $(PATH_ROOT)/src/VPox/Frontends/VirtualPox/nls/ApprovedLanguages.kmk
+$(call KB_FN_AUTO_CMD_DEPS,$(VPOX_WIN_INST_OUT_DIR)/VPoxGuiNLS.wxi)
+$(VPOX_WIN_INST_OUT_DIR)/VPoxGuiNLS.wxi: $(PATH_ROOT)/src/VPox/Frontends/VirtualPox/nls/ApprovedLanguages.kmk | $$(dir $$@)
+	$(APPEND) -t $@ '<?xml version="1.0" ?>'
+	$(APPEND) $@ '<Include>'
+	$(APPEND) -n $@ $(foreach lang,$(VPOX_APPROVED_GUI_LANGUAGES), \
+	             '  <File Id="nlsqt${lang}"  Name="qt_${lang}.qm"         DiskId="$(VPOX_INSTALLER_COMMON_DISKID)" Vital="yes" Source="$$(env.PATH_OUT)\bin\nls\qt_${lang}.qm"         />' \
+	             '  <File Id="nlsgui${lang}" Name="VirtualPox_${lang}.qm" DiskId="$(VPOX_INSTALLER_COMMON_DISKID)" Vital="yes" Source="$$(env.PATH_OUT)\bin\nls\VirtualPox_${lang}.qm" />')
+	$(APPEND) $@ '</Include>'
+
+#
+# Edit the version stored in the registry.
+#
+$(call KB_FN_AUTO_CMD_DEPS,$(VPOX_WIN_INST_OUT_DIR)/VPoxKey.wxi)
+$(VPOX_WIN_INST_OUT_DIR)/VPoxKey.wxi: $(PATH_SUB_CURRENT)/VPoxKey.wxi $(VPOX_VERSION_STAMP) | $$(dir $$@)
+	$(SED)	-e 's/%VER%/$(VPOX_VERSION_STRING_RAW)/' \
+		-e 's/%VER_EXT%/$(VPOX_VERSION_STRING)/' \
+		--output $@ $<
+
+#
+# Generate the list of unattended template script files.
+#
+$(call KB_FN_AUTO_CMD_DEPS,$(VPOX_WIN_INST_OUT_DIR)/VPoxUnattendedTemplateComponent.wxi)
+$(VPOX_WIN_INST_OUT_DIR)/VPoxUnattendedTemplateComponent.wxi: | $$(dir $$@)
+	$(APPEND) -t -n $@ \
+		'<?xml version="1.0" ?>' \
+		'<Include>'
+ifdef VPOX_UNATTENDED_TEMPLATES
+	$(APPEND) -n $@ \
+		'  <Directory Id="dir_VPoxUnattendedTemplates" Name="UnattendedTemplates">' \
+		'    <Component Id="cp_UnattendedTemplates" Guid="0571550d-aaa5-4723-c17b-5ddcc29f5686" Win64="$$(var.Property_Win64)">' \
+		$(foreach file,$(VPOX_UNATTENDED_TEMPLATES), \
+		'      <File Id="$(file)" Name="$(file)" Source="$$(env.PATH_OUT)\bin\UnattendedTemplates\$(file)" />') \
+		'    </Component>' \
+		'  </Directory>'
+endif
+	$(APPEND) $@ '</Include>'
+
+
+#
+# Build the multi-language version of the .MSI installer (final installer).
+#
+# This is done by creating binary .MST diffs of all the language-specific installers
+# against the en_US one, and then merging the diffs into the en_US one using tools
+# from the MS Installer SDK.
+#
+define def_vpox_create_mst
+$(VPOX_WIN_INST_OUT_DIR)/$(lang)/$(lang).mst \
++ $(VPOX_WIN_INST_REPACK_DIR)/$(lang).mst: \
+		$(VPOX_WIN_INST_OUT_DIR)/en_US/$(PACKAGE_NAME_LANG)_en_US.msi \
+		$(VPOX_WIN_INST_OUT_DIR)/$(lang)/VirtualPox_$(lang).wixobj \
+		$(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl \
+		$(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl \
+		$(PATH_STAGE_BIN)/VPoxInstallHelper.dll \
+		$(VPOX_SVN_REV_KMK) \
+		$(VPOX_WIN_INST_MAKEFILE_DEP) \
+		$(if-expr defined(VPOX_WITH_MSI_HACK),$(MsiHack_0_OUTDIR)/MsiHack.dll,) \
+		$(if-expr defined(VPOX_WITH_MSI_HACK),$(MsiHack_0_OUTDIR)/MsiHackExtension.dll,) \
+		| $$$$(dir $$$$@) $(VPOX_WIN_INST_REPACK_DIR)/
+	$(call MSG_L1,Creating language diff for $(lang))
+	kmk_time $(VPOX_PATH_WIX)/light.exe -v -nologo \
+		-loc $(VPOX_WIN_INST_OUT_DIR)/NLS/Language_$(lang).wxl \
+		-loc $(VPOX_WIN_INST_OUT_DIR)/NLS/License_$(lang).wxl \
+		-ext $(VPOX_PATH_WIX)/WixUIExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixDifxAppExtension.dll \
+		-ext $(VPOX_PATH_WIX)/WixUtilExtension.dll \
+               $(if-expr defined(VPOX_WITH_MSI_HACK),-ext $(MsiHack_0_OUTDIR)/MsiHackExtension.dll,) \
+		$(VPOX_MSI_ICE_IGNORE) \
+		-out $$(@D)/$(PACKAGE_NAME_LANG)_$(lang).msi \
+		$$(@D)/VirtualPox_$(lang).wixobj \
+		$(VPOX_PATH_WIX)/difxapp_$(if-expr "$(KBUILD_TARGET_ARCH)" == "x86",x86,x64).wixlib
+	$(REDIRECT) -C $$(@D) -- $(VPOX_PATH_MSITRAN) -g $$< $(PACKAGE_NAME_LANG)_$(lang).msi $(lang).mst
+	$(CP) -f -- "$(VPOX_WIN_INST_OUT_DIR)/$(lang)/$(lang).mst" "$(VPOX_WIN_INST_REPACK_DIR)/$(lang).mst"
+	$(RM) -f -- $$(@D)/$(PACKAGE_NAME_LANG)_$(lang).msi \
+		$$(@D)/$(PACKAGE_NAME_LANG)_$(lang).wixpdb \
+		$$(@D)/common.cab
+
+endef
+
+$(foreach lang,$(filter-out en_US, $(VPOX_INSTALLER_LANGUAGES)), \
+	$(eval local lang_id := $(VPOX_BRAND_$(lang)_LANG_ID)) \
+	$(eval $(def_vpox_create_mst)))
+
+
+# Create WISUMINFO argument.
+VPOX_INS_PROD_ARCH.amd64 = x64
+VPOX_INS_PROD_ARCH.x86   = Intel
+VPOX_INS_PROD_ARCH := $(VPOX_INS_PROD_ARCH.$(KBUILD_TARGET_ARCH))
+$(if $(VPOX_INS_PROD_ARCH),,$(error VPOX_INS_PROD_ARCH is empty!))
+VPOX_INS_PROD_LANG := 7="$(VPOX_INS_PROD_ARCH);1033
+$(foreach lang, $(filter-out en_US,$(VPOX_INSTALLER_LANGUAGES))\
+	, $(eval VPOX_INS_PROD_LANG := $(VPOX_INS_PROD_LANG)$(COMMA)$(VPOX_BRAND_$(lang)_LANG_ID)))
+VPOX_INS_PROD_LANG := $(VPOX_INS_PROD_LANG)"
+
+# The multilingual installer rule.
+$(VPOX_WIN_INST_OUT_DIR)/$(PACKAGE_NAME_LANG).msi \
++ $(VPOX_WIN_INST_REPACK_DIR)/3-multilingual-$(PACKAGE_NAME_LANG).cmd: \
+		$(VPOX_WIN_INST_OUT_DIR)/en_US/$(PACKAGE_NAME_LANG)_en_US.msi \
+		$(foreach lang,$(filter-out en_US,$(VPOX_INSTALLER_LANGUAGES)),$(VPOX_WIN_INST_OUT_DIR)/$(lang)/$(lang).mst)
+	$(call MSG_L1,Creating final multilingual MSI)
+	$(QUIET)$(RM) -f -- \
+		$(wildcard $(@D)/$(PACKAGE_BASE)-r*.msi $(VPOX_WIN_INST_REPACK_DIR)/3-multilingual-$(PACKAGE_BASE)-r*.cmd )
+	$(CP) -f -- "$<" "$@"
+
+	$(foreach lang,$(filter-out en_US,$(VPOX_INSTALLER_LANGUAGES)), \
+		$(NLTAB)$(REDIRECT) -C $(@D)/$(lang) -- $(VPOX_PATH_MSIDB) -d $@ -r $(lang).mst \
+		$(NLTAB)$(REDIRECT) -C $(@D)/$(lang) -- cscript.exe /nologo $(VPOX_PATH_WISUBSTG) $@ $(lang).mst $(VPOX_BRAND_$(lang)_LANG_ID) )
+
+	$(REDIRECT) -C $(@D) -- cscript.exe /nologo $(VPOX_PATH_WISUBSTG) $(@F)
+	$(REDIRECT) -C $(@D) -- cscript.exe /nologo $(VPOX_PATH_WISUMINFO) $@ $(VPOX_INS_PROD_LANG)
+	$(call VPOX_SIGN_FILE_FN,$@,$(VPOX_PRODUCT) $(VPOX_VERSION_STRING)r$(VPOX_SVN_REV) ($(KBUILD_TARGET_ARCH)),,,disable-dual-signing)
+
+# Create repack script for this step.
+	$(APPEND) -nt "$(VPOX_WIN_INST_REPACK_DIR)/3-multilingual-$(PACKAGE_NAME_LANG).cmd" \
+		'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b1)' \
+		'if ".%KBUILD_BIN_PATH%" == "." (echo KBUILD_BIN_PATH is not set & exit /b1)' \
+		'copy /y  "$(<F)" "$(@F)" || exit /b1' \
+		$(subst $(KBUILD_BIN_PATH),%KBUILD_BIN_PATH%,$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%,\
+		$(foreach lang,$(filter-out en_US,$(VPOX_INSTALLER_LANGUAGES)), \
+			'$(VPOX_PATH_MSIDB) -d $(@F) -r $(lang).mst || exit /b1' \
+			'cscript.exe /nologo $(VPOX_PATH_WISUBSTG) $(@F) $(lang).mst $(VPOX_BRAND_$(lang)_LANG_ID) || exit /b1') \
+		'cscript.exe /nologo $(VPOX_PATH_WISUBSTG) $(@F) || exit /b1' \
+		'cscript.exe /nologo $(VPOX_PATH_WISUMINFO) $(@F) $(VPOX_INS_PROD_LANG) || exit /b1' \
+		'call sign-sha1.cmd $(@F) || exit /b1' \
+		) ) \
+        $(if-expr defined(VPOX_WITH_COMBINED_PACKAGE),'copy /y "$(@F)" "$(notdir $(PACKAGE_NAME_FINAL))" || exit /b1',) \
+		'@echo Created multilanguage MSI: $(notdir $(PACKAGE_NAME_FINAL))'
+
+# Copy multilingual installer to bin.
+$(PACKAGE_NAME_FINAL): $(VPOX_WIN_INST_OUT_DIR)/$(PACKAGE_NAME_LANG).msi | $$(dir $$@)
+	$(QUIET)$(RM) -f $(wildcard $(@D)/$(PACKAGE_BASE)-r*$(if-expr defined(VPOX_WITH_COMBINED_PACKAGE),_$(KBUILD_TARGET_ARCH),).msi)
+	$(INSTALL_STAGING) -- $< $@
+
+
+if defined(VPOX_WITH_COMBINED_PACKAGE) && "$(KBUILD_TARGET_ARCH)" == "x86"
+#
+# Make the multi-architecture installer by calling our stub builder
+# with both platform installers (x86 and amd64) + common cab. The common
+# cab only is needed when we don't use merge modules. We only
+# need to do this once; so do it on x86 only.
+#
+$(PATH_STAGE_BIN)/$(PACKAGE_NAME_MULTIARCH_FINAL) \
++ $(VPOX_WIN_INST_REPACK_DIR)/4-multiarch-$(PACKAGE_NAME_MULTIARCH_FINAL).cmd: \
+		$(PATH_MULTIARCH_TEMP)/$(PACKAGE_NAME_MULTIARCH.x86) \
+		$(PATH_MULTIARCH_TEMP)/$(PACKAGE_NAME_MULTIARCH.amd64) \
+		$(PATH_STAGE_BIN)/VPoxStub.exe \
+		$$(VPoxStubBld_1_TARGET)
+	$(call MSG_L1,Building Windows combined package)
+	$(QUIET)$(RM) -f -- $(wildcard $(subst r$(VPOX_SVN_REV),r*, \
+		$@ \
+		$(VPOX_WIN_INST_REPACK_DIR)/4-multiarch-$(PACKAGE_NAME_MULTIARCH_FINAL).cmd ) )
+	$(if-expr defined(VPOX_WITH_MSM_INSTALL),,$(call VPOX_SIGN_FILE_FN,$(PACKAGE_NAME_MULTIARCH_COMMONCAB)))
+	$(REDIRECT) -C $(@D) -- \
+		$(VPoxStubBld_1_TARGET) -out $@ \
+			-target-x86 $(PATH_MULTIARCH_TEMP)/$(PACKAGE_NAME_MULTIARCH.x86) \
+			-target-amd64 $(PATH_MULTIARCH_TEMP)/$(PACKAGE_NAME_MULTIARCH.amd64) \
+			$(if-expr defined(VPOX_WITH_MSM_INSTALL),,-target-all $(PACKAGE_NAME_MULTIARCH_COMMONCAB)) \
+			-stub $(PATH_STAGE_BIN)/VPoxStub.exe
+	$(VPOX_VCC_EDITBIN) /IntegrityCheck:NO $@
+	$(call VPOX_SIGN_FILE_FN,$@)
+# Create repack script for this step.
+	$(APPEND) -nt "$(VPOX_WIN_INST_REPACK_DIR)/4-multiarch-$(@F).cmd" \
+		'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b1)' \
+		'if ".%KBUILD_BIN_PATH%" == "." (echo KBUILD_BIN_PATH is not set & exit /b1)' \
+		$(subst $(KBUILD_BIN_PATH),%KBUILD_BIN_PATH%,$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%, \
+		$(if-expr defined(VPOX_WITH_MSM_INSTALL), \
+		,'call sign-dual.cmd ../../../win.amd64/$(KBUILD_TYPE)/repack/$(notdir $(PACKAGE_NAME_MULTIARCH_COMMONCAB)) || exit /b1') \
+		'..\bin\VPoxStubBld.exe ^' \
+		'  -out $(@F) ^' \
+		'  -target-x86 $(PACKAGE_NAME_MULTIARCH.x86) ^' \
+		'  -target-amd64 ../../../win.amd64/$(KBUILD_TYPE)/repack/$(PACKAGE_NAME_MULTIARCH.amd64) ^' \
+		$(if-expr defined(VPOX_WITH_MSM_INSTALL),\
+		,'  -target-all ../../../win.amd64/$(KBUILD_TYPE)/repack/$(notdir $(PACKAGE_NAME_MULTIARCH_COMMONCAB)) ^' ) \
+		'  -stub ../bin/VPoxStub.exe || exit /b1' \
+		'$(VPOX_VCC_EDITBIN) /IntegrityCheck:NO $(@F) || exit /b1' \
+		'call sign-dual.cmd $(@F) || exit /b1' \
+		) ) \
+		'@echo Created multiarch EXE: $(@F)'
+else
+#
+# We still do the installer stub thing even if we only ship 64-bit, because we've
+# gotten used to having it around to install the certificate and such.
+#
+$(PATH_STAGE_BIN)/$(PACKAGE_NAME_MULTIARCH_FINAL) \
++ $(VPOX_WIN_INST_REPACK_DIR)/4-multiarch-$(PACKAGE_NAME_MULTIARCH_FINAL).cmd: \
+		$(PACKAGE_NAME_FINAL) \
+		$(PATH_STAGE_BIN)/VPoxStub.exe \
+		$$(VPoxStubBld_1_TARGET)
+	$(call MSG_L1,Building Windows package w/ installer stub)
+	$(QUIET)$(RM) -f -- $(wildcard $(subst r$(VPOX_SVN_REV),r*, \
+		$@ \
+		$(VPOX_WIN_INST_REPACK_DIR)/4-multiarch-$(PACKAGE_NAME_MULTIARCH_FINAL).cmd ) )
+	$(REDIRECT) -C $(@D) -- \
+		$(VPoxStubBld_1_TARGET) -out $@ \
+			-target-$(KBUILD_TARGET_ARCH) $(PACKAGE_NAME_FINAL) \
+			-stub $(PATH_STAGE_BIN)/VPoxStub.exe
+	$(VPOX_VCC_EDITBIN) /IntegrityCheck:NO $@
+	$(call VPOX_SIGN_FILE_FN,$@)
+# Create repack script for this step.
+	$(APPEND) -nt "$(VPOX_WIN_INST_REPACK_DIR)/4-multiarch-$(@F).cmd" \
+		'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b1)' \
+		'if ".%KBUILD_BIN_PATH%" == "." (echo KBUILD_BIN_PATH is not set & exit /b1)' \
+		$(subst $(KBUILD_BIN_PATH),%KBUILD_BIN_PATH%,$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%, \
+		'..\bin\VPoxStubBld.exe ^' \
+		'  -out $(@F) ^' \
+		'  -target-$(KBUILD_TARGET_ARCH) $(notdir $(PACKAGE_NAME_FINAL)) ^' \
+		'  -stub ../bin/VPoxStub.exe || exit /b1' \
+		'$(VPOX_VCC_EDITBIN) /IntegrityCheck:NO $(@F) || exit /b1' \
+		'call sign-dual.cmd $(@F) || exit /b1' \
+		) ) \
+		'@echo Created multiarch EXE: $(@F)'
+endif
+
+#
+# Repackaging scripts and files.
+#
+INSTALLS += RePackScripts
+RePackScripts_TEMPLATE = DUMMY
+RePackScripts_INST = repack/
+RePackScripts_INSTTYPE = stage
+RePackScripts_SOURCES = \
+	Scripts/UnpackBlessedDrivers.cmd \
+	$(RePackScripts_0_OUTDIR)/PackDriversForSubmission.cmd \
+	$(RePackScripts_0_OUTDIR)/sign-dual.cmd \
+	$(RePackScripts_0_OUTDIR)/sign-sha1.cmd \
+	$(if-expr defined(VPOX_SIGN_EV_FILE_FN),$(RePackScripts_0_OUTDIR)/sign-ev.cmd,) \
+	$(RePackScripts_0_OUTDIR)/VMMR0.inf \
+	$(RePackScripts_0_OUTDIR)/VPoxExtPackPuel.inf
+if !defined(VPOX_WITH_COMBINED_PACKAGE) || "$(KBUILD_TARGET_ARCH)" == "x86"
+ RePackScripts_SOURCES += \
+ 	$(RePackScripts_0_OUTDIR)/RepackExtPack.cmd
+endif
+ifdef VPOX_WITH_COMBINED_PACKAGE
+ if "$(KBUILD_TARGET_ARCH)" == "x86"
+ RePackScripts_SOURCES += \
+ 	$(RePackScripts_0_OUTDIR)/Combined-1-Prepare.cmd \
+ 	$(RePackScripts_0_OUTDIR)/Combined-3-Repack.cmd \
+ 	$(RePackScripts_0_OUTDIR)/Combined-3-RepackAdditions.cmd
+ endif
+else
+ RePackScripts_SOURCES += \
+ 	$(RePackScripts_0_OUTDIR)/Single-1-Prepare.cmd \
+ 	$(RePackScripts_0_OUTDIR)/Single-3-Repack.cmd
+
+ifndef VPOX_OSE
+ RePackScripts_SOURCES += \
+ 	$(RePackScripts_0_OUTDIR)/Single-0-All.cmd \
+	Scripts/sign-attestation.sh
+endif
+
+endif
+RePackScripts_CLEAN = \
+	$(RePackScripts_0_OUTDIR)/PackDriversForSubmission.cmd \
+	$(RePackScripts_0_OUTDIR)/sign-dual.cmd \
+	$(RePackScripts_0_OUTDIR)/sign-sha1.cmd \
+	$(RePackScripts_0_OUTDIR)/sign-ev.cmd \
+	$(RePackScripts_0_OUTDIR)/VMMR0.inf \
+	$(RePackScripts_0_OUTDIR)/VPoxExtPackPuel.inf
+
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScripts,Scripts/PackDriversForSubmission.cmd,PackDriversForSubmission.cmd)
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScripts,Scripts/RepackExtPack.cmd,RepackExtPack.cmd)
+ifdef VPOX_WITH_COMBINED_PACKAGE
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScripts,Scripts/Combined-1-Prepare.cmd,Combined-1-Prepare.cmd)
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScripts,Scripts/Combined-3-Repack.cmd,Combined-3-Repack.cmd)
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScripts,Scripts/Combined-3-RepackAdditions.cmd,Combined-3-RepackAdditions.cmd)
+else
+ifndef VPOX_OSE
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScripts,Scripts/Single-0-All.cmd,Single-0-All.cmd)
+endif
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScripts,Scripts/Single-1-Prepare.cmd,Single-1-Prepare.cmd)
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScripts,Scripts/Single-3-Repack.cmd,Single-3-Repack.cmd)
+endif
+
+$$(RePackScripts_0_OUTDIR)/sign-dual.cmd: | $$(dir $$@)
+	$(APPEND) -nt "$@" \
+		'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b 1)' \
+		'if ".%KBUILD_BIN_PATH%" == "." (echo KBUILD_BIN_PATH is not set & exit /b 1)' \
+		'if ".%1" == "." (echo No .cat file specified & exit /b 1)' \
+		$(subst $(KBUILD_BIN_PATH),%KBUILD_BIN_PATH%,$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%, \
+		'( $(call VPOX_SIGN_FILE_FN,%1,$(VPOX_PRODUCT) $(VPOX_VERSION_STRING)r$(VPOX_SVN_REV) ($(KBUILD_TARGET_ARCH)),,,,&&) ) || exit /b1' \
+		) )
+
+$$(RePackScripts_0_OUTDIR)/sign-sha1.cmd: | $$(dir $$@)
+	$(APPEND) -nt "$@" \
+		'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b 1)' \
+		'if ".%KBUILD_BIN_PATH%" == "." (echo KBUILD_BIN_PATH is not set & exit /b 1)' \
+		'if ".%1" == "." (echo No .cat file specified & exit /b 1)' \
+		$(subst $(KBUILD_BIN_PATH),%KBUILD_BIN_PATH%,$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%, \
+		'( $(call VPOX_SIGN_FILE_FN,%1,$(VPOX_PRODUCT) $(VPOX_VERSION_STRING)r$(VPOX_SVN_REV) ($(KBUILD_TARGET_ARCH)),,,disable-dual-signing,&&) ) || exit /b1' \
+		) )
+
+# The %~dp1\ oddity is working around otherwise ending with \" during
+# expansion of the CCS command line which for a reason I cannot immediately
+# understand appends a " to the path.
+$$(RePackScripts_0_OUTDIR)/sign-ev.cmd: | $$(dir $$@)
+	$(APPEND) -nt "$@" \
+		'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b 1)' \
+		'if ".%KBUILD_BIN_PATH%" == "." (echo KBUILD_BIN_PATH is not set & exit /b 1)' \
+		'if ".%1" == "." (echo No .cab file specified & exit /b 1)' \
+		$(subst $(KBUILD_BIN_PATH),%KBUILD_BIN_PATH%,$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%, \
+		'( $(call VPOX_SIGN_EV_FILE_FN,%1,%~dp1\) ) || exit /b1' \
+		) )
+
+$$(RePackScripts_0_OUTDIR)/VMMR0.inf: $(PATH_SUB_CURRENT)/Scripts/VMMR0.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,RePackScripts,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+$$(RePackScripts_0_OUTDIR)/VPoxExtPackPuel.inf: $(PATH_SUB_CURRENT)/Scripts/VPoxExtPackPuel.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,RePackScripts,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+
+include $(FILE_KBUILD_SUB_FOOTER)

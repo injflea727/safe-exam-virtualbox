@@ -1,0 +1,57 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Guest Control Host Service.
+#
+
+#
+# Copyright (C) 2011-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include sub-makefile(s).
+# include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+
+#
+# The drag and drop service DLL.
+#
+DLLS += VPoxDragAndDropSvc
+VPoxDragAndDropSvc_TEMPLATE  = VPOXR3
+VPoxDragAndDropSvc_NAME.os2  = VPoxDnD
+VPoxDragAndDropSvc_DEFS      = \
+	VPOX_WITH_HGCM \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH,)
+VPoxDragAndDropSvc_INCS      = $(PATH_ROOT)/src/VPox/Main/include ./
+VPoxDragAndDropSvc_INCS.win  = \
+	$(VPOX_PATH_SDK)
+
+VPoxDragAndDropSvc_SOURCES = \
+	VPoxDragAndDropSvc.cpp \
+	dndmanager.cpp
+
+VPoxDragAndDropSvc_SOURCES += \
+    ../common/client.cpp \
+    ../common/message.cpp
+
+VPoxDragAndDropSvc_SOURCES.win = \
+	VPoxDragAndDropSvc.rc
+
+VPoxDragAndDropSvc_LIBS = \
+	$(LIB_VMM) \
+	$(LIB_RUNTIME) \
+	$(LIB_REM) \
+	$(PATH_STAGE_LIB)/VPoxDnDHostR3Lib$(VPOX_SUFF_LIB)
+
+VPoxDragAndDropSvc_LDFLAGS.darwin = \
+	-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxDragAndDropSvc.dylib
+
+include $(FILE_KBUILD_SUB_FOOTER)

@@ -1,0 +1,14 @@
+'VirtualPox_title' = '@VPOX_PRODUCT@';
+
+'choiceVPoxKEXTs_title' = 'Kernel Extensions';
+'choiceVPoxKEXTs_msg' = 'Installs the @VPOX_PRODUCT@ Guest Additions Kernel Extensions into /Library/Extensions.';
+
+'choiceVPoxToolsAndServices_title' = 'Tools and Services';
+'choiceVPoxToolsAndServices_msg' = 'Installs the @VPOX_PRODUCT@ Guest Additions Tools and Services to /Library/Application Support/VirtualPox Guest Additions.';
+
+'UNSUPPORTED_AMD64_OS_TLE' = "Incompatible OS version detected!";
+'UNSUPPORTED_AMD64_OS_MSG' = "VirtualPox Guest Additions require Mac OS X 10.7 or later running in 64-bit mode.";
+
+'UNSUPPORTED_X86_OS_TLE' = "Incompatible OS version detected!";
+'UNSUPPORTED_X86_OS_MSG' = "The 32-bit VirtualPox Guest Additions are only for Mac OS X 10.7 and earlier running in 32-bit mode.";
+

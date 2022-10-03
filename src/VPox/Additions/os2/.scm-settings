@@ -1,0 +1,43 @@
+# $Id: .scm-settings $
+## @file
+# Source code massager settings for the OS/2 guest additions.
+#
+
+#
+# Copyright (C) 2010-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+
+--filter-out-files "*.dll|*.sys|makefile|endlib.mak"
+--filter-out-files /Bin/readme.txt
+
+/VPoxSF/*:        --external-copyright
+
+/VPoxGradd/*.c:   --external-copyright
+/VPoxGradd/*.asm: --external-copyright --no-convert-tabs
+/VPoxGradd/*.inc: --external-copyright --no-convert-tabs
+/VPoxGradd/*.h:   --external-copyright --no-fix-header-guards
+/VPoxGradd/vpoxioctl.c: --no-external-copyright
+/VPoxGradd/vpoxioctl.h: --no-external-copyright
+
+/VPoxGrext/*.c:   --external-copyright
+/VPoxGrext/*.h:   --external-copyright --no-fix-header-guards
+/VPoxGrext/*.def: --external-copyright
+
+/VPoxMouse/*.c:   --external-copyright --no-convert-tabs
+/VPoxMouse/*.asm: --external-copyright --no-convert-tabs
+/VPoxMouse/*.inc: --external-copyright --no-convert-tabs
+/VPoxMouse/*.h:   --external-copyright --no-convert-tabs --no-fix-header-guards
+/VPoxMouse/crtstuff.c:       --no-external-copyright --convert-tabs
+/VPoxMouse/VPoxMouse.c:      --no-external-copyright --convert-tabs
+/VPoxMouse/VPoxMouse.h:      --no-external-copyright --convert-tabs
+/VPoxMouse/VPoxMouseDebug.c: --no-external-copyright --convert-tabs
+

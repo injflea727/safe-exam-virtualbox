@@ -1,0 +1,101 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for VPox LightDM greeter for providing automated logons.
+#
+
+#
+# Copyright (C) 2012-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifndef VPOX_LIGHTDM_GREETER_CONFIG_KMK_INCLUDED
+ include $(PATH_SUB_CURRENT)/Config.kmk
+endif
+
+ifndef VPOX_OSE
+ include $(PATH_SUB_CURRENT)/liblightdm-gobject-1.5.0/Makefile.kmk
+endif
+
+# Enable building with FLTK UI + PNG support.
+VPOX_WITH_FLTK := 1
+VPOX_GREETER_WITH_PNG_SUPPORT := 1
+
+# The greeter module.
+PROGRAMS += vpox-greeter
+vpox-greeter_TEMPLATE = VPOXGUESTR3EXE
+vpox-greeter_SDKS     = VPoxGlib20WithIo
+vpox-greeter_DEFS     = LOG_TO_BACKDOOR VPOX_WITH_HGCM
+vpox-greeter_DEFS    += \
+	VPOX_BUILD_TARGET=\"$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)\"
+vpox-greeter_DEFS    += \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS,) \
+	$(if $(VPOX_GREETER_WITH_PNG_SUPPORT),VPOX_GREETER_WITH_PNG_SUPPORT,)
+ifdef VPOX_WITH_FLTK
+ vpox-greeter_DEFS   += \
+ 	VPOX_WITH_FLTK
+else
+ vpox-greeter_DEFS   += \
+ 	GTK_DISABLE_SINGLE_INCLUDES \
+ 	GDK_DISABLE_DEPRECATED
+endif
+vpox-greeter_CFLAGS  := $(if $(VPOX_OSE),%(filter-out -I%,$(shell pkg-config --cflags liblightdm-gobject-1)),)
+## @todo r=bird: Why are we cooking our own lightdm-gobject-1 but using system headers?
+##               That sounds like a very risky business to me.  I've added  liblightdm-gobject-1.5.0
+##               to the INCS, however lightdm.h is missing and will be taken from the system.
+vpox-greeter_INCS := \
+	/usr/lib/i386-linux-gnu/glib-2.0/include \
+	/usr/lib/x86_64-linux-gnu/glib-2.0/include \
+	/usr/include/glib-2.0 \
+       $(if $(VPOX_OSE),,liblightdm-gobject-1.5.0) \
+	/usr/include/lightdm-gobject-1 \
+	$(if $(VPOX_OSE),$(patsubst -I%,%,%(filter -I%,$(shell pkg-config --cflags liblightdm-gobject-1))),)
+ifndef VPOX_WITH_FLTK
+ vpox-greeter_INCS   += \
+	/usr/include/glib-2.0 \
+	/usr/include/gtk-3.0 \
+	/usr/include/pango-1.0 \
+	/usr/include/cairo \
+	/usr/include/gdk-pixbuf-2.0 \
+	/usr/include/atk-1.0
+endif
+
+vpox-greeter_SOURCES  = \
+	vpox-greeter.cpp
+
+vpox-greeter_LIBS := \
+	$(if $(VPOX_OSE),lightdm-gobject-1,$(VPOX_PATH_ADDITIONS_LIB)/VPox-liblightdm-gobject$(VPOX_SUFF_LIB)) \
+	glib-2.0 \
+	gio-2.0 \
+	gobject-2.0 \
+	$(VPOX_LIB_IPRT_GUEST_R3_SHARED) \
+	$(VPOX_LIB_VBGL_R3_SHARED) \
+	$(VPOX_LIB_IPRT_GUEST_R3_SHARED)
+ifdef VPOX_WITH_FLTK
+ vpox-greeter_LIBS += fltk
+ ifdef VPOX_GREETER_WITH_PNG_SUPPORT
+  vpox-greeter_LIBS += fltk_images
+ endif
+ if $(HOSTNAME) == "3960x.dev" && $(USER) == "bird" # whatever.
+  vpox-greeter_LIBS += stdc++
+ endif
+else
+ vpox-greeter_LIBS += gtk-3
+endif
+
+vpox-greeter_LDFLAGS = $(if $(VPOX_OSE),$(shell pkg-config --libs liblightdm-gobject-1),)
+ifdef VPOX_WITH_FLTK
+ #vpox-greeter_LDFLAGS = -Wl,-Bsymbolic-functions -Wl,-z,relro /usr/lib/i386-linux-gnu/libfltk.a -lXext -lXft -lfontconfig -lfontconfig -lXinerama -ldl -lm -lX11
+ vpox-greeter_LDFLAGS += -s
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)

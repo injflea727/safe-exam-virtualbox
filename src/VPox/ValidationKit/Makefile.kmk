@@ -1,0 +1,308 @@
+# $Id: Makefile.kmk $
+## @file
+# VirtualPox Validation Kit.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Make sure our Config.kmk is included.
+ifndef VPOX_VALIDATIONKIT_CONFIG_KMK_INCLUDED
+ include $(PATH_SUB_CURRENT)/Config.kmk
+endif
+
+# Collect install targets
+VPOX_VALIDATIONKIT_INSTALLS := $(INSTALLS)
+
+#
+# Include sub-makefiles.
+#
+include $(PATH_SUB_CURRENT)/tests/Makefile.kmk
+ifneq ($(KBUILD_HOST),os2)	 # need yasm
+ include $(PATH_SUB_CURRENT)/bootsectors/Makefile.kmk
+endif
+include $(PATH_SUB_CURRENT)/utils/Makefile.kmk
+include $(PATH_SUB_CURRENT)/common/Makefile.kmk
+include $(PATH_SUB_CURRENT)/testboxscript/Makefile.kmk
+include $(PATH_SUB_CURRENT)/testdriver/Makefile.kmk
+include $(PATH_SUB_CURRENT)/testmanager/Makefile.kmk
+
+#
+# Globals.
+#
+
+# The current target is enabled by default.
+VPOX_WITH_VALIDATIONKIT_PACKING.$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH) = 1
+
+
+#
+# Install the test driver framework.
+#
+INSTALLS += ValidationKit-testdriver
+ValidationKit-testdriver_TEMPLATE = VPoxValidationKitR3
+ValidationKit-testdriver_INST = $(INST_VALIDATIONKIT)testdriver/
+ValidationKit-testdriver_MODE = a+r,u+w
+ValidationKit-testdriver_SOURCES := \
+	$(PATH_SUB_CURRENT)/testdriver/__init__.py \
+	$(PATH_SUB_CURRENT)/testdriver/base.py \
+	$(PATH_SUB_CURRENT)/testdriver/btresolver.py \
+	$(PATH_SUB_CURRENT)/testdriver/reporter.py \
+	$(PATH_SUB_CURRENT)/testdriver/testfileset.py \
+	$(PATH_SUB_CURRENT)/testdriver/tst-txsclient.py \
+	$(PATH_SUB_CURRENT)/testdriver/txsclient.py \
+	$(PATH_SUB_CURRENT)/testdriver/vpox.py \
+	$(PATH_SUB_CURRENT)/testdriver/vpoxcon.py \
+	$(PATH_SUB_CURRENT)/testdriver/vpoxtestfileset.py \
+	$(PATH_SUB_CURRENT)/testdriver/vpoxtestvms.py \
+	$(PATH_SUB_CURRENT)/testdriver/vpoxwrappers.py \
+	$(PATH_SUB_CURRENT)/testdriver/winbase.py \
+	$(PATH_SUB_CURRENT)/testdriver/win-vpox-net-uninstall.ps1
+ValidationKit-testdriver_EXEC_SOURCES := \
+	$(PATH_SUB_CURRENT)/testdriver/vpoxinstaller.py
+$(PATH_SUB_CURRENT)/testdriver/txsclient.py_VPOX_PYCHECKER_FLAGS = --no-reimport
+
+
+#
+# Packing target.
+#
+ifndef VPOX_WITHOUT_VALIDATIONKIT_ZIP
+
+ VPOX_VALIDATIONKIT_INSTALLS := $(filter-out $(VPOX_VALIDATIONKIT_INSTALLS), $(INSTALLS))
+
+ #
+ # VPoxValidationKit.zip.
+ # TODO: Don't pack the python stuff multiple times?  Lazy works for now.
+ #
+ PACKING += $(PATH_OUT)/VPoxValidationKit.zip
+ $(PATH_OUT)/VPoxValidationKit.zip: \
+ 		$(VPOX_PATH_VALIDATIONKIT)/VPoxValidationKit.iso \
+ 		$(VPOX_PATH_VALIDATIONKIT)/ \
+               $$(foreach inst, $$(VPOX_VALIDATIONKIT_INSTALLS), \
+			$$(filter $(PATH_STAGE)/$(INST_VALIDATIONKIT)%, $$($$(inst)_2_STAGE_TARGETS)))
+	$(call MSG_L1,Packing the Test Suite $@)
+	$(QUIET)$(RM) -f $@
+	$(foreach os, darwin freebsd linux os2 solaris win,$(foreach arch, x86 amd64 \
+	,$(if-expr defined(VPOX_WITH_VALIDATIONKIT_PACKING.$(os).$(arch))\
+		,$(NLTAB)$(QUIET)$(REDIRECT) -C $(PATH_OUT_BASE)/$(os).$(arch)/$(KBUILD_TYPE)/ \
+			-- $(VPOX_ZIP) -r9 $@ $(INST_VALIDATIONKIT) -x '*.pyc',)))
+
+ #
+ # VPoxTestBoxScript.zip - For setting up the testboxes.
+ #
+ PACKING += $(PATH_OUT)/VPoxTestBoxScript.zip
+ $(PATH_OUT)/VPoxTestBoxScript.zip: \
+ 		$$(testboxscript_2_STAGE_TARGETS) \
+ 		$$(testboxscript-common_2_STAGE_TARGETS) \
+ 		$$(TestBoxHelper_2_STAGE_TARGETS)
+	$(call MSG_L1,Packing the TestBox Script files to $@)
+	$(QUIET)$(RM) -f $@
+	$(foreach os, darwin freebsd linux os2 solaris win,$(foreach arch, x86 amd64 \
+	,$(if-expr defined(VPOX_WITH_VALIDATIONKIT_PACKING.$(os).$(arch))\
+		,$(NLTAB)$(QUIET)$(REDIRECT) -C $(PATH_OUT_BASE)/$(os).$(arch)/$(KBUILD_TYPE)/ \
+			-- $(VPOX_ZIP) -r9X $@ $(INST_TESTBOXSCRIPT) -x '*.pyc',)))
+
+endif # !VPOX_WITHOUT_VALIDATIONKIT_ZIP
+
+
+#
+# Automatically lint python code and python unit tests during build.
+#
+if defined(VPOX_WITH_PYLINT) && !defined(VPOX_WITHOUT_AUTO_PYLINT)
+ OTHERS      += $(PATH_TARGET)/pylint.run
+ OTHER_CLEAN += $(PATH_TARGET)/pylint.run
+ $(PATH_TARGET)/pylint.run: $$(filter-out %/testboxscript.o, $$(VPOX_VALIDATIONKIT_PYLINT_TARGETS))
+	$(QUIET)$(APPEND) -t "$@"
+endif
+if defined(VPOX_WITH_PYLINT) && !defined(VPOX_WITHOUT_AUTO_PYUNITTEST) # Tied to pylint for hysterical raisins.
+ OTHERS      += $(PATH_TARGET)/pyunittest.run
+ OTHER_CLEAN += $(PATH_TARGET)/pyunittest.run
+ $(PATH_TARGET)/pyunittest.run: $$(VPOX_VALIDATIONKIT_PYUNITTEST_TARGETS)
+	$(QUIET)$(APPEND) -t "$@"
+endif
+
+$(evalcall def_vpox_validationkit_process_python_sources,FORCE)
+$(evalcall def_vpox_validationkit_process_js_sources,FORCE)
+include $(FILE_KBUILD_SUB_FOOTER)
+
+
+
+
+#
+# Construct the file spec for creating the Validation Kit guest iso.
+#
+VPOX_VALIDATIONKIT_FILESPEC = \
+	valkit.txt=$(VPOX_PATH_VALIDATIONKIT_SRC)/docs/valkit.txt \
+	$(VPOX_PATH_VALIDATIONKIT)/vpoxtxs-readme.txt
+ifneq ($(KBUILD_HOST),os2)
+ VPOX_VALIDATIONKIT_FILESPEC += \
+	$(VPOX_PATH_VALIDATIONKIT)/bootsectors/bootsector-pae.img \
+	$(VPOX_PATH_VALIDATIONKIT)/bootsectors/bootsector-shutdown.img
+endif
+
+# Generate VPOX_PATH_VALIDATIONKIT.os.arch variables.
+$(foreach os, darwin freebsd linux os2 solaris win,$(foreach arch, x86 amd64, \
+	$(eval VPOX_PATH_VALIDATIONKIT.$(os).$(arch) = $(PATH_OUT_BASE)/$(os).$(arch)/$(KBUILD_TYPE)/$(INST_VALIDATIONKIT)$(os)/$(arch)) \
+))
+
+# Common files first.
+define def_vpox_validationkit_common_files
+ ifdef VPOX_WITH_VALIDATIONKIT_PACKING.$(os).$(arch)
+  VPOX_VALIDATIONKIT_FILESPEC += \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/exceptionsR3$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/cpu-alloc-all-mem$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/cpu-numa$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/FsPerf$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/IoPerf$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/NetPerf$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/LoadGenerator$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/loadgeneratorR0.r0 \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/SerialTest$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/TestExecService$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/vts_rm$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/vts_shutdown$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/vts_tar$(TMP_SUFF_EXE) \
+      	$$(VPOX_PATH_VALIDATIONKIT.$(os).$(arch))/xmmsaving$(TMP_SUFF_EXE)
+ endif
+endef
+
+TMP_SUFF_EXE=.exe
+$(foreach os, os2 win,$(foreach arch, x86 amd64, \
+	$(eval $(def_vpox_validationkit_common_files)) \
+))
+TMP_SUFF_EXE=
+$(foreach os, darwin freebsd linux solaris,$(foreach arch, x86 amd64, \
+	$(eval $(def_vpox_validationkit_common_files)) \
+))
+
+# OS specific files - Linux
+ifdef VPOX_WITH_VALIDATIONKIT_PACKING.linux.x86
+ VPOX_VALIDATIONKIT_FILESPEC += \
+ 	$(VPOX_PATH_VALIDATIONKIT.linux.x86)/UsbTest
+endif
+ifdef VPOX_WITH_VALIDATIONKIT_PACKING.linux.amd64
+ VPOX_VALIDATIONKIT_FILESPEC += \
+ 	$(VPOX_PATH_VALIDATIONKIT.linux.amd64)/UsbTest
+endif
+ifdef VPOX_WITH_VALIDATIONKIT_PACKING.linux.x86
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.linux.x86)/../vpoxtxs)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.linux.x86)/../vpoxtxs-nat)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.linux.x86)/../vpoxtxs.service)
+
+else ifdef VPOX_WITH_VALIDATIONKIT_PACKING.linux.amd64
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.linux.amd64)/../vpoxtxs)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.linux.amd64)/../vpoxtxs-nat)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.linux.amd64)/../vpoxtxs.service)
+endif
+
+# OS specific files - OS/2
+ifdef VPOX_WITH_VALIDATIONKIT_PACKING.os2.x86
+ VPOX_VALIDATIONKIT_FILESPEC += \
+ 	$(VPOX_PATH_VALIDATIONKIT.os2.x86)/libc06.dll \
+ 	$(VPOX_PATH_VALIDATIONKIT.os2.x86)/libc061.dll \
+ 	$(VPOX_PATH_VALIDATIONKIT.os2.x86)/libc062.dll \
+ 	$(VPOX_PATH_VALIDATIONKIT.os2.x86)/libc063.dll \
+ 	$(VPOX_PATH_VALIDATIONKIT.os2.x86)/libc064.dll \
+ 	$(VPOX_PATH_VALIDATIONKIT.os2.x86)/libc065.dll \
+ 	$(VPOX_PATH_VALIDATIONKIT.os2.x86)/libc066.dll
+endif
+
+# OS specific files - Solaris
+ifdef VPOX_WITH_VALIDATIONKIT_PACKING.solaris.x86
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.solaris.x86)/../vpoxtxs.sh)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.solaris.x86)/../vpoxtxs.xml)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.solaris.x86)/../vpoxtxs-sol10.xml)
+else ifdef VPOX_WITH_VALIDATIONKIT_PACKING.solaris.amd64
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.solaris.amd64)/../vpoxtxs.sh)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.solaris.amd64)/../vpoxtxs.xml)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.solaris.amd64)/../vpoxtxs-sol10.xml)
+endif
+
+# OS specific files - Windows
+ifdef VPOX_WITH_VALIDATIONKIT_PACKING.win.x86
+ VPOX_VALIDATIONKIT_FILESPEC += \
+ 	$(VPOX_PATH_VALIDATIONKIT.win.x86)/ntSetFreq.exe \
+ 	$(VPOX_PATH_VALIDATIONKIT.win.x86)/ntTimeSources.exe
+ # Disabled for now; does not work without WinMM.dll export verification files.
+ #ifdef VPOX_WITH_AUDIO_VALIDATIONKIT
+ # VPOX_VALIDATIONKIT_FILESPEC += \
+ # 	$(VPOX_PATH_VALIDATIONKIT.win.x86)/ntPlayToneWaveX.exe
+ #endif
+endif
+ifdef VPOX_WITH_VALIDATIONKIT_PACKING.win.amd64
+ VPOX_VALIDATIONKIT_FILESPEC += \
+ 	$(VPOX_PATH_VALIDATIONKIT.win.amd64)/ntSetFreq.exe \
+ 	$(VPOX_PATH_VALIDATIONKIT.win.amd64)/ntTimeSources.exe
+  # Disabled for now; does not work without WinMM.dll export verification files.
+  #ifdef VPOX_WITH_AUDIO_VALIDATIONKIT
+  # VPOX_VALIDATIONKIT_FILESPEC += \
+  # 	$(VPOX_PATH_VALIDATIONKIT.win.amd64)/ntPlayToneWaveX.exe
+  #endif
+endif
+ifdef VPOX_WITH_VALIDATIONKIT_PACKING.win.x86
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.win.x86)/../vpoxtxs.cmd)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.win.x86)/../vpoxtxs.reg)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.win.x86)/../vpoxtxs-nat.cmd)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.win.x86)/../vpoxtxs-nat.reg)
+else ifdef VPOX_WITH_VALIDATIONKIT_PACKING.win.amd64
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.win.amd64)/../vpoxtxs.cmd)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.win.amd64)/../vpoxtxs.reg)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.win.amd64)/../vpoxtxs-nat.cmd)
+ VPOX_VALIDATIONKIT_FILESPEC += $(abspath $(VPOX_PATH_VALIDATIONKIT.win.amd64)/../vpoxtxs-nat.reg)
+endif
+
+
+#
+# Build the Validation Kit guest ISO.
+#
+$(VPOX_PATH_VALIDATIONKIT)/VPoxValidationKit.iso: \
+		$(filter-out %=deleteme=, $(subst =,=deleteme= , $(VPOX_VALIDATIONKIT_FILESPEC))) \
+		$(VPOX_SVN_REV_KMK) \
+		$(VPOX_PATH_VALIDATIONKIT_SRC)/Makefile.kmk \
+               | $(if-expr defined(VPOX_USE_RTISOMAKER),$(VPOX_RTISOMAKER),)
+	$(call MSG_TOOL,RTIsoMaker,,$@)
+	$(QUIET)$(MKDIR) -p $(@D)
+ifneq ($(KBUILD_TARGET),os2)
+	$(QUIET)$(ECHO) VPOX_VALIDATIONKIT_FILESPEC $(VPOX_VALIDATIONKIT_FILESPEC)
+endif
+	$(VPOX_RTISOMAKER) \
+		--output $@ \
+		--iso-level 3 \
+		--rock-ridge \
+		--joliet \
+		--rational-attribs \
+               --random-order-verification 2048 \
+		$(foreach spec,$(VPOX_VALIDATIONKIT_FILESPEC) \
+			,$(if $(findstring =,$(spec)), $(spec), /$(lastword $(subst /$(INST_VALIDATIONKIT), ,$(spec))=$(spec))) ) \
+		$(foreach spec,$(filter-out %.txt %.dll %.xml %.reg %.img, $(VPOX_VALIDATIONKIT_FILESPEC)) \
+			,--chmod=a+x:/$(lastword $(if $(findstring =,$(spec)), \
+				        	   $(subst =, $(SP), $(spec)), \
+						   $(subst /$(INST_VALIDATIONKIT), ,$(spec))))) \
+		--volume-id "VPOXVALK_$(VPOX_SVN_REV)_$(VPOX_VERSION_STRING_RAW)" \
+               --name-setup joliet \
+		--volume-id "VPoxValK $(VPOX_SVN_REV)"
+
+# Alias for creating the iso.
+.PHONY: validationkit-iso
+validationkit-iso: $(VPOX_PATH_VALIDATIONKIT)/VPoxValidationKit.iso
+

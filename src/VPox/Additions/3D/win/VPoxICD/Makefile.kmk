@@ -1,0 +1,69 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for OpenGL ICD loader.
+#
+
+#
+# Copyright (C) 2018-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+VPOX_GL_ICD_DEF_FILE = $(VPOX_PATH_MESA)/src/gallium/state_trackers/wgl/opengl32.mingw.def
+
+DLLS       += VPoxICD
+DLLS.amd64 += VPoxICD-x86
+
+VPoxICD_TEMPLATE = VPoxMesa3DGuestR3DllMinVista
+# -wd4005: '__useHeader' : redefinition
+VPoxICD_CFLAGS   = -wd4005
+VPoxICD_INCS     = \
+	$(VPOX_PATH_3D)/win/include \
+	$(PATH_ROOT)/src/VPox/Additions/WINNT/Graphics/Video \
+	$(VPOX_GRAPHICS_INCS)
+VPoxICD_SOURCES  = \
+	$(VPOX_PATH_MESA)/src/gallium/state_trackers/wgl/opengl32.def \
+	$(VPoxICD_0_OUTDIR)/forwarders.asm \
+	$(VPoxICD_0_OUTDIR)/pfns.c \
+	VPoxICD.c \
+	VPoxICD.rc
+VPoxICD_CLEAN    = \
+	$(VPoxICD_0_OUTDIR)/forwarders.asm \
+	$(VPoxICD_0_OUTDIR)/pfns.c
+VPoxICD_LIBS     = \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxWddmUmHlp$(VPOX_SUFF_LIB)
+
+$$(VPoxICD_0_OUTDIR)/forwarders.asm: \
+		$(PATH_SUB_CURRENT)/icd_forwarders.py $(VPOX_GL_ICD_DEF_FILE) | $$(dir $$@)
+	$(call MSG_GENERATE,python,$@,$(VPOX_GL_ICD_DEF_FILE))
+	$(QUIET)$(VPOX_BLD_PYTHON) $< $(VPOX_GL_ICD_DEF_FILE) $@
+$$(VPoxICD_0_OUTDIR)/pfns.c: \
+		$(PATH_SUB_CURRENT)/icd_pfns.py $(VPOX_GL_ICD_DEF_FILE) | $$(dir $$@)
+	$(call MSG_GENERATE,python,$@,$(VPOX_GL_ICD_DEF_FILE))
+	$(QUIET)$(VPOX_BLD_PYTHON) $< $(VPOX_GL_ICD_DEF_FILE) $@
+
+ifdef VPOX_SIGN_ADDITIONS
+VPoxICD_INSTTYPE       = none
+VPoxICD_DEBUG_INSTTYPE = both
+endif
+
+#
+# x86 version built for amd64 build
+#
+VPoxICD-x86_EXTENDS      = VPoxICD
+VPoxICD-x86_BLD_TRG_ARCH = x86
+VPoxICD-x86_LIBS         = \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxWddmUmHlp-x86$(VPOX_SUFF_LIB)
+VPoxICD-x86_DEFS         = $(VPoxICD_DEFS) VPOX_WOW64
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

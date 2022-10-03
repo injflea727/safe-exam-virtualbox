@@ -1,0 +1,203 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the New BIOS ROM.
+#
+
+#
+# Copyright (C) 2012-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+ifdef VPOX_WITH_OPEN_WATCOM
+
+ #
+ # VPoxPcBios - The PC BIOS.
+ #
+ MISCBINS += VPoxPcBios386
+ VPoxPcBios386_TEMPLATE = VPoxBios
+ VPoxPcBios386_BLD_TYPE = release
+ VPoxPcBios386_CFLAGS = -3
+ VPoxPcBios386_DEFS = \
+ 	VPOX_PC_BIOS \
+ 	VPOX_LANBOOT_SEG=0xE200 \
+ 	VPOX_WITH_SCSI \
+ 	VPOX_WITH_AHCI \
+ 	VPOX_WITH_VIRTIO_SCSI \
+	VPOX_BIOS_CPU=80386
+ #VPoxPcBios386_DEFS.debug = DEBUG_ATA DEBUG_POST DEBUG_INT13
+ VPoxPcBios386_LDFLAGS = \
+ 	output raw offset=0xF0000 \
+ 	order \
+ 	 clname DATA segaddr=0xF000 \
+ 	  segment _DATA \
+ 	 clname CODE \
+ 	  segment _TEXT   segaddr=0xF000 offset=0x1600 \
+ 	  segment BIOS32  segaddr=0xF000 offset=0xDA00 \
+ 	  segment BIOSSEG segaddr=0xF000 offset=0xE000
+ VPoxPcBios386_SOURCES = \
+ 	post.c \
+ 	bios.c \
+ 	print.c \
+ 	ata.c \
+ 	floppy.c \
+ 	floppyt.c \
+ 	eltorito.c \
+ 	boot.c \
+ 	keyboard.c \
+ 	disk.c \
+ 	serial.c \
+ 	system.c \
+ 	invop.c \
+ 	timepci.c \
+ 	ps2mouse.c \
+ 	parallel.c \
+ 	logo.c \
+ 	scsi.c \
+ 	ahci.c \
+ 	virtio.c \
+ 	apm.c \
+ 	pcibios.c \
+ 	pciutil.c \
+ 	vds.c \
+ 	../../BiosCommonCode/__U4M.asm \
+ 	../../BiosCommonCode/__U4D.asm \
+ 	../../BiosCommonCode/__U8RS.asm \
+ 	../../BiosCommonCode/__U8LS.asm \
+ 	../../BiosCommonCode/fmemset.asm \
+ 	../../BiosCommonCode/fmemcpy.asm \
+ 	pcibio32.asm \
+ 	apm_pm.asm \
+ 	$(VPoxPcBios32_0_OUTDIR)/VPoxPcBios32.lib \
+ 	orgs.asm
+
+ #$(VPoxPcBios32_1_TARGET) - reference is lost when extending the target. weird.
+
+ # For 32-bit C code in PC BIOS.
+ LIBRARIES += VPoxPcBios32
+ VPoxPcBios32_TEMPLATE = VPoxBios32Lib
+ VPoxPcBios32_SOURCES = \
+       pci32.c
+
+ ../../BiosCommonCode/DoUInt32Div.c_CFLAGS = -mc # asm.h and uint32.h both require far data pointers by default.
+
+ MISCBINS += VPoxPcBios286
+ VPoxPcBios286_EXTENDS = VPoxPcBios386
+ VPoxPcBios286_CFLAGS  = -2
+ VPoxPcBios286_DEFS    = $(filter-out VPOX_BIOS_CPU=80386,$(VPoxPcBios386_DEFS)) VPOX_BIOS_CPU=80286
+ VPoxPcBios286_SOURCES = $(VPoxPcBios386_SOURCES) \
+ 	../../BiosCommonCode/DoUInt32Div.c \
+       ../../BiosCommonCode/ASMBitLastSetU16.asm
+
+ MISCBINS += VPoxPcBios8086
+ VPoxPcBios8086_EXTENDS = VPoxPcBios386
+ VPoxPcBios8086_CFLAGS  = -0
+ VPoxPcBios8086_DEFS    = $(filter-out VPOX_BIOS_CPU=80386,$(VPoxPcBios386_DEFS)) VPOX_BIOS_CPU=8086
+ VPoxPcBios8086_SOURCES = $(VPoxPcBios386_SOURCES) \
+ 	../../BiosCommonCode/DoUInt32Div.c \
+       ../../BiosCommonCode/ASMBitLastSetU16.asm
+
+
+ #
+ # Updates the alternative source files.
+ #
+ define def_VPoxPcBiosUpdateAltSource
+
+  $$(PATH_SUB_CURRENT)/VPoxBiosAlternative$(1).asm +| $$(PATH_SUB_CURRENT)/VPoxBiosAlternative$(1).md5sum: \
+  		$$$$(VPoxPcBios$(1)_1_TARGET) \
+  		$$(VPOX_MAKE_ALTERNATIVE_SOURCE) \
+  		$$(VPOX_VPOXCMP)
+  if1of ($(KBUILD_TYPE), release)
+	$$(VPOX_MAKE_ALTERNATIVE_SOURCE) \
+       	--bios-image $$< \
+       	--bios-map $$(basename $$<).map \
+       	--bios-sym $$(basename $$<).sym \
+       	--bios-type system \
+       	--output $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).asm
+	$$(QUIET)yasm -f bin -o $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).bin $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).asm
+	$$(VPOX_VPOXCMP) $$< $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).bin
+	$$(CP) --changed -- $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).asm $$(PATH_ROOT)/src/VPox/Devices/PC/BIOS/VPoxBiosAlternative$(1).asm
+	$$(REDIRECT) -C $$(dir $$(VPoxPcBios$(1)_1_TARGET)) -- \
+       	$$(MD5SUM_EXT) -bo $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).md5sum $$(notdir $$(VPoxPcBios$(1)_1_TARGET))
+	$$(CP) --changed -- $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).md5sum $$(PATH_ROOT)/src/VPox/Devices/PC/BIOS/VPoxBiosAlternative$(1).md5sum
+	$$(RM) -f -- $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).asm $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative.bin $$(VPoxPcBios$(1)_0_OUTDIR)/VPoxBiosAlternative$(1).md5sum
+  else
+	$$(QUIET)$$(ECHO) "Fatal error: Can only update VPoxBiosAlternative$(1).asm/md5sum with a release build."
+	$$(QUIET)exit 1
+  endif
+
+ endef
+
+ $(evalcall2 def_VPoxPcBiosUpdateAltSource,386)
+ $(evalcall2 def_VPoxPcBiosUpdateAltSource,286)
+ $(evalcall2 def_VPoxPcBiosUpdateAltSource,8086)
+
+ update-pcbios-source: \
+ 	$(PATH_SUB_CURRENT)/VPoxBiosAlternative386.asm \
+ 	$(PATH_SUB_CURRENT)/VPoxBiosAlternative286.asm \
+ 	$(PATH_SUB_CURRENT)/VPoxBiosAlternative8086.asm
+
+endif # VPOX_WITH_OPEN_WATCOM
+
+
+#
+# The library containing the PC BIOS image.
+#
+LIBRARIES += PcBiosBin
+PcBiosBin_TEMPLATE  = VPOXR3
+PcBiosBin_DEFS      = IN_VPOXDD2
+
+define def_VPoxPcBiosBin
+ PcBiosBin_CLEAN   += $$(PcBiosBin_0_OUTDIR)/PcBiosBin$(1).c
+ PcBiosBin_SOURCES += $$(PcBiosBin_0_OUTDIR)/PcBiosBin$(1).c
+
+ ifdef VPOX_WITH_OPEN_WATCOM
+  $$$$(PcBiosBin_0_OUTDIR)/PcBiosBin$(1).c: $$$$(VPoxPcBios$(1)_1_TARGET) $$(VPOX_BIN2C) | $$$$(dir $$$$@)
+	$$(call MSG_TOOL,bin2c,PcBiosBin,$$<,$$@)
+	$$(QUIET)$$(VPOX_BIN2C) -min 64 -max 256 -mask 0xffff -ascii -export PcBiosBinary$(1) $$< $$@
+ else
+  PcBiosBin_CLEAN    += $$(PcBiosBin_0_OUTDIR)/VPoxPcBios$(1).rom
+
+  $$$$(PcBiosBin_0_OUTDIR)/PcBiosBin$(1).c + $$$$(PcBiosBin_0_OUTDIR)/VPoxPcBios$(1).rom: \
+		$$(PATH_SUB_CURRENT)/VPoxBiosAlternative$(1).asm \
+		$$(PATH_SUB_CURRENT)/VPoxBiosAlternative$(1).md5sum \
+		$$(VPOX_BIN2C) | $$$$(dir $$$$@)
+	$$(call MSG_TOOL,bin2c,PcBiosBin,$$<,$$@)
+	$$(QUIET)yasm -f bin -o $$(PcBiosBin_0_OUTDIR)/VPoxPcBios$(1).rom $$<
+	$$(QUIET)$$(REDIRECT) -C $$(PcBiosBin_0_OUTDIR) -- \
+		$$(MD5SUM_EXT) -c $$(basename $$<).md5sum
+	$$(QUIET)$$(VPOX_BIN2C) -min 64 -max 256 -mask 0xffff -ascii -export PcBiosBinary$(1) $$(PcBiosBin_0_OUTDIR)/VPoxPcBios$(1).rom $$@
+	$$(QUIET)$$(RM) -f -- $$$$(PcBiosBin_0_OUTDIR)/VPoxPcBios$(1).rom
+ endif
+endef
+$(evalcall2 def_VPoxPcBiosBin,386)
+$(evalcall2 def_VPoxPcBiosBin,286)
+$(evalcall2 def_VPoxPcBiosBin,8086)
+
+
+
+ifdef VPOX_WITH_OPEN_WATCOM
+ #
+ # Install the symbol file for the BIOS.
+ #
+ INSTALLS += VPoxPcBiosSym
+ VPoxPcBiosSym_TEMPLATE = VPoxDbgSyms
+ VPoxPcBiosSym_SOURCES = \
+ 	$(basename $(VPoxPcBios386_1_TARGET)).sym \
+ 	$(basename $(VPoxPcBios286_1_TARGET)).sym \
+ 	$(basename $(VPoxPcBios8086_1_TARGET)).sym
+endif
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

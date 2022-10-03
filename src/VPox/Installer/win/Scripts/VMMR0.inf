@@ -1,0 +1,54 @@
+; $Id: VMMR0.inf $
+;; @file
+; VMMR0.inf - VirtualPox VMM drivers.
+;
+
+;
+; Copyright (C) 2018-2020 Oracle Corporation
+;
+; This file is part of VirtualPox Open Source Edition (OSE), as
+; available from http://www.virtualpox.org. This file is free software;
+; you can redistribute it and/or modify it under the terms of the GNU
+; General Public License (GPL) as published by the Free Software
+; Foundation, in version 2 as it comes in the "COPYING" file of the
+; VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+; hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+;
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = System
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318}
+CatalogFile = VMMR0.cat
+Provider    = %ORACLE%
+;edit-DriverVer  = 08/26/2008,2.00.0000
+
+[SourceDisksNames]
+1=%VPoxVMM.DskDesc%,"",,
+
+[SourceDisksFiles]
+VMMR0.r0=1
+VPoxDDR0.r0=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+VPoxVMMInstall.Files = 12
+
+[Manufacturer]
+%ORACLE%=VPoxVMM@COMMA-NT-ARCH@
+
+[VPoxVMM@DOT-NT-ARCH@]
+%VPoxVMM.DrvDesc% = VPoxVMMInstall, root\VPoxVMM
+
+[VPoxVMMInstall]
+CopyFiles = VPoxVMMInstall.Files
+
+[VPoxVMMInstall.Files]
+VMMR0.r0,,,2
+VPoxDDR0.r0,,,2
+
+[Strings]
+ORACLE = "Oracle Corporation"
+VPoxVMM.DrvDesc = "VirtualPox VMM drivers"
+VPoxVMM.DskDesc = "VirtualPox VMM drivers"
+

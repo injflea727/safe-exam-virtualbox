@@ -1,0 +1,924 @@
+# $Id: Makefile.kmk $
+## @file
+# Install misc stuff and create dist packages for Mac OS X.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# Globals
+#
+VPOX_PATH_DI_SRC := $(PATH_SUB_CURRENT)
+VPOX_DI_OUT_DIR  := $(PATH_TARGET)/Installer/darwin
+BLDDIRS += $(VPOX_DI_OUT_DIR)
+
+VPOX_DI_FN_DEP_BOTH = $(VPOX_PATH_DIST)/$1
+ifeq ($(KBUILD_TARGET_ARCH),x86)
+ VPOX_DI_FN_DEP_32  = $(VPOX_PATH_DIST)/$1
+ VPOX_DI_FN_DEP_64  =
+else
+ VPOX_DI_FN_DEP_64  = $(VPOX_PATH_DIST)/$1
+ VPOX_DI_FN_DEP_32  =
+endif
+VPOX_PATH_DIST_OTHER = $(error VPOX_PATH_DIST_OTHER used in a non-combined package deal)
+
+VPOX_QT_VERSION_MAJOR = 5
+PATH_SDK_QT = $(PATH_SDK_QT5)
+
+# Unset this to speed up things during makefile hacking.
+VPOX_DARWIN_INST_DEP_ON_MAKEFILE := $(MAKEFILE_CURRENT)
+
+# The location of the pkgbuild program.
+ifndef VPOX_PKGBUILD
+ VPOX_PKGBUILD := pkgbuild
+endif
+
+# The location of the productbuild program.
+ifndef VPOX_PRODUCTBUILD
+ VPOX_PRODUCTBUILD := productbuild
+endif
+
+# Where we do the packing (override this in LocalConfig.kmk if building on smbfs).
+ifndef VPOX_PATH_PACK_TMP
+ VPOX_PATH_PACK_TMP := $(VPOX_DI_OUT_DIR)
+endif
+
+# Shorthand for $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root/Applications/VirtualPox.app
+VPOX_PATH_VPOX_APP_TMP := $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root/Applications/VirtualPox.app
+
+
+#
+# Install the darwin docs/license.
+#
+INSTALLS += darwin-docs
+darwin-docs_INST = $(INST_DIST)
+darwin-docs_MODE = a+r,u+w
+darwin-docs_SOURCES = \
+	$(VPOX_BRAND_LICENSE_TXT)=>LICENSE
+
+
+#
+# The packing.
+#
+PACKING += $(VPOX_PATH_DIST)/VirtualPox-$(VPOX_VERSION_STRING)-r$(VPOX_SVN_REV).dmg
+#OTHER_CLEAN = TODO
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
+
+#
+# We're running commands as root here, take some care and assertion
+# a sane environment.
+#
+ifeq ($(strip $(VPOX_PATH_DIST)),)
+ $(error VPOX_PATH_DIST=$(VPOX_PATH_DIST))
+endif
+ifeq ($(strip $(VPOX_PATH_DIST)),/)
+ $(error VPOX_PATH_DIST=$(VPOX_PATH_DIST))
+endif
+ifeq ($(strip $(VPOX_PATH_PACK_TMP)),)
+ $(error VPOX_PATH_PACK_TMP=$(VPOX_PATH_PACK_TMP))
+endif
+ifeq ($(strip $(VPOX_PATH_PACK_TMP)),/)
+ $(error VPOX_PATH_PACK_TMP=$(VPOX_PATH_PACK_TMP))
+endif
+
+
+# Check for additional manuals
+VPOX_ADD_MANUALS := $(foreach f,$(VPOX_MANUAL_ADD_LANGUAGES),$(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/UserManual_$(f).pdf)
+
+VPOX_ADD_MANUAL_de_DE := $(filter $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/UserManual_de_DE.pdf,$(VPOX_ADD_MANUALS))
+VPOX_ADD_MANUAL_fr_FR := $(filter $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/UserManual_fr_FR.pdf,$(VPOX_ADD_MANUALS))
+
+#
+# The disk image.
+#
+$(VPOX_PATH_DIST)/VirtualPox-$(VPOX_VERSION_STRING)-r$(VPOX_SVN_REV).dmg: \
+		$(VPOX_PATH_PACK_TMP)/DiskImage/VirtualPox.pkg \
+		$(VPOX_BRAND_DARWIN_DISKIMAGE_BG) \
+		$(VPOX_BRAND_DARWIN_DISKIMAGE_DS_STORE) \
+		$$(wildcard $(VPOX_PATH_DI_SRC)/DiskImage/*) \
+		$(if $(VPOX_WITH_DOCS_PACKING), \
+			$(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/UserManual.pdf \
+			$(VPOX_ADD_MANUALS)) \
+		$(VPOX_DARWIN_INST_DEP_ON_MAKEFILE)
+	$(call MSG_TOOL,hdiutil,,,$@)
+	@# Cleanup any previously failed attempts and various trash.
+	sudo rm -Rf $(VPOX_PATH_PACK_TMP)/DiskImage.tmp
+	$(MKDIR) -p $(VPOX_PATH_PACK_TMP)/DiskImage.tmp/
+	sudo mv $(VPOX_PATH_PACK_TMP)/DiskImage/VirtualPox.pkg $(VPOX_PATH_PACK_TMP)/DiskImage.tmp/
+	sudo rm -Rf \
+		$@ \
+		$(VPOX_PATH_PACK_TMP)/DiskImage/
+	sudo mv $(VPOX_PATH_PACK_TMP)/DiskImage.tmp $(VPOX_PATH_PACK_TMP)/DiskImage
+	@# Remove .dmg packages from old depend builds
+	$(QUIET)$(RM) -f $(wildcard $(VPOX_PATH_DIST)/VirtualPox-*-r*.dmg)
+	@# Populate the image with uninstaller, readme, picture, and .VolumeIcon.icns. (TODO)
+	$(INSTALL) $(VPOX_PATH_DI_SRC)/DiskImage/VirtualPox_Uninstall.tool  $(VPOX_PATH_PACK_TMP)/DiskImage/
+ifdef VPOX_SIGNING_MODE
+	$(call VPOX_SIGN_FILE_FN,$(VPOX_PATH_PACK_TMP)/DiskImage/VirtualPox_Uninstall.tool,org.virtualpox.dmg.uninstaller)
+endif
+ifeq (1,1)
+	@# Pedantic mode...
+	$(INSTALL) -m 644 $(VPOX_BRAND_DARWIN_DISKIMAGE_DS_STORE)           $(VPOX_PATH_PACK_TMP)/DiskImage/.DS_Store
+	$(MKDIR) $(VPOX_PATH_PACK_TMP)/DiskImage/.background
+	$(INSTALL) -m 644 $(VPOX_BRAND_DARWIN_DISKIMAGE_BG)                 $(VPOX_PATH_PACK_TMP)/DiskImage/.background/vpox_folder.tiff
+ ifdef VPOX_WITH_BUNDLED_INSTALLER
+	$(if $(VPOX_WITH_DOCS_PACKING), \
+		$(INSTALL) -m 644 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/UserManual.pdf $(VPOX_PATH_PACK_TMP)/DiskImage/User\ Manual.pdf$(NLTAB) \
+		$(if $(VPOX_ADD_MANUAL_de_DE),$(INSTALL) -m 644 $(VPOX_ADD_MANUAL_de_DE) "$(VPOX_PATH_PACK_TMP)/DiskImage/$(VPOX_BRAND_de_DE_MANUAL_NAME).pdf"$(NLTAB)) \
+		$(if $(VPOX_ADD_MANUAL_fr_FR),$(INSTALL) -m 644 $(VPOX_ADD_MANUAL_fr_FR) "$(VPOX_PATH_PACK_TMP)/DiskImage/$(VPOX_BRAND_fr_FR_MANUAL_NAME).pdf"$(NLTAB)))
+    # Rename the main package
+ else
+	$(if $(VPOX_WITH_DOCS_PACKING), $(INSTALL) $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/UserManual.pdf $(VPOX_PATH_PACK_TMP)/DiskImage/)
+	$(LN) -s /Applications/                                             $(VPOX_PATH_PACK_TMP)/DiskImage/Applications
+ endif
+endif
+	@# hdiutil of OS X 10.10 adds a .Trashes directory and some suggest this may upset the image size calculations (-5341).
+	$(MKDIR) -m 1333  $(VPOX_PATH_PACK_TMP)/DiskImage/.Trashes
+	@# Change the owners.
+	sudo chown -R root:admin $(VPOX_PATH_PACK_TMP)/DiskImage
+	@# Create the image. We calculate the size our selves, adding 16MB for fudging (min 13MB fudge needed on high sierra).
+	sudo hdiutil create -format UDBZ -volname "VirtualPox" -srcfolder "$(VPOX_PATH_PACK_TMP)/DiskImage" \
+		-size $(DOLLAR)((`sudo /usr/bin/du -sk "$(VPOX_PATH_PACK_TMP)/DiskImage/" | /usr/bin/cut -f1` + 16384))k \
+		"$@"
+	@# Change (back) the owner so it can be deleted by the user.
+	sudo chown "$(shell whoami)" "$@"
+	sudo chown -R "$(shell whoami)" $(VPOX_PATH_PACK_TMP)/DiskImage
+ifdef VPOX_SIGNING_MODE
+ ifndef VPOX_WITHOUT_SIGNED_DMG
+	@# Sign the created dmg.
+	$(call VPOX_SIGN_DMG_FN,$@,org.virtualpox.dmg)
+  if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Notarize the signed dmg (includes stapling).
+	$(call VPOX_NOTARIZE_FILE_FN,$@,org.virtualpox.VirtualPox.$(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD).$(VPOX_SVN_REV))
+  endif
+ endif
+endif
+
+#
+# The meta-package.
+#
+$(VPOX_PATH_PACK_TMP)/DiskImage/VirtualPox.pkg: \
+		$(VPOX_PATH_PACK_TMP)/Packages/VPoxKEXTs.pkg \
+		$(VPOX_PATH_PACK_TMP)/Packages/VirtualPoxCLI.pkg \
+		$(VPOX_PATH_PACK_TMP)/Packages/VirtualPox.pkg \
+		$$(wildcard $(VPOX_PATH_DI_SRC)/VirtualPox_mpkg/* \
+		            $(VPOX_PATH_DI_SRC)/VirtualPox_mpkg/*.lproj/*) \
+		$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES), $(VPOX_BRAND_$(f)_VIRTUALPOX_WELCOME_RTF)) \
+		$(if $(VPOX_WITH_FUSE_PACKING), $(VPOX_PATH_PACK_TMP)/Packages/OSXFuseCore.pkg) \
+		$(VPOX_DARWIN_INST_DEP_ON_MAKEFILE)
+	$(call MSG_TOOL,productbuild,,,$@)
+	@# Cleanup any previously failed attempts.
+	sudo rm -Rf \
+		$@ \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.root \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res
+	@# Correct directory permissions are important.
+	$(MKDIR) -p \
+		$(@D) \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/English.lproj
+	@# Do keyword replacement in the package info and description files.
+	$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/English.lproj/Welcome.rtf \
+		$(VPOX_PATH_DI_SRC)/VirtualPox_mpkg/Welcome.rtf
+	@# Copy the resources.
+	$(INSTALL) -m 0644 $(VPOX_PATH_DI_SRC)/VirtualPox_mpkg/Conclusion.rtf                   $(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/English.lproj/Conclusion.rtf
+	$(SED) \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/English.lproj/Localizable.strings \
+		$(VPOX_PATH_DI_SRC)/VirtualPox_mpkg/Localizable.strings
+	$(INSTALL) -m 0644 $(VPOX_BRAND_DARWIN_INSTALLER_BG)                                    $(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/background.tif
+	$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES), \
+		$(MKDIR) -p \
+			$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/$(VPOX_INSTALLER_$(f)_DARWIN_TARGET).lproj$(NLTAB) \
+		$(SED) \
+			-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+			-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+			-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+			-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+			--output $(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/$(VPOX_INSTALLER_$(f)_DARWIN_TARGET).lproj/Welcome.rtf \
+			$(VPOX_BRAND_$(f)_VIRTUALPOX_WELCOME_RTF)$(NLTAB) \
+		$(INSTALL) -m 0644 $(VPOX_BRAND_$(f)_VIRTUALPOX_CONCLUSION_RTF)                $(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/$(VPOX_INSTALLER_$(f)_DARWIN_TARGET).lproj/Conclusion.rtf$(NLTAB) \
+		$(SED) \
+			-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+			-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+			-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+			--output $(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res/$(VPOX_INSTALLER_$(f)_DARWIN_TARGET).lproj/Localizable.strings \
+			$(VPOX_BRAND_$(f)_VIRTUALPOX_LOCALIZABLE_STRINGS)$(NLTAB) \
+	)
+	@# Build the package.
+	$(VPOX_PRODUCTBUILD) \
+		--distribution $(VPOX_PATH_DI_SRC)/VirtualPox_mpkg/distribution.dist \
+		--package-path $(VPOX_PATH_PACK_TMP)/Packages \
+		--resources $(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res \
+		--identifier org.VirtualPox.mpkg.virtualpox \
+		--version $(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD) \
+		$(if-expr defined(VPOX_MACOSX_INSTALLER_SIGN) && $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING)) == "",--sign "$(VPOX_MACOSX_INSTALLER_SIGN)",) \
+		$@
+ifdef VPOX_SIGNING_MODE
+ if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Sign the created pkg.
+	$(call VPOX_SIGN_PKG_FN,$@,org.VirtualPox.mpkg.virtualpox)
+ endif
+endif
+	@# Cleanup.
+	sudo rm -Rf \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.root \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.dist.res
+
+
+#
+# The VirtualPox Kernel extensions.
+#
+VPOX_DI_KEXTS_UNIVERSAL = VPoxDrv VPoxNetFlt VPoxNetAdp VPoxUSB
+VPOX_DI_KEXTS = $(VPOX_DI_KEXTS_UNIVERSAL)
+
+$(VPOX_PATH_PACK_TMP)/Packages/VPoxKEXTs.pkg: \
+		$(foreach kext,$(VPOX_DI_KEXTS_UNIVERSAL), $(call VPOX_DI_FN_DEP_BOTH,$(kext).kext/Contents/MacOS/$(kext))) \
+		$(foreach kext,$(VPOX_DI_KEXTS), $(VPOX_PATH_DIST)/$(kext).kext/Contents/Info.plist) \
+		$$(wildcard $(VPOX_PATH_DI_SRC)/VPoxKEXTs/* \
+		            $(VPOX_PATH_DI_SRC)/VPoxKEXTs/*.lproj/*) \
+		$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES), \
+			$(VPOX_BRAND_$(f)_VPOXKEXTS_DESCRIPTION_PLIST) \
+			$(VPOX_BRAND_$(f)_VPOXKEXTS_README_HTML) \
+			$(VPOX_BRAND_$(f)_VPOXKEXTS_INSTALLATIONCHECK_STRINGS)) \
+		$(VPOX_DARWIN_INST_DEP_ON_MAKEFILE)
+	$(call MSG_TOOL,pkgbuild,,,$@)
+	@# Cleanup any previously failed attempts.
+	sudo rm -Rf \
+		$@ \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.res
+	@# Correct directory permissions are important.
+	$(MKDIR) -p \
+		$(@D) \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.res \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.res/English.lproj
+	$(MKDIR) -p -m 0755 \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/LaunchDaemons \
+		$(foreach kext,$(VPOX_DI_KEXTS), \
+			$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/$(kext).kext \
+			$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/$(kext).kext/Contents \
+			$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/$(kext).kext/Contents/MacOS )
+	@# Copy the launch daemon bits.
+	$(INSTALL) -m 0755  $(VPOX_PATH_DI_SRC)/VPoxKEXTs/VirtualPoxStartup.sh          $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/LaunchDaemons/
+	$(INSTALL) -m 0644  $(VPOX_PATH_DI_SRC)/VPoxKEXTs/org.virtualpox.startup.plist 	$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/LaunchDaemons/
+	@# Copy the common files (Info.plist).
+	$(foreach kext,$(VPOX_DI_KEXTS), \
+		$(NLTAB)$(INSTALL) -m 0644 $(VPOX_PATH_DIST)/$(kext).kext/Contents/Info.plist $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/$(kext).kext/Contents/)
+	@# Copy the binaries and invoking lipo.
+	$(foreach kext,$(VPOX_DI_KEXTS), \
+		$(NLTAB)$(INSTALL) -m 0755 $(VPOX_PATH_DIST)/$(kext).kext/Contents/MacOS/$(kext) $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/$(kext).kext/Contents/MacOS/)
+	@# Sign the kext bundles.
+ifdef VPOX_SIGNING_MODE
+	$(foreach kext,$(VPOX_DI_KEXTS) \
+		,$(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/$(kext).kext/Contents/MacOS/$(kext),org.virtualpox.app.kext.$(kext)) )
+	$(foreach kext,$(VPOX_DI_KEXTS), \
+		$(NLTAB)$(call VPOX_SIGN_BUNDLE_FN,$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/$(kext).kext,org.virtualpox.app.kext.$(kext)) )
+## @TODO check why this fails on the build box:	$(foreach kext,$(VPOX_DI_KEXTS), $(NLTAB)codesign --verify --verbose=1 $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/$(kext).kext )
+endif
+	@# Set the correct owners.
+	sudo chown -R root:wheel $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/
+	@# Do keyword replacement in the package info and description files.
+	$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.desc/PkgBuildComponent.plist \
+		$(VPOX_PATH_DI_SRC)/VPoxKEXTs/PkgBuildComponent.plist
+	@# Copy the resources.
+	$(INSTALL) -m 0755 $(VPOX_PATH_DI_SRC)/VPoxKEXTs/postflight                            $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.res/
+	@# Build the package.
+	$(VPOX_PKGBUILD) \
+		--root   $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root/ \
+		--component-plist $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.desc/PkgBuildComponent.plist \
+		--script $(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.res \
+		--identifier org.virtualpox.pkg.vpoxkexts \
+		--version $(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD) \
+		--install-location "/Library/Application Support/VirtualPox" \
+		--ownership preserve \
+		$(if-expr defined(VPOX_MACOSX_INSTALLER_SIGN) && $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING)) == "",--sign "$(VPOX_MACOSX_INSTALLER_SIGN)",) \
+		$@
+ifdef VPOX_SIGNING_MODE
+ if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Sign the created pkg.
+	$(call VPOX_SIGN_PKG_FN,$@,org.virtualpox.pkg.vpoxkexts)
+ endif
+endif
+	@# Cleanup
+	sudo chown -R "$(shell whoami)" \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root
+	sudo rm -Rf \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxKEXTs.pkg.res
+
+
+#
+# Figure out which languages that we support and construct
+# .qm and .lproj lists for these.
+#
+include $(PATH_ROOT)/src/VPox/Frontends/VirtualPox/nls/ApprovedLanguages.kmk
+VPOX_INSTALL_LANG_FILES := $(foreach f,$(VPOX_APPROVED_GUI_LANGUAGES), VirtualPox_$(f).qm qt_$(f).qm)
+VPOX_INSTALL_LANG_LPROJ := $(addsuffix .lproj,$(VPOX_APPROVED_GUI_LANGUAGES))
+
+
+#
+# The VirtualPox Application.
+#
+
+VPOX_DI_VBAPP_PROGS_HARDENED = \
+	Resources/VirtualPoxVM.app/Contents/MacOS/VirtualPoxVM \
+	MacOS/VPoxHeadless \
+	MacOS/VPoxNetDHCP \
+	MacOS/VPoxNetNAT \
+	MacOS/VPoxVMMPreload
+
+VPOX_DI_VBAPP_PROGS = \
+	MacOS/VPoxManage \
+	MacOS/VPoxSVC \
+	MacOS/VPoxXPCOMIPCD \
+	MacOS/VPoxNetAdpCtl \
+	MacOS/VPoxExtPackHelperApp \
+	MacOS/VPoxBugReport \
+	MacOS/VPoxBalloonCtrl \
+	MacOS/VPoxAutostart \
+	$(if $(VPOX_WITH_WEBSERVICES),MacOS/vpoxwebsrv) \
+	MacOS/VirtualPox \
+	$(if $(VPOX_WITH_DTRACE),MacOS/VPoxDTrace,)
+
+VPOX_DI_VBAPP_DYLIBS = \
+	$(foreach qtmod, $(VPOX_QT_MOD_NAMES), Frameworks/$(qtmod).framework/Versions/$(VPOX_QT_VERSION_MAJOR)/$(qtmod)) \
+	MacOS/VPoxDD.dylib \
+	MacOS/VPoxDD2.dylib \
+	MacOS/VPoxDDU.dylib \
+	MacOS/VPoxRT.dylib \
+	$(if $(VPOX_WITH_SHARED_FOLDERS),MacOS/VPoxSharedFolders.dylib,) \
+	$(if $(VPOX_WITH_SHARED_CLIPBOARD),MacOS/VPoxSharedClipboard.dylib,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),MacOS/VPoxDragAndDropSvc.dylib,) \
+	$(if $(VPOX_WITH_GUEST_PROPS),MacOS/VPoxGuestPropSvc.dylib,) \
+	MacOS/VPoxHostChannel.dylib \
+	MacOS/VPoxVMM.dylib \
+	MacOS/VPoxXPCOM.dylib \
+	MacOS/VPoxXPCOMC.dylib \
+	MacOS/components/VPoxC.dylib \
+	MacOS/components/VPoxSVCM.dylib \
+	MacOS/components/VPoxXPCOMIPCC.dylib \
+	MacOS/VPoxAuth.dylib \
+	MacOS/VPoxAuthSimple.dylib \
+	$(if $(VPOX_WITH_GUEST_CONTROL),MacOS/VPoxGuestControlSvc.dylib,) \
+	MacOS/UICommon.dylib
+ifneq ($(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/accessible/libqtaccessiblewidgets.dylib),)
+ VPOX_DI_VBAPP_DYLIBS += \
+	MacOS/accessible/libqtaccessiblewidgets.dylib
+endif
+if defined(VPOX_WITH_VRDP) && !defined(VPOX_WITH_EXTPACK_PUEL)
+ VPOX_DI_VBAPP_DYLIBS += \
+	MacOS/VPoxVRDP.dylib
+endif
+ifdef VPOX_WITH_DEBUGGER_GUI
+ VPOX_DI_VBAPP_DYLIBS += \
+ 	MacOS/VPoxDbg.dylib \
+ 	MacOS/DbgPlugInDiggers.dylib
+endif
+ifdef VPOX_WITH_HARDENING
+ VPOX_DI_VBAPP_DYLIBS += $(addprefix MacOS/,$(addsuffix .dylib,$(notdir $(VPOX_DI_VBAPP_PROGS_HARDENED))))
+endif
+ifdef VPOX_WITH_HDDPARALLELS_INSTALL
+ VPOX_DI_VBAPP_DYLIBS += \
+ 	MacOS/VPoxHDDParallels.dylib
+endif
+if defined(VPOX_WITH_PYTHON) && !defined(VPOX_WITHOUT_VPOXPYTHON_FOR_OSX_10_6)
+ VPOX_DI_VBAPP_DYLIBS += \
+ 	MacOS/VPoxPython2_6.so
+endif
+if defined(VPOX_WITH_PYTHON) && !defined(VPOX_WITHOUT_VPOXPYTHON_FOR_OSX_10_7)
+ VPOX_DI_VBAPP_DYLIBS += \
+ 	MacOS/VPoxPython2_7.so
+endif
+ifdef VPOX_WITH_VMSVGA3D
+ VPOX_DI_VBAPP_DYLIBS += \
+ 	MacOS/VPoxSVGA3D.dylib \
+ 	MacOS/VPoxSVGA3DObjC.dylib
+endif
+
+ifdef VPOX_WITH_PYTHON
+ VPOX_DI_VBAPP_DYLIBS.x86 += \
+ 	MacOS/VPoxPython2_5.so \
+ 	$(if-expr defined(VPOX_WITH_MAC_OS_X_10_4_SUPPORT),MacOS/VPoxPython2_3.so,)
+endif
+
+VPOX_DI_VBAPP_DYLIBS.amd64 :=
+if defined(VPOX_WITH_PYTHON) && defined(VPOX_WITHOUT_VPOXPYTHON_FOR_OSX_10_6)
+ VPOX_DI_VBAPP_DYLIBS.amd64 += \
+ 	MacOS/VPoxPython2_6.so
+endif
+
+if defined(VPOX_WITH_JXPCOM)
+ VPOX_DI_VBAPP_DYLIBS += \
+        MacOS/libvpoxjxpcom.jnilib
+endif
+
+if1of ($(VPOX_DI_VBAPP_DYLIBS.amd64), $(VPOX_DI_VBAPP_DYLIBS.x86))
+ $(error Conflict.$(NLTAB)VPOX_DI_VBAPP_DYLIBS.amd64=$(VPOX_DI_VBAPP_DYLIBS.amd64)$(NLTAB)VPOX_DI_VBAPP_DYLIBS.x86  =$(VPOX_DI_VBAPP_DYLIBS.x86))
+endif
+if1of ($(VPOX_DI_VBAPP_DYLIBS.amd64) $(VPOX_DI_VBAPP_DYLIBS.x86),$(VPOX_DI_VBAPP_DYLIBS))
+ $(error Conflict.$(NLTAB)VPOX_DI_VBAPP_DYLIBS.amd64=$(VPOX_DI_VBAPP_DYLIBS.amd64)$(NLTAB)VPOX_DI_VBAPP_DYLIBS.x86  =$(VPOX_DI_VBAPP_DYLIBS.x86)$(NLTAB)VPOX_DI_VBAPP_DYLIBS=$(VPOX_DI_VBAPP_DYLIBS))
+endif
+
+VPOX_DI_VBAPP_UNIVERSAL_PROGS = \
+	MacOS/vmstarter \
+	$(if $(VPOX_WITH_VPOX_IMG)$(VPOX_WITH_TESTCASES),MacOS/vpox-img,) \
+	$(if $(VPOX_WITH_VPOXIMGMOUNT),MacOS/vpoximg-mount,)
+
+VPOX_DI_VBAPP_OTHER_UNIVERSAL_BINS = \
+	MacOS/VMMR0.r0 \
+	MacOS/VPoxDDR0.r0
+
+ifdef VPOX_WITH_RAW_MODE
+ VPOX_DI_VBAPP_OTHER_BINS = \
+	MacOS/VMMRC.rc \
+	MacOS/VPoxDDRC.rc
+else
+ VPOX_DI_VBAPP_OTHER_BINS =
+endif
+
+VPOX_DI_VBAPP_DUPLICATED_RESOURCE_FILES = \
+	Resources/virtualpox.icns \
+	Resources/virtualpox.png \
+	Resources/virtualpox-vpox.icns \
+	Resources/virtualpox-vpox-extpack.icns \
+	Resources/virtualpox-ovf.icns \
+	Resources/virtualpox-ova.icns \
+	Resources/virtualpox-vdi.icns \
+	Resources/virtualpox-vmdk.icns \
+	Resources/virtualpox-vhd.icns \
+	Resources/virtualpox-hdd.icns
+
+VPOX_DI_VBAPP_MISC_FILES = \
+	Info.plist \
+	PkgInfo \
+       $(VPOX_DI_VBAPP_DUPLICATED_RESOURCE_FILES) \
+	MacOS/components/VPoxXPCOMBase.xpt \
+	MacOS/components/VirtualPox_XPCOM.xpt \
+	Resources/VirtualPoxVM.app/Contents/Info.plist \
+	Resources/VirtualPoxVM.app/Contents/PkgInfo \
+       $(addprefix Resources/VirtualPoxVM.app/Contents/,$(VPOX_DI_VBAPP_DUPLICATED_RESOURCE_FILES)) \
+	Resources/vmstarter.app/Contents/Info.plist \
+	Resources/vmstarter.app/Contents/PkgInfo \
+       $(addprefix Resources/vmstarter.app/Contents/,$(VPOX_DI_VBAPP_DUPLICATED_RESOURCE_FILES))
+ifdef VPOX_WITH_DOCS_PACKING
+VPOX_DI_VBAPP_MISC_FILES += \
+	MacOS/UserManual.pdf
+endif
+ifdef VPOX_WITH_ADDITIONS_PACKING
+ ifneq ($(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/VPoxGuestAdditions.iso),)
+ VPOX_DI_VBAPP_MISC_FILES += \
+	MacOS/VPoxGuestAdditions.iso
+ endif
+endif
+ifdef VPOX_WITH_EFIFW_PACKING
+VPOX_DI_VBAPP_MISC_FILES += \
+	MacOS/VPoxEFI32.fd \
+	MacOS/VPoxEFI64.fd
+endif
+ VPOX_DI_VBAPP_DYLIBS += \
+	plugins/platforms/libqcocoa$(SUFF_DLL) \
+	plugins/platforms/libqminimal$(SUFF_DLL) \
+	plugins/platforms/libqoffscreen$(SUFF_DLL)
+VPOX_DI_VBAPP_MISC_FILES += \
+	$(foreach qtmod, $(VPOX_QT_MOD_NAMES), Frameworks/$(qtmod).framework/Versions/$(VPOX_QT_VERSION_MAJOR)/Resources/Info.plist)
+
+VPOX_DI_VBAPP_SYMLINKS = \
+	Resources/vmstarter.app/Contents/MacOS=>../../../MacOS/ \
+	$(foreach qtmod, $(VPOX_QT_MOD_NAMES) \
+	,Frameworks/$(qtmod).framework/Versions/Current=>$(VPOX_QT_VERSION_MAJOR) )
+
+ifdef VPOX_WITH_PYTHON
+ # Python XPCOM glue
+ VPOX_DI_VBAPP_PYTHON_FILES = \
+ 	$(VPOXINST_SDK_BINDINGS_XPCOM_PYTHON_FILES) \
+ 	$(VPOXINST_SDK_INSTALLER_PYTHON_FILES)
+endif
+
+
+# (The dependencies are including way too much here because I'm lazy.)
+$(VPOX_PATH_PACK_TMP)/Packages/VirtualPox.pkg: \
+		$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES), \
+			$(VPOX_BRAND_$(f)_VIRTUALPOX_DESCRIPTION_PLIST)) \
+		$(foreach f, $(VPOX_DI_VBAPP_DYLIBS) $(VPOX_DI_VBAPP_OTHER_UNIVERSAL_BINS) $(VPOX_DI_VBAPP_UNIVERSAL_PROGS) \
+			$(VPOX_DI_VBAPP_OTHER_BINS) $(VPOX_DI_VBAPP_PROGS) $(VPOX_DI_VBAPP_PROGS_HARDENED) $(VPOX_DI_VBAPP_MISC_FILES) \
+			,$(call VPOX_DI_FN_DEP_BOTH,VirtualPox.app/Contents/$(f)) ) \
+		$(foreach f, $(VPOX_DI_VBAPP_DYLIBS.x86) $(VPOX_DI_VBAPP_MISC_FILES.x86)\
+			,$(call VPOX_DI_FN_DEP_32,VirtualPox.app/Contents/$(f)) ) \
+		$(foreach f, $(VPOX_DI_VBAPP_DYLIBS.amd64) $(VPOX_DI_VBAPP_MISC_FILES.amd64)\
+			,$(call VPOX_DI_FN_DEP_64,VirtualPox.app/Contents/$(f)) ) \
+		\
+		$(if $(VPOX_WITH_DOCS_PACKING),$(VPOX_ADD_MANUALS),) \
+		$(VPOX_BRAND_LICENSE_TXT) \
+		$(wildcard $(VPOX_PATH_DI_SRC)/VirtualPox/*) \
+		$(wildcard $(VPOX_PATH_DI_SRC)/VirtualPox/*.lproj/*) \
+		$$(addprefix $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/nls/,$(VPOX_INSTALL_LANG_FILES)) \
+		\
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/*) \
+		$(filter-out Disabled, $(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/*)) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/Resources/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/Resources/VirtualPoxVM.app/Contents/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/Resources/VirtualPoxVM.app/Contents/Resources/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/Resources/VirtualPoxVM.app/Contents/Resources/*.lproj/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/Resources/vmstarter.app/Contents/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/Resources/vmstarter.app/Contents/Resources/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/Resources/vmstarter.app/Contents/Resources/*.lproj/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/Resources/*.lproj/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/additions/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/components/*) \
+		$$(wildcard $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/accessible/*) \
+		$(addprefix $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/UnattendedTemplates/, $(VPOX_UNATTENDED_TEMPLATES)) \
+		$(if-expr defined(VPOX_WITH_PYTHON), $(addprefix $(VPOX_PATH_DIST)/, $(VPOX_DI_VBAPP_PYTHON_FILES)),) \
+                $(if-expr defined(VPOX_WITH_JXPCOM), $(addprefix $(VPOX_PATH_DIST)/, sdk/bindings/xpcom/java/vpoxjxpcom.jar),) \
+		$(if $(VPOX_WITH_WEBSERVICES),$(VPOX_PATH_DI_SRC)/VirtualPox/org.virtualpox.vpoxwebsrv.plist,) \
+		$(VPOX_PATH_DI_SRC)/VirtualPox/org.virtualpox.vpoxballoonctrl.plist \
+		$(VPOX_PATH_DI_SRC)/VirtualPox/org.virtualpox.vpoxautostart.plist \
+		$(VPOX_PATH_DI_SRC)/VirtualPox/VPoxAutostartDarwin.sh \
+               $(if-expr defined(VPOX_WITH_DTRACE), \
+                $(foreach f, $(VPOXINST_DTRACE_LIB_ARCH_FILES), \
+		 	$(call VPOX_DI_FN_DEP_32,VirtualPox.app/Contents/MacOS/dtrace/lib/x86/$f) \
+		 	$(call VPOX_DI_FN_DEP_64,VirtualPox.app/Contents/MacOS/dtrace/lib/amd64/$f)) \
+                $(foreach f, $(VPOXINST_DTRACE_TESTCASE_ARCH_FILES), \
+		 	$(call VPOX_DI_FN_DEP_32,VirtualPox.app/Contents/MacOS/dtrace/testcase/x86/$f) \
+		 	$(call VPOX_DI_FN_DEP_64,VirtualPox.app/Contents/MacOS/dtrace/testcase/amd64/$f)) \
+                $(addprefix $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/dtrace/scripts/,$(VPOXINST_DTRACE_SCRIPTS_FILES)) \
+		 ,) \
+		$(if-expr defined(VPOX_WITH_MACOS_HARDENED_RUNTIME) && defined(VPOX_SIGNING_MODE), \
+			$(PATH_ROOT)/src/VPox/HostDrivers/Support/darwin/SUPR3HardenedEntitlements.plist \
+			$(PATH_ROOT)/src/VPox/HostDrivers/Support/darwin/SUPR3HardenedEntitlementsVM.plist,) \
+		$(VPOX_DARWIN_INST_DEP_ON_MAKEFILE)
+	$(call MSG_TOOL,pkgbuild,,,$@)
+	@# Cleanup any previously failed attempts.
+	sudo rm -Rf \
+		$@ \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res
+	@# Correct directory permissions are important.
+	$(MKDIR) -p \
+		$(@D) \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res/English.lproj
+	$(MKDIR) -p -m 0775 \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root/Applications
+	$(MKDIR) -p -m 0755 $(sort \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/components \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/nls \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/accessible \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/VirtualPoxVM.app \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/VirtualPoxVM.app/Contents \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/vmstarter.app \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/vmstarter.app/Contents \
+		$(if-expr defined(VPOX_WITH_PYTHON), \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/installer \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/installer/vpoxapi \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/bindings/ \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/bindings/xpcom \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/bindings/xpcom/python \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/bindings/xpcom/python/xpcom \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/bindings/xpcom/python/xpcom/client \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/bindings/xpcom/python/xpcom/server,) \
+                $(if-expr defined(VPOX_WITH_JXPCOM), \
+                        $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/bindings/xpcom/java,) \
+		$(addprefix $(VPOX_PATH_VPOX_APP_TMP)/Contents/,$(dir \
+			$(VPOX_DI_VBAPP_DYLIBS) \
+			$(VPOX_DI_VBAPP_OTHER_UNIVERSAL_BINS) \
+			$(VPOX_DI_VBAPP_UNIVERSAL_PROGS) \
+			$(VPOX_DI_VBAPP_OTHER_BINS) \
+			$(VPOX_DI_VBAPP_PROGS) \
+			$(VPOX_DI_VBAPP_PROGS_HARDENED) \
+			$(VPOX_DI_VBAPP_MISC_FILES) \
+			$(VPOX_DI_VBAPP_DYLIBS.$(KBUILD_TARGET_ARCH)) \
+			$(VPOX_DI_VBAPP_MISC_FILES.$(KBUILD_TARGET_ARCH)) \
+			))\
+		)
+# Create the .lproj language directories
+	$(MKDIR) -p -m 0755 \
+		$(addprefix $(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/,$(VPOX_INSTALL_LANG_LPROJ))
+# Install all supported language files
+	$(foreach f, $(VPOX_INSTALL_LANG_FILES) \
+		,$(INSTALL) -m 0644 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/nls/$(f)    $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/nls/$(f)$(NLTAB))
+ifdef VPOX_WITH_WEBSERVICES
+	$(INSTALL) -m 0644 $(VPOX_PATH_DI_SRC)/VirtualPox/org.virtualpox.vpoxwebsrv.plist       $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/
+endif
+	$(INSTALL) -m 0644 $(VPOX_PATH_DI_SRC)/VirtualPox/org.virtualpox.vpoxballoonctrl.plist  $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/
+	$(INSTALL) -m 0644 $(VPOX_PATH_DI_SRC)/VirtualPox/org.virtualpox.vpoxautostart.plist    $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/
+	$(INSTALL) -m 0755 $(VPOX_PATH_DI_SRC)/VirtualPox/VPoxAutostartDarwin.sh                $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/
+# Install the python bridge stuff
+ifdef VPOX_WITH_PYTHON
+	$(foreach f,$(VPOX_DI_VBAPP_PYTHON_FILES) \
+		,$(INSTALL) -m 0644 $(VPOX_PATH_DIST)/$(f)                                      $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/$(f)$(NLTAB) )
+	$(INSTALL) -m 0755 $(PATH_ROOT)/src/VPox/Frontends/VPoxShell/vpoxshell.py               $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS
+endif
+# Install the java bridge stuff
+ifdef VPOX_WITH_JXPCOM
+	$(INSTALL) -m 0755 $(VPOX_PATH_DIST)/sdk/bindings/xpcom/java/vpoxjxpcom.jar             $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/sdk/bindings/xpcom/java/vpoxjxpcom.jar
+endif
+# Copy misc files.
+	$(foreach f,$(VPOX_DI_VBAPP_MISC_FILES) \
+		,$(INSTALL) -m 0644 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/$(f)              $(VPOX_PATH_VPOX_APP_TMP)/Contents/$(f)$(NLTAB) )
+	$(INSTALL) -m 644 $(VPOX_BRAND_LICENSE_TXT)                                             $(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/LICENSE
+ifdef VPOX_WITH_DOCS_PACKING
+	$(foreach f,$(VPOX_ADD_MANUALS) \
+		,$(INSTALL) -m 0644 $(f) $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/$(NLTAB))
+endif
+	@# Create symlinks.
+	$(foreach symlink,$(VPOX_DI_VBAPP_SYMLINKS) $(VPOX_DI_VBAPP_SYMLINKS.$(KBUILD_TARGET_ARCH)) \
+		,$(LN) -s $(word 2,$(subst =>, ,$(symlink)))                                    $(VPOX_PATH_VPOX_APP_TMP)/Contents/$(word 1,$(subst =>, ,$(symlink)))$(NLTAB))
+	@# Copy the dylibs.
+	$(foreach dylib, $(VPOX_DI_VBAPP_DYLIBS) $(VPOX_DI_VBAPP_DYLIBS.$(KBUILD_TARGET_ARCH)) \
+		,$(INSTALL) -m 0644 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/$(dylib)          $(VPOX_PATH_VPOX_APP_TMP)/Contents/$(dylib)$(NLTAB))
+	@# Copy the other binaries.
+	$(foreach otherbin, $(VPOX_DI_VBAPP_OTHER_UNIVERSAL_BINS) $(VPOX_DI_VBAPP_OTHER_BINS) \
+		,$(INSTALL) -m 0644 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/$(otherbin)       $(VPOX_PATH_VPOX_APP_TMP)/Contents/$(otherbin)$(NLTAB))
+	@# Create/copy the universal executable binaries.
+	$(foreach otherbin, $(VPOX_DI_VBAPP_UNIVERSAL_PROGS) \
+		,$(INSTALL) -m 0755 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/$(otherbin)       $(VPOX_PATH_VPOX_APP_TMP)/Contents/$(otherbin)$(NLTAB))
+	@# Copy the binaries.
+	$(foreach prog, $(VPOX_DI_VBAPP_PROGS) $(VPOX_DI_VBAPP_PROGS_HARDENED) \
+		,$(INSTALL) -m 0755 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/$(prog)       	$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(prog)$(NLTAB))
+ifdef VPOX_UNATTENDED_TEMPLATES
+# Unattended installation template scripts.
+	$(MKDIR) -p -m 0755 -- $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/UnattendedTemplates
+	$(foreach file, $(VPOX_UNATTENDED_TEMPLATES) \
+		,$(INSTALL) -m 0655 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/UnattendedTemplates/$(file) \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/UnattendedTemplates/$(file)$(NLTAB))
+endif
+ifdef VPOX_WITH_DTRACE
+# DTrace library, testcases and scripts.
+	$(MKDIR) -p -m 0755 -- \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/dtrace/lib/$(KBUILD_TARGET_ARCH)/ \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/dtrace/testcase/$(KBUILD_TARGET_ARCH)/ \
+		$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/dtrace/scripts/
+	$(foreach file, $(addprefix lib/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_LIB_ARCH_FILES)) \
+			$(addprefix testcase/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_TESTCASE_ARCH_FILES)) \
+       		$(addprefix scripts/,$(VPOXINST_DTRACE_SCRIPTS_FILES)) \
+		,$(INSTALL) -m 0655 $(VPOX_PATH_DIST)/VirtualPox.app/Contents/MacOS/dtrace/$(file) \
+			$(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/dtrace/$(file)$(NLTAB))
+endif
+	@# Sign the binaries and the application bundle.
+ifdef VPOX_SIGNING_MODE
+	$(foreach qtmod, $(VPOX_QT_MOD_NAMES) \
+		,$(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/Frameworks/$(qtmod).framework/Versions/$(VPOX_QT_VERSION_MAJOR)/$(qtmod),org.virtualpox.app.frameworks.$(qtmod)) )
+	$(foreach qtmod, $(VPOX_QT_MOD_NAMES) \
+		,$(NLTAB)$(call VPOX_SIGN_BUNDLE_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/Frameworks/$(qtmod).framework/Versions/$(VPOX_QT_VERSION_MAJOR),org.virtualpox.app.frameworks.$(qtmod)) )
+	$(foreach dylib, \
+		$(VPOX_DI_VBAPP_DYLIBS) \
+		$(VPOX_DI_VBAPP_DYLIBS.$(KBUILD_TARGET_ARCH)) \
+		, $(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(dylib),org.virtualpox.app.macos.$(notdir $(dylib))) )
+	$(foreach bin, $(VPOX_DI_VBAPP_UNIVERSAL_PROGS) \
+		, $(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(bin),org.virtualpox.app.macos.$(notdir $(bin))) )
+	$(foreach other, $(VPOX_DI_VBAPP_OTHER_UNIVERSAL_BINS) $(VPOX_DI_VBAPP_OTHER_BINS)\
+		, $(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(other),org.virtualpox.app.macos.$(notdir $(other))) )
+	$(foreach bin, $(filter-out MacOS/VirtualPox,$(VPOX_DI_VBAPP_PROGS) $(if-expr !defined(VPOX_WITH_MACOS_HARDENED_RUNTIME),$(VPOX_DI_VBAPP_PROGS_HARDENED),)) \
+		, $(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(bin),org.virtualpox.app.macos.$(notdir $(bin))) )
+	$(foreach file, $(if-expr defined(VPOX_WITH_WEBSERVICES),MacOS/org.virtualpox.vpoxwebsrv.plist,) \
+			MacOS/org.virtualpox.vpoxballoonctrl.plist \
+			MacOS/org.virtualpox.vpoxautostart.plist \
+			MacOS/VPoxAutostartDarwin.sh \
+			$(if-expr defined(VPOX_WITH_PYTHON),$(addprefix MacOS/, $(VPOX_DI_VBAPP_PYTHON_FILES) vpoxshell.py),) \
+			$(if-expr defined(VPOX_WITH_JXPCOM),MacOS/sdk/bindings/xpcom/java/vpoxjxpcom.jar,) \
+			$(filter MacOS/%,$(VPOX_DI_VBAPP_MISC_FILES)) \
+                       $(if-expr defined(VPOX_WITH_DOCS_PACKING),$(addprefix MacOS/,$(VPOX_ADD_MANUALS)),) \
+                       $(if-expr defined(VPOX_WITH_DTRACE),\
+				$(addprefix MacOS/dtrace/lib/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_LIB_ARCH_FILES)) \
+				$(addprefix MacOS/dtrace/testcase/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_TESTCASE_ARCH_FILES)) \
+       			$(addprefix MacOS/dtrace/scripts/,$(VPOXINST_DTRACE_SCRIPTS_FILES)) ,) \
+			$(addprefix MacOS/nls/,$(VPOX_INSTALL_LANG_FILES)) \
+		, $(NLTAB)$(call VPOX_SIGN_FILE_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(file),org.virtualpox.app.$(tolower $(subst $(SP),,$(subst /,.,$(file))))) )
+
+	$(call VPOX_SIGN_BUNDLE_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/VirtualPoxVM.app,,$(if-expr defined(VPOX_WITH_MACOS_HARDENED_RUNTIME)\
+		,--entitlements="$(PATH_ROOT)/src/VPox/HostDrivers/Support/darwin/SUPR3HardenedEntitlements.plist",))
+	$(call VPOX_SIGN_BUNDLE_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/vmstarter.app,,)
+	$(call VPOX_SIGN_BUNDLE_FN,$(VPOX_PATH_VPOX_APP_TMP),,--deep)
+ ifdef VPOX_WITH_MACOS_HARDENED_RUNTIME # HACK ALERT! --deep fries the entitlements, so redo w/o --deep now.
+	$(foreach bin, $(filter-out MacOS/VirtualPoxVM MacOS/VPoxHeadless,$(VPOX_DI_VBAPP_PROGS_HARDENED)) \
+		, $(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(bin),org.virtualpox.app.macos.$(notdir $(bin)), \
+				--entitlements="$(PATH_ROOT)/src/VPox/HostDrivers/Support/darwin/SUPR3HardenedEntitlements.plist"))
+	$(foreach bin, $(filter MacOS/VirtualPoxVM MacOS/VPoxHeadless,$(VPOX_DI_VBAPP_PROGS_HARDENED)) \
+		, $(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(bin),org.virtualpox.app.macos.$(notdir $(bin)), \
+				--entitlements="$(PATH_ROOT)/src/VPox/HostDrivers/Support/darwin/SUPR3HardenedEntitlementsVM.plist"))
+	$(call VPOX_SIGN_BUNDLE_FN,$(VPOX_PATH_VPOX_APP_TMP)/Contents/Resources/VirtualPoxVM.app,,\
+		--entitlements="$(PATH_ROOT)/src/VPox/HostDrivers/Support/darwin/SUPR3HardenedEntitlementsVM.plist",)
+	$(call VPOX_SIGN_BUNDLE_FN,$(VPOX_PATH_VPOX_APP_TMP),,\
+		--entitlements="$(PATH_ROOT)/src/VPox/HostDrivers/Support/darwin/SUPR3HardenedEntitlementsVM.plist",)
+	$(foreach bin, $(VPOX_DI_VBAPP_PROGS_HARDENED) \
+		, $(NLTAB)codesign -d -v -v -v --entitlements :- $(VPOX_PATH_VPOX_APP_TMP)/Contents/$(bin) )
+	$(foreach bin, $(VPOX_DI_VBAPP_PROGS) \
+		, $(NLTAB)codesign -d -v -v -v --entitlements :- $(VPOX_PATH_VPOX_APP_TMP)/Contents/$(bin) )
+ endif
+endif
+	@# Set the correct owner and set the set-user-ID-on-execution bit on the relevant executables.
+	sudo chown -R root:admin $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root
+	sudo chmod u+s $(VPOX_PATH_VPOX_APP_TMP)/Contents/MacOS/VPoxNetAdpCtl
+ifdef VPOX_WITH_HARDENING
+	sudo chmod u+s $(foreach bin,$(VPOX_DI_VBAPP_PROGS_HARDENED),$(VPOX_PATH_VPOX_APP_TMP)/Contents/$(bin))
+endif
+if 0 # Handy for testing the app bundle w/o having to reinstall all the time (just untar it into -C /Applications/)
+	$(RM) -f -- "$(PATH_OUT)/VirtualPox.app.tar.gz"
+	tar -czf "$(PATH_OUT)/VirtualPox.app.tar.gz" -C "$(VPOX_PATH_VPOX_APP_TMP)/.." VirtualPox.app
+endif
+	@# Do keyword replacement in the package info and description files.
+	$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.desc/PkgBuildComponent.plist \
+		$(VPOX_PATH_DI_SRC)/VirtualPox/PkgBuildComponent.plist
+	@# Copy the resources.
+	$(INSTALL) -m 0755 $(VPOX_PATH_DI_SRC)/VirtualPox/preflight                         $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res/
+ifdef VPOX_WITH_HARDENING
+	$(INSTALL) -m 0755 $(VPOX_PATH_DI_SRC)/VirtualPox/postflight                        $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res/
+else
+	$(SED) -s '/WITH_HARDENING/d' -o $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res/postflight $(VPOX_PATH_DI_SRC)/VirtualPox/postflight
+	$(CHMOD) 0755 $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res/postflight
+endif
+	ls -lR $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root/Applications/
+	@# Build the package.
+	$(VPOX_PKGBUILD) \
+       	--root   $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root/Applications/ \
+		--component-plist $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.desc/PkgBuildComponent.plist \
+		--script $(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res \
+		--identifier org.virtualpox.pkg.virtualpox \
+		--version $(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD) \
+		--install-location /Applications/ \
+		--ownership preserve \
+		--preserve-xattr \
+		$(if-expr defined(VPOX_MACOSX_INSTALLER_SIGN) && $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING)) == "",--sign "$(VPOX_MACOSX_INSTALLER_SIGN)",) \
+		$@
+ifdef VPOX_SIGNING_MODE
+ if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Sign the created pkg.
+	$(call VPOX_SIGN_PKG_FN,$@,org.virtualpox.pkg.virtualpox)
+ endif
+endif
+	@# Cleanup
+	sudo chown -R "$(shell whoami)" \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root
+	sudo chmod -R a-s \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root
+	sudo rm -Rf \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPox.pkg.res
+
+#
+# The VirtualPox CLI wrapper scripts.
+#
+$(VPOX_PATH_PACK_TMP)/Packages/VirtualPoxCLI.pkg: \
+		$$(wildcard $(VPOX_PATH_DI_SRC)/VirtualPoxCLI/* \
+		            $(VPOX_PATH_DI_SRC)/VirtualPoxCLI/*.lproj/*) \
+		$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES) \
+			,$(VPOX_BRAND_$(f)_VIRTUALPOXCLI_DESCRIPTION_PLIST)) \
+		$(VPOX_DARWIN_INST_DEP_ON_MAKEFILE)
+	$(call MSG_TOOL,pkgbuild,,,$@)
+	@# Cleanup any previously failed attempts.
+	sudo rm -Rf \
+		$@ \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.res
+	@# Correct directory permissions are important.
+	$(MKDIR) -p \
+		$(@D) \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.res \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.res/English.lproj
+	$(MKDIR) -p -m 0755 \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin
+	@# Generate the wrapper scripts.
+	$(APPEND) -tn  $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VirtualPox \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/VirtualPox "$$@"'
+	$(APPEND) -tn  $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VirtualPoxVM \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/Resources/VirtualPoxVM.app/Contents/MacOS/VirtualPoxVM "$$@"'
+	$(APPEND) -tn  $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VPoxManage \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/VPoxManage "$$@"'
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VPoxVRDP \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/VPoxHeadless "$$@"'
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VPoxHeadless \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/VPoxHeadless "$$@"'
+ifdef VPOX_WITH_WEBSERVICES
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/vpoxwebsrv \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/vpoxwebsrv "$$@"'
+endif
+if defined(VPOX_WITH_VPOX_IMG) || defined(VPOX_WITH_TESTCASES)
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/vpox-img \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/vpox-img "$$@"'
+endif
+if defined(VPOX_WITH_VPOXIMGMOUNT)
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/vpoximg-mount \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/vpoximg-mount "$$@"'
+endif
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VPoxBugReport \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/VPoxBugReport "$$@"'
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VPoxBalloonCtrl \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/VPoxBalloonCtrl "$$@"'
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VPoxAutostart \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/VPoxAutostart "$$@"'
+ifdef VPOX_WITH_DTRACE
+	$(APPEND) -tn $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/VPoxDTrace \
+		'#!/bin/bash' 'exec /Applications/VirtualPox.app/Contents/MacOS/VPoxDTrace "$$@"'
+endif
+	@# Set the correct owners and file permissions.
+	sudo chmod 0755 $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin/*
+	sudo chown    root:admin $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root
+	sudo chown -R root:wheel $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr
+	@# Build the package.
+	$(VPOX_PKGBUILD) \
+       	--root   $(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root/usr/local/bin \
+		--identifier org.virtualpox.pkg.virtualpoxcli \
+		--version $(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD) \
+		--install-location /usr/local/bin \
+		--ownership preserve \
+		$(if-expr defined(VPOX_MACOSX_INSTALLER_SIGN) && $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING)) == "",--sign "$(VPOX_MACOSX_INSTALLER_SIGN)",) \
+		$@
+ifdef VPOX_SIGNING_MODE
+ if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Sign the created pkg.
+	$(call VPOX_SIGN_PKG_FN,$@,org.virtualpox.pkg.virtualpoxcli)
+ endif
+endif
+	@# Cleanup
+	sudo chown -R "$(shell whoami)" \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root
+	sudo rm -Rf \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VirtualPoxCLI.pkg.res
+
+ifdef VPOX_WITH_FUSE_PACKING
+#
+# The FUSE for macOS core package.
+#
+VPOX_PATH_FUSE_CORE_PKG ?= $(lastword $(sort $(wildcard $(KBUILD_DEVTOOLS_TRG)/osxfuse/v*)))/Core.pkg
+$(VPOX_PATH_PACK_TMP)/Packages/OSXFuseCore.pkg: \
+		$(VPOX_PATH_FUSE_CORE_PKG)
+	$(call MSG_TOOL,Preparing FUSE for macOS core package,,,$@)
+	@# Cleanup any previously failed attempts.
+	sudo rm -Rf $@
+	$(MKDIR) -p $(@D)
+	pkgutil --flatten $(VPOX_PATH_FUSE_CORE_PKG) $@
+endif
+
+
+#
+# Aliases.
+#
+VPoxKEXTs.pkg:        $(VPOX_PATH_PACK_TMP)/Packages/VPoxKEXTs.pkg
+VirtualPoxCLI.pkg:    $(VPOX_PATH_PACK_TMP)/Packages/VirtualPoxCLI.pkg
+VirtualPox.pkg:       $(VPOX_PATH_PACK_TMP)/Packages/VirtualPox.pkg
+VirtualPox.mpkg:      $(VPOX_PATH_PACK_TMP)/DiskImage/VirtualPox.pkg
+VirtualPox.dmg:       $(VPOX_PATH_DIST)/VirtualPox-$(VPOX_VERSION_STRING)-r$(VPOX_SVN_REV).dmg

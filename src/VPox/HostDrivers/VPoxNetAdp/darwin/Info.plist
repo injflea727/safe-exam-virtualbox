@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>        <string>English</string>
+    <key>CFBundleExecutable</key>               <string>VPoxNetAdp</string>
+    <key>CFBundleIdentifier</key>               <string>org.virtualpox.kext.VPoxNetAdp</string>
+    <key>CFBundleInfoDictionaryVersion</key>    <string>6.0</string>
+    <key>CFBundleName</key>                     <string>VPoxNetAdp</string>
+    <key>CFBundlePackageType</key>              <string>KEXT</string>
+    <key>CFBundleSignature</key>                <string>????</string>
+    <key>CFBundleGetInfoString</key>            <string>@VPOX_PRODUCT@ @VPOX_VERSION_STRING@, © 2008-@VPOX_C_YEAR@ @VPOX_VENDOR@</string>
+    <key>CFBundleVersion</key>                  <string>@VPOX_VERSION_MAJOR@.@VPOX_VERSION_MINOR@.@VPOX_VERSION_BUILD@</string>
+    <key>CFBundleShortVersionString</key>       <string>@VPOX_VERSION_MAJOR@.@VPOX_VERSION_MINOR@.@VPOX_VERSION_BUILD@</string>
+    <key>IOKitPersonalities</key>
+    <dict>
+    </dict>
+    <key>OSBundleLibraries</key>
+    <dict>
+        <key>com.apple.kpi.bsd</key>            <string>8.8.1</string>
+        <key>com.apple.kpi.mach</key>           <string>8.8.1</string>
+        <key>com.apple.kpi.libkern</key>        <string>8.8.1</string>
+        <key>org.virtualpox.kext.VPoxDrv</key>  <string>@VPOX_VERSION_MAJOR@.@VPOX_VERSION_MINOR@.@VPOX_VERSION_BUILD@</string>
+    </dict>
+</dict>
+</plist>

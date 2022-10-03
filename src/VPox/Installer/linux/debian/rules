@@ -1,0 +1,367 @@
+#!/usr/bin/make -f
+# $Id: rules $
+## @file
+# VirtualPox rules.
+#
+
+#
+# Copyright (C) 2006-2019 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+#
+# NOTE: if you make changes to this file, please check if the updates should
+# be also applied to the publicly visible debian/rules file.
+#
+
+#export DH_VERBOSE=1
+
+# possible overrides:
+#  OSE=1            force VPOX_OSE
+#  NOPARALLEL=1     compile with -j1
+#  LINUX=<dir>      compile vpoxdrv against Linux found in <dir>
+#  VERBOSE=1        verbose build
+#  DEBUG=1          debug build
+#  NOSUBVER=1       disable generation of the sub-version field (which is
+#                   either the subversion rev [if available] or the build date)
+#  NODOCS=1         don't build docs, use precompiled UserManual*.pdf and
+#                   VirtualPox*.chm from $(vpoxroot)/prebuild
+#  NOMODS=1         don't build any module
+#  NOQT=1           don't build the Qt GUI
+#  NOSDL=1          don't build VPoxSDL
+#  EFI=1            include the EFI binary from prebuild
+#  VERSUFFIX=<suffix> set a particular package version suffix (e.g. _customer)
+#  HEADLESS=1       build the headless version
+#  VNC=1            build VNC code
+#  NOWEBSVC=1       don't build the webservice API
+#  STAGEDISO=<path> don't build the VPoxAdditions, use the precompiled .iso
+#  PKGDIR=<path>    where to store the final package(s)
+#  svn_revision=xxx do not depend on subversion being available, but use this
+#                   hard-coded revision number instead
+#
+# NODOCS will be set if UserManual*.pdf and VirtualPox*.chm are placed in
+# $(vpoxroot)/prebuild.
+# STAGEDISO will be set if VPoxGuestAdditions.iso is placed there.
+#
+# Wine will not be required if both NODOCS and STAGEDISO are set.
+
+package  := virtualpox
+verpkg   := virtualpox-6.1
+vpoxroot := $(shell while ! test -r configure && ! test "$$PWD" = "/"; do cd ..; done; pwd)
+debroot  := $(vpoxroot)/src/VPox/Installer/linux
+instlin  := $(vpoxroot)/src/VPox/Installer/linux
+pkgdir   := $(if $(PKGDIR),$(PKGDIR),$(shell cd $(vpoxroot)/..; pwd))
+outdir   := $(if $(PATH_OUT_BASE),$(PATH_OUT_BASE),$(vpoxroot))/out
+bldbase  := $(outdir)/debian
+builddir := $(bldbase)/builddir
+moddir   := $(bldbase)/modules
+prefix   := $(bldbase)/$(verpkg)
+arch     := $(shell dpkg --print-architecture)
+verfile  := $(builddir)/version-generated.mk
+ose      := $(if $(OSE),1,$(if $(wildcard $(vpoxroot)/src/VPox/RDP/server),,1))
+chrarch  := $(shell if [ `uname -m` = "x86_64" ]; then echo "amd64"; else echo "x86"; fi)
+-include $(vpoxroot)/SVN_REVISION
+NOMODS   ?= $(ose)
+NOQT     ?= $(HEADLESS)
+NOSDL    ?= $(HEADLESS)
+NOWEBSVC ?=
+EFI      ?= $(if $(wildcard $(vpoxroot)/prebuild/VPoxEFI32.fd $(vpoxroot)/prebuild/VPoxEFI64.fd),1,)
+NODOCS   ?= $(if $(wildcard $(vpoxroot)/prebuild/UserManual*.pdf),$(if $(wildcard $(vpoxroot)/prebuild/VirtualPox*.chm),1,),)
+STAGEDISO ?= $(if $(wildcard $(vpoxroot)/prebuild/VPoxGuestAdditions.iso),$(vpoxroot)/prebuild,)
+NOWINE   := $(if $(NODOCS),1,$(if $(STAGEDISO),1,$(ose)))
+PYTHON   := $(firstword $(shell which python) $(shell which python3))
+
+DEBPKGFILES := changelog compat control dirs postinst postrm preinst prerm rules templates
+
+ifneq ($(STAGEDISO),)
+ ifeq ($(wildcard $(STAGEDISO)/VPoxGuestAdditions.iso),)
+  $(error STAGEDISO='$(STAGEDISO)/VPoxGuestAdditions.iso' not found)
+ endif
+endif
+
+# Replicate debian package buildfiles to $(bldbase)
+ifneq ($(shell pwd),$(outdir))
+cmd := $(filter-out all Makefile,$(MAKECMDGOALS))
+all:
+	mkdir -p $(bldbase)
+	ln -sf $(addprefix $(debroot)/debian/,$(DEBPKGFILES)) $(bldbase)
+	+$(MAKE) -C $(outdir) vpoxroot=$(vpoxroot) -f debian/rules $(cmd)
+
+Makefile:
+
+$(cmd): all
+
+.PHONY: all $(MAKECMDGOALS)
+
+else
+ ifneq ($(wildcard $(verfile)),)
+include $(verfile)
+ver      := $(VPOX_VERSION_STRING)
+svnver   := $(if $(NOSUBVER),,$(if $(svn_revision),-$(svn_revision),$(shell if \
+		svn info $(vpoxroot) > /dev/null 2>&1; then \
+		svn info $(vpoxroot)|sed -e "s/^Revision: \(.*\)/-\1/;t;d"; else \
+		date +"-%Y%m%d"; fi)))
+debver   := $(subst _ALPHA,~alpha,$(subst _BETA,~beta,$(subst _RC,~rc,$(subst _OSE,~ose,$(ver)))))$(svnver)$(VERSUFFIX)$(if $(HEADLESS),~headless,)$(if $(DEBUG),~dbg,)
+archdir  := $(prefix)/opt/VirtualPox-$(ver)
+ endif
+
+ifneq ($(MAKECMDGOALS),clean)
+ debrel  := $(if $(shell which lsb_release),_$(shell lsb_release -si)_$(shell lsb_release -sc),unknown)
+ debdist  := $(strip $(shell grep $(debrel) $(debroot)/distributions_deb | cut -d'=' -f2))
+ ifeq ($(debdist),)
+  debdist := $(if $(shell which lsb_release),_$(shell lsb_release -si | tr a-z A-Z)_$(shell lsb_release -sr | sed -e 's/\./_/g' -e 's/\([^_]*\)\(_[^_]*\).*/\1\2/'),unknown)
+  # $(error package distribution not detected (debrel=$(debrel)))
+ endif
+endif
+
+cfg_flags := $(if $(NOQT),--disable-qt,) \
+    $(if $(NOSDL),--disable-vpoxsdl,) \
+    $(if $(ose),--ose,) $(if $(LINUX),--with-linux=$(LINUX),) \
+    $(if $(HEADLESS),--build-headless,) \
+    $(if $(DEBUG),--build-debug,) \
+    $(if $(NOWINE),,--setup-wine) \
+    $(if $(VNC),--enable-vnc,) \
+    $(if $(PATH_OUT_BASE),--out-base-dir=$(PATH_OUT_BASE),) \
+    --disable-extpack
+
+bld_flags := AUTOCFG=$(bldbase)/AutoConfig.kmk \
+    LOCALCFG=$(debroot)/debian/LocalConfig.kmk \
+    PATH_OUT=$(builddir) \
+    VPOX_WITHOUT_EXTPACK_PUEL_PACKING=1 \
+    VPOX_WITHOUT_EXTPACK_VNC_PACKING=1 \
+    VPOX_WITH_VMSVGA3D=1 \
+    VPOX_DO_STRIP= \
+    VPOX_PATH_PACKAGE_DOCS="\"/usr/share/doc/$(verpkg)\"" \
+    VPOX_PACKAGE_DIST=$(debdist) \
+    $(if $(svn_revision),VPOX_SVN_REV=$(svn_revision),) \
+    $(if $(NODOCS),VPOX_WITH_DOCS= VPOX_WITH_DOCS_CHM=1,VPOX_WITH_KCHMVIEWER=) \
+    $(if $(VERBOSE),--print-directory KBUILD_VERBOSE=2,--no-print-directory) \
+    $(if $(STAGEDISO),VPOX_WITHOUT_ADDITIONS=1,)
+
+configure: $(bldbase)/configure-stamp
+$(bldbase)/configure-stamp:
+	dh_testdir
+	mkdir -p $(bldbase)
+	cd $(vpoxroot) && ./configure --odir=$(bldbase) $(cfg_flags)
+	touch $@
+
+build: $(bldbase)/configure-stamp $(bldbase)/build-stamp
+$(bldbase)/build-stamp $(verfile): $(bldbase)/configure-stamp
+	dh_testdir
+	. $(bldbase)/env.sh && kmk -C $(vpoxroot) $(bld_flags) $(if $(NOPARALLEL),-j1,) all
+	# Files from prebuild go to (builddir)/bin to be used during the
+	# packing stage, overriding what the build did/would produce.
+	$(if $(NODOCS),cp $(addprefix $(vpoxroot)/prebuild/,UserManual*.pdf VirtualPox*.chm) $(builddir)/bin,)
+	$(if $(EFI),cp $(vpoxroot)/prebuild/VPoxEFI32.fd $(builddir)/bin,)
+	$(if $(EFI),cp $(vpoxroot)/prebuild/VPoxEFI64.fd $(builddir)/bin,)
+	mkdir -p $(builddir)/bin/additions
+	$(if $(STAGEDISO),cp $(STAGEDISO)/VPoxGuestAdditions.iso $(builddir)/bin/additions,)
+	. $(bldbase)/env.sh && kmk -C $(vpoxroot) $(bld_flags) \
+	    VPOX_NO_LINUX_RUN_INSTALLER=1 \
+	    VPOX_LNX_ADD_ARCHIVE.x86=$(builddir)/bin/additions/VPoxGuestAdditions-x86.tar.bz2 \
+	    VPOX_LNX_ADD_ARCHIVE.amd64=$(builddir)/bin/additions/VPoxGuestAdditions-amd64.tar.bz2 \
+	    VPOX_PATH_ADDITIONS.linux.x86=$(builddir)/bin/additions \
+	    VPOX_PATH_ADDITIONS.linux.amd64=$(builddir)/bin/additions \
+	    packing
+	touch $(bldbase)/build-stamp
+
+# Build modules for every kernel we find in /lib/modules/*
+$(bldbase)/modules-stamp: $(bldbase)/build-stamp
+	rm -rf $(moddir)
+	mkdir $(moddir)
+	for d in $(wildcard /lib/modules/*); do \
+	    if [ -L $$d/build ]; then \
+	        make -C $(builddir)/bin/src/vpoxdrv KERN_VER=$$(basename $$d) clean && \
+	        make -C $(builddir)/bin/src/vpoxdrv KBUILD_VERBOSE= KERN_VER=$$(basename $$d) all; \
+	        make -C $(builddir)/bin/src/vpoxnetflt KERN_VER=$$(basename $$d) clean && \
+	        (cp $(builddir)/bin/src/vpoxdrv/Module.symvers $(builddir)/bin/src/vpoxnetflt || true) && \
+	        make -C $(builddir)/bin/src/vpoxnetflt KBUILD_VERBOSE= KERN_VER=$$(basename $$d) KBUILD_EXTRA_SYMBOLS=$(builddir)/bin/src/vpoxnetflt/Module.symvers all; \
+	        make -C $(builddir)/bin/src/vpoxnetadp KERN_VER=$$(basename $$d) clean && \
+	        (cp $(builddir)/bin/src/vpoxdrv/Module.symvers $(builddir)/bin/src/vpoxnetadp || true) && \
+	        make -C $(builddir)/bin/src/vpoxnetadp KBUILD_VERBOSE= KERN_VER=$$(basename $$d) KBUILD_EXTRA_SYMBOLS=$(builddir)/bin/src/vpoxnetadp/Module.symvers all; \
+	        [ -d $(builddir)/bin/src/vpoxpci ] && make -C $(builddir)/bin/src/vpoxpci KERN_VER=$$(basename $$d) clean && \
+	        (cp $(builddir)/bin/src/vpoxdrv/Module.symvers $(builddir)/bin/src/vpoxpci || true) && \
+	        make -C $(builddir)/bin/src/vpoxpci KBUILD_VERBOSE= KERN_VER=$$(basename $$d) KBUILD_EXTRA_SYMBOLS=$(builddir)/bin/src/vpoxpci/Module.symvers all; \
+	        true; \
+	    fi; \
+	done
+	touch $@
+
+clean:
+	dh_testdir
+	dh_testroot
+	dh_clean
+	rm -rf $(archdir)
+	rm -rf $(builddir)
+	rm -rf $(moddir)
+	rm -rf $(bldbase)/wine.*
+	rm -rf $(bldbase)/VirtualPox-*
+	rm -f $(bldbase)/VirtualPox.tar $(bldbase)/VirtualPox.tar.bz2
+	rm -f $(bldbase)/virtualpox-*.substvars $(bldbase)/virtualpox*.debhelper
+	rm -f $(bldbase)/$(verpkg).mime $(bldbase)/$(verpkg).sharedmimeinfo
+	rm -f $(bldbase)/modules-stamp $(bldbase)/build-stamp $(bldbase)/configure-stamp
+	rm -f $(bldbase)/AutoConfig.kmk $(bldbase)/configure.log $(bldbase)/env.sh
+	rm -f $(addprefix $(bldbase)/,$(DEBPKGFILES))
+	if [ -d $(bldbase) ]; then rmdir $(bldbase); fi
+
+ ifeq ($(VPOX_VERSION_MAJOR),)
+binary: build $(verfile)
+	+$(MAKE) -f debian/rules binary
+
+ else
+# Build architecture-dependent files here.
+binary: build $(if $(NOMODS),,$(bldbase)/modules-stamp)
+	dh_testdir
+	dh_testroot
+	dh_prep
+	dh_installdirs
+	tar -xC $(prefix)/opt -f $(builddir)/bin/VirtualPox.tar
+	install -d -g 0 -o 0 $(prefix)/usr/share/applications
+	install -d -g 0 -o 0 $(prefix)/usr/lib
+	install -d -g 0 -o 0 $(prefix)/usr/bin
+	install -d -g 0 -o 0 $(prefix)/usr/share/$(package)
+	mv $(archdir)/UnattendedTemplates $(prefix)/usr/share/$(package)/
+	install -d -g 0 -o 0 $(prefix)/usr/share/doc/$(verpkg)
+	$(if $(NOQT),,mv $(archdir)/virtualpox.desktop \
+	   $(prefix)/usr/share/applications/virtualpox.desktop)
+	install -d -g 0 -o 0 $(prefix)/usr/share/pixmaps
+	$(if $(NOQT),,install -d -g 0 -o 0 $(prefix)/usr/share/icons/hicolor)
+	$(if $(NOQT),,cp $(archdir)/icons/128x128/virtualpox.png \
+	   $(prefix)/usr/share/pixmaps/virtualpox.png)
+	$(if $(NOQT),,mv $(archdir)/nls $(prefix)/usr/share/$(package))
+	$(if $(NOQT),,cd $(archdir)/icons; for i in *; do \
+	    for j in $$i/virtualpox.*; do \
+	        if [ -f $$j ]; then \
+	            if [ ! -d $(prefix)/usr/share/icons/hicolor/$$i/apps ]; then \
+	                install -d -g 0 -o 0 $(prefix)/usr/share/icons/hicolor/$$i/apps; \
+	            fi; \
+	            mv $$j $(prefix)/usr/share/icons/hicolor/$$i/apps; \
+	        fi; \
+	    done; \
+	    install -d -g 0 -o 0 $(prefix)/usr/share/icons/hicolor/$$i/mimetypes; \
+	    mv $$i/* $(prefix)/usr/share/icons/hicolor/$$i/mimetypes || true; \
+	    rmdir $$i; \
+	done)
+	$(if $(NOQT),,rmdir $(archdir)/icons)
+	$(if $(NOQT),,mv $(archdir)/virtualpox.xml $(bldbase)/$(verpkg).sharedmimeinfo)
+	install -d -g 0 -o 0 $(prefix)/usr/share/lintian/overrides
+	sed \
+	    -e 's|%VERPKG%|$(verpkg)|g' \
+	    $(vpoxroot)/debian/lintian-override.in > \
+	   $(prefix)/usr/share/lintian/overrides/$(verpkg)
+	mv $(archdir)/VPox.png \
+	   $(prefix)/usr/share/pixmaps/VPox.png
+	mv $(archdir)/src  $(prefix)/usr/share/$(package)
+	rm $(archdir)/VPox.sh
+	install -D -g 0 -o 0 -m 644 $(instlin)/VPox.sh $(prefix)/usr/bin/VPox
+	mv $(archdir)/VPoxSysInfo.sh $(prefix)/usr/share/$(package)
+	if [ -r $(archdir)/VPoxDTrace ]; then \
+	    mv $(archdir)/VPoxDTrace $(prefix)/usr/bin; \
+	fi
+	mv $(archdir)/VPoxTunctl $(prefix)/usr/bin
+	$(if $(NOMODS),,for d in $(moddir)/*; do \
+	    if [ -f $$d/vpoxdrv.ko -a -f $$d/vpoxnetflt.ko -a -f $$d/vpoxnetadp.ko ]; then \
+	        install -D -g 0 -o 0 -m 0644 \
+		    $$d/vpoxdrv.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vpoxdrv.ko; \
+	        install -D -g 0 -o 0 -m 0644 \
+		    $$d/vpoxnetflt.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vpoxnetflt.ko; \
+	        install -D -g 0 -o 0 -m 0644 \
+		    $$d/vpoxnetadp.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vpoxnetadp.ko; \
+	        if [ -f $$d/vpoxpci.ko ]; then \
+	            install -D -g 0 -o 0 -m 0644 \
+		        $$d/vpoxpci.ko $(prefix)/lib/modules/$$(basename $$d)/misc/vpoxpci.ko; \
+	        fi \
+	    fi \
+	    done)
+	dh_installdocs $(addprefix $(archdir)/,UserManual*.pdf LICENSE)
+	mv $(addprefix $(archdir)/,$(if $(HEADLESS),,rdesktop-vrdp.tar.gz) additions/VPoxGuestAdditions.iso) $(prefix)/usr/share/$(package)
+	$(if $(HEADLESS),,mv $(archdir)/rdesktop-vrdp $(prefix)/usr/bin)
+	$(if $(HEADLESS),,mv $(archdir)/rdesktop-vrdp-keymaps $(prefix)/usr/share/$(package))
+	mv $(archdir) $(prefix)/usr/lib/$(package)
+	if [ -f $(prefix)/usr/lib/$(package)/libQt5CoreVPox.so.5 ]; then \
+	    $(vpoxroot)/tools/linux.$(chrarch)/bin/chrpath \
+	        --keepgoing --replace /usr/lib/$(package) \
+	        $(prefix)/usr/lib/$(package)/*.so.5 \
+	        $(prefix)/usr/lib/$(package)/plugins/platforms/*.so; \
+	        $(prefix)/usr/lib/$(package)/plugins/xcbglintegrations/*.so; \
+	    echo "[Paths]" > $(prefix)/usr/lib/$(package)/qt.conf; \
+	    echo "Plugins = /usr/lib/$(package)/plugins" >> $(prefix)/usr/lib/$(package)/qt.conf; \
+	fi
+	export VPOX_INSTALL_PATH=/usr/lib/$(package) && \
+	    cd $(builddir)/bin/sdk/installer && \
+	    $(PYTHON) ./vpoxapisetup.py install --root $(prefix)
+	rm -rf $(prefix)/usr/lib/$(package)/sdk/installer
+	ln -s ../VPoxVMM.so $(prefix)/usr/lib/$(package)/components/VPoxVMM.so
+	rmdir $(prefix)/opt
+	dh_link \
+	    $(if $(NOQT),,usr/bin/VPox          usr/bin/VirtualPox) \
+	    $(if $(NOQT),,usr/bin/VPox          usr/bin/virtualpox) \
+	    $(if $(NOQT),,usr/bin/VPox          usr/bin/VirtualPoxVM) \
+	    $(if $(NOQT),,usr/bin/VPox          usr/bin/virtualpoxvm) \
+	    usr/bin/VPox                        usr/bin/VPoxManage \
+	    usr/bin/VPox                        usr/bin/vpoxmanage \
+	    $(if $(NOSDL),,usr/bin/VPox         usr/bin/VPoxSDL) \
+	    $(if $(NOSDL),,usr/bin/VPox         usr/bin/vpoxsdl) \
+	    usr/bin/VPox                        usr/bin/VPoxHeadless \
+	    usr/bin/VPox                        usr/bin/vpoxheadless \
+	    usr/bin/VPox                        usr/bin/VPoxBugReport \
+	    usr/bin/VPox                        usr/bin/vpoxbugreport \
+	    usr/bin/VPox                        usr/bin/VPoxBalloonCtrl \
+	    usr/bin/VPox                        usr/bin/vpoxballoonctrl \
+	    usr/bin/VPox                        usr/bin/VPoxAutostart \
+	    usr/bin/VPox                        usr/bin/vpoxautostart \
+	    $(if $(NOWEBSVC),,usr/bin/VPox      usr/bin/vpoxwebsrv) \
+	    $(if $(NOVPOXIMG),,usr/lib/virtualpox/vpox-img usr/bin/vpox-img) \
+	    $(if $(NOVPOXIMGMOUNT),,usr/lib/virtualpox/vpoximg-mount usr/bin/vpoximg-mount) \
+	    usr/share/virtualpox/src/vpoxhost   usr/src/vpoxhost-$(ver)
+	$(if $(NOMODS),,dh_installmodules)
+	rm -f $(bldbase)/changelog
+	sed -e 's|%VER%|$(debver)|g' \
+	    -e 's|%DATE%|$(shell date -R)|g' \
+	    -e 's|%DEBREL%|$(subst _,~,$(debrel))|g' \
+	    -e 's|%VERPKG%|$(verpkg)|g' \
+	    $(debroot)/debian/changelog.in > $(bldbase)/changelog
+	dh_installdebconf
+	dh_installchangelogs
+	dh_installmenu
+	dh_installmime
+	dh_link
+  ifeq ($(DEBUG),)
+	dh_strip --keep-debug \
+	    $(addprefix --exclude=lib,$(addsuffix VPox.so.5,\
+	      Qt5Core Qt5Gui Qt5Widgets Qt5PrintSupport Qt5OpenGL Qt5DBus Qt5XcbQpa Qt5X11Extras)) \
+	    --exclude=libqxcb.so --exclude=libqxcb-glx-integration.so
+  endif
+	mkdir -p $(bldbase)/$(verpkg)-dbg/usr/lib/$(package)
+	mv $(prefix)/usr/lib/$(package)/*.debug $(bldbase)/$(verpkg)-dbg/usr/lib/$(package)
+  ifeq ($(DEBUG),)
+	mv $(prefix)/usr/lib/debug $(bldbase)/$(verpkg)-dbg/usr/lib
+  endif
+	$(firstword $(shell which dh_python2) $(shell which dh_python3))
+	dh_compress -X.pdf -X.chm -X LICENSE -X.py
+	dh_fixperms
+	dh_makeshlibs
+	dh_installdeb
+	dh_perl
+	# For some reason, the Qt libraries couldn't be found on newer releases (e.g. Ubuntu hardy).
+	# Python is deliberately not listed as a dependency (see also comment in the "control" file.
+	# It is expected that dh_gencontrol shows a warning "substitution variable ${python:Versions}
+	# used, but is not defined" because of this.
+	LD_LIBRARY_PATH=$(prefix)/usr/lib/virtualpox dh_shlibdeps --exclude=VPoxPython
+	dh_gencontrol -- \
+	  -Valsa=$(if $(HEADLESS),,libasound2) \
+	  -Vpulse=$(if $(HEADLESS),,libpulse0) \
+	  -Vsdlttf=$(if $(HEADLESS),,libsdl-ttf2.0-0)
+	dh_md5sums
+	dh_builddeb --destdir $(pkgdir) -- -Zxz
+ endif
+
+.PHONY: binary configure build clean
+endif

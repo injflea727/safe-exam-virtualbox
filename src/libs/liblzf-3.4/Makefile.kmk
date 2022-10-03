@@ -1,0 +1,52 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for liblzf.
+#
+
+#
+# Copyright (C) 2006-2017 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += VPox-liblzf
+if1of ($(KBUILD_TARGET),os2 win)
+ # only required for vpox-img
+ LIBRARIES += VPox-liblzf-static
+endif
+VPox-liblzf_TEMPLATE = VPoxR3RuntimeDllNonPedanticFast
+VPox-liblzf_BLD_TYPE = release # WARNING! Always optimizing this lib.
+VPox-liblzf_DEFS = ULTRA_FAST=1 HLOG=12
+VPox-liblzf_DEFS.x86 = STRICT_ALIGN=0
+VPox-liblzf_DEFS.amd64 = STRICT_ALIGN=0
+VPox-liblzf_CFLAGS.freebsd = -std=gnu99
+VPox-liblzf_SOURCES = \
+	lzf_c.c \
+	lzf_d.c
+
+VPox-liblzf-static_TEMPLATE   = VPoxR3StaticNonPedantic
+VPox-liblzf-static_BLD_TYPE   = $(VPox-liblzf_BLD_TYPE)
+VPox-liblzf-static_DEFS       = $(VPox-liblzf_DEFS)
+VPox-liblzf-static_DEFS.x86   = $(VPox-liblzf_DEFS.x86)
+VPox-liblzf-static_DEFS.amd64 = $(VPox-liblzf_DEFS.amd64)
+VPox-liblzf-static_SOURCES    = $(VPox-liblzf_SOURCES)
+
+ifdef VPOX_WITH_32_ON_64_MAIN_API # 32-bit edition.
+ LIBRARIES += VPox-liblzf-x86
+ VPox-liblzf-x86_TEMPLATE = VPoxR3DllNonPedantic-x86
+ VPox-liblzf-x86_EXTENDS = VPox-liblzf
+endif
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

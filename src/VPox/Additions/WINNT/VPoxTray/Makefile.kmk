@@ -1,0 +1,99 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VPoxTray.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+PROGRAMS += VPoxTray
+VPoxTray_TEMPLATE = VPoxGuestR3Exe
+ifdef VPOX_SIGN_ADDITIONS # (See the parent makefile.)
+ VPoxTray_INSTTYPE = none
+ VPoxTray_DEBUG_INSTTYPE = both
+endif
+VPoxTray_SDKS     = ReorderCompilerIncs $(VPOX_WINDDK_GST)
+VPoxTray_DEFS     = \
+	LOG_ENABLED \
+	VPOX_WITH_HGCM \
+	VPOX_BUILD_TARGET=\"$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)\"
+VPoxTray_INCS     = \
+	../include \
+	$(PATH_ROOT)/src/VPox/Additions/WINNT/Graphics/Video/disp/wddm/shared \
+	$(VPOX_GRAPHICS_INCS)
+VPoxTray_SOURCES  = \
+	VPoxTray.cpp \
+	VPoxDispIf.cpp \
+	VPoxSeamless.cpp \
+	VPoxDisplay.cpp \
+	VPoxVRDP.cpp \
+	VPoxIPC.cpp \
+	VPoxHelpers.cpp
+VPoxTray_USES.win = vpoximportchecker
+VPoxTray_VPOX_IMPORT_CHECKER.win.x86 = nt4 #nt350
+VPoxTray_VPOX_IMPORT_CHECKER.win.amd64 = xp64
+ifdef VPOX_WITH_SHARED_CLIPBOARD
+ VPoxTray_DEFS     += \
+	$(if $(VPOX_WITH_SHARED_CLIPBOARD),VPOX_WITH_SHARED_CLIPBOARD,) \
+	$(if $(VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS),VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS,)
+ VPoxTray_SOURCES  += \
+	VPoxClipboard.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-win.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-common.cpp
+ ifdef VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+  VPoxTray_DEFS     += VPOX_WITH_SHARED_CLIPBOARD_GUEST
+  VPoxTray_SOURCES  += \
+ 	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/ClipboardArea.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/ClipboardDataObjectImpl-win.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/ClipboardEnumFormatEtcImpl-win.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/ClipboardPath.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/ClipboardStreamImpl-win.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-transfers.cpp
+ endif
+endif
+ifdef VPOX_WITH_DRAG_AND_DROP
+ VPoxTray_DEFS     += \
+	VPOX_WITH_DRAG_AND_DROP \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH,)
+ VPoxTray_SOURCES  += \
+	VPoxDnD.cpp \
+	VPoxDnDDataObject.cpp \
+	VPoxDnDEnumFormat.cpp \
+	VPoxDnDDropSource.cpp \
+	VPoxDnDDropTarget.cpp
+ VPoxTray_LIBS     += \
+	$(PATH_STAGE_LIB)/additions/VPoxDnDGuestR3Lib$(VPOX_SUFF_LIB)
+endif
+ifdef VPOX_WITH_GUEST_PROPS
+ VPoxTray_DEFS     += _WIN32_IE=0x500 VPOX_WITH_GUEST_PROPS
+ VPoxTray_SOURCES  += \
+	VPoxHostVersion.cpp \
+	VPoxLA.cpp
+endif
+ifdef VPOX_WITH_WDDM
+ VPoxTray_DEFS   += VPOX_WITH_WDDM
+ # VPoxTray_DEFS   += LOG_ENABLED
+ VPoxTray_SOURCES += $(PATH_ROOT)/src/VPox/Additions/WINNT/Graphics/Video/disp/wddm/shared/VPoxDispKmt.cpp
+endif
+
+# VPoxTray.cpp uses VPOX_SVN_REV.
+VPoxTray.cpp_DEFS += VPOX_SVN_REV=$(VPOX_SVN_REV)
+VPoxTray.cpp_DEPS = $(VPOX_SVN_REV_KMK)
+
+# Version info / description + icon.
+$(call VPOX_SET_VER_INFO_EXE,VPoxTray,VirtualPox Guest Additions Tray Application,$(VPOX_WINDOWS_ADDITIONS_ICON_FILE))
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

@@ -1,0 +1,86 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the OpenGLTest helper app.
+#
+
+#
+# Copyright (C) 2008-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# Target lists.
+#
+LIBRARIES += VPoxOGLTest
+VPoxOGLTest_TEMPLATE = VPOXR3NP
+ifneq ($(KBUILD_TARGET),darwin)
+  VPoxOGLTest_SOURCES = OpenGLTest.cpp
+endif
+VPoxOGLTest_SOURCES.darwin = OpenGLTestDarwin.cpp
+
+#
+# VPoxTestOGL - OpenGL support test app.
+# Note! Doesn't link with VPOX_WITH_DEBUG_VCC_CRT defined because it uses Qt.
+#
+if (   defined(VPOX_WITH_QTGUI) \
+    && (defined(VPOX_WITH_VMSVGA3D) || defined(VPOX_WITH_VIDEOHWACCEL)) \
+    && !defined(VPOX_WITH_DEBUG_VCC_CRT))
+ ifneq ($(KBUILD_TARGET),darwin)
+  ifdef VPOX_WITH_VIDEOHWACCEL
+   USES += qt5
+  endif
+  PROGRAMS += VPoxTestOGL
+  VPoxTestOGL_TEMPLATE = $(if $(VPOX_WITH_VIDEOHWACCEL),$(if $(VPOX_WITH_HARDENING),VPOXQTGUI,VPOXQTGUIEXE),VPOXMAINEXE)
+  VPoxTestOGL_DEFS.win         = _WIN32_WINNT=0x0500 WINDOWS=1
+  VPoxTestOGL_DEFS.linux       = Linux=1 _GNU_SOURCE
+  VPoxTestOGL_DEFS.solaris     = SunOS=1 _GNU_SOURCE #GLEXT_64_TYPES_DEFINED
+  VPoxTestOGL_DEFS.darwin      = DARWIN=1 GL_GLEXT_LEGACY _GNU_SOURCE
+  VPoxTestOGL_DEFS.freebsd     = FreeBSD=1 _GNU_SOURCE
+  VPoxTestOGL_SOURCES = OpenGLTestApp.cpp
+  VPoxTestOGL_SOURCES.win = VPoxTestOGL.rc
+  VPoxTestOGL_LIBS = \
+  	$(if $(VPOX_WITH_VIDEOHWACCEL), $(PATH_STAGE_LIB)/VPoxOGL2D$(VPOX_SUFF_LIB),) \
+  	$(LIB_RUNTIME)
+  VPoxTestOGL_DEFS += \
+    VPOX_BUILD_TARGET=\"$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)\" \
+    $(if $(VPOX_WITH_VIDEOHWACCEL), VPOX_WITH_VIDEOHWACCEL,)
+  ifdef VPOX_WITH_VIDEOHWACCEL
+   VPoxTestOGL_QT_MODULES   += Core Gui OpenGL Widgets
+   VPoxTestOGL_LIBS.linux   += xcb
+   VPoxTestOGL_LIBS.solaris += xcb
+   VPoxTestOGL_LIBS.freebsd += xcb
+   VPoxTestOGL_LDFLAGS.darwin += -framework OpenGL -framework IOKit
+   VPoxTestOGL_LIBS.win       += $(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Opengl32.lib
+   if1of ($(KBUILD_TARGET), solaris linux freebsd)
+    # must come after VPoxOGL2D, therefore don't set the arch-specific LIBS variable here!
+    VPoxTestOGL_LIBS += GL pthread dl
+   endif
+  endif
+  if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd solaris) # the X11 gang
+   VPoxTestOGL_LIBS += \
+  	X11 \
+  	Xext
+   VPoxTestOGL_LIBPATH = \
+	$(VPOX_LIBPATH_X11)
+endif
+  # Don't let ld strip out explicitly linked libraries even when they are not needed.
+  # This was causing some dynamic library loading problems in case of indirect dependencies
+  # in systems where RUNPATH instead of RPATH is utilized.
+  VPoxTestOGL_LDFLAGS.linux = -Wl,--no-as-needed
+  VPoxTestOGL_LDFLAGS.win = /SUBSYSTEM:windows
+ endif
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

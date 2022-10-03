@@ -1,0 +1,70 @@
+# $Id: Makefile.kmk $
+## @file
+# sub-makefile for Darwin Shared Folders.
+#
+
+#
+# Copyright (C) 2007-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# VPoxSF - The shared folders kernel extension.
+#
+SYSMODS        += VPoxSF
+VPoxSF_TEMPLATE = VPOXGUESTR0
+VPoxSF_INST     = $(INST_ADDITIONS)VPoxSF.kext/Contents/MacOS/
+VPoxSF_DEFS     = VPOX_WITH_HGCM
+VPoxSF_LIBS     = $(VPOX_LIB_VBGL_R0)
+VPoxSF_SOURCES  = \
+	VPoxSF.cpp \
+	VPoxSF-VfsOps.cpp \
+	VPoxSF-VNodeOps.cpp \
+	VPoxSF-Utils.cpp
+
+
+#
+# Files necessary to make a darwin kernel extension bundle.
+#
+INSTALLS += VPoxSF.kext
+VPoxSF.kext_INST     = $(INST_ADDITIONS)VPoxSF.kext/Contents/
+VPoxSF.kext_SOURCES  = $(VPoxSF.kext_0_OUTDIR)/Info.plist
+VPoxSF.kext_CLEAN    = $(VPoxSF.kext_0_OUTDIR)/Info.plist
+
+$$(VPoxSF.kext_0_OUTDIR)/Info.plist: \
+		$(PATH_SUB_CURRENT)/Info.plist \
+		$(VPOX_VERSION_MK) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxSF,$@,$<)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $@ \
+		$<
+
+#
+# mount.vpoxsf - The Shared Folders mounting tool.
+#
+PROGRAMS += mount.vpoxsf
+mount.vpoxsf_TEMPLATE = NewVPoxGuestR3Exe
+mount.vpoxsf_SOURCES  = mount.vpoxsf.cpp
+mount.vpoxsf_INST     = $(INST_ADDITIONS)VPoxSF.kext/Contents/MacOS/
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

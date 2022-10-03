@@ -1,0 +1,61 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VPoxNine D3D9 state tracker.
+#
+
+#
+# Copyright (C) 2016-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+DLLS       += VPoxNine
+DLLS.amd64 += VPoxNine-x86
+
+VPoxNine_TEMPLATE = VPoxMesa3DGuestR3DllMinVista
+#  -wd4100: unreferenced formal parameter
+#  -wd4200: nonstandard extension used : zero-sized array in struct/union
+#  -wd4245: 'return' : conversion from 'int' to 'unsigned int', signed/unsigned mismatch
+#  -wd4255: no function prototype given
+#  -wd4668: 'something' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
+VPoxNine_CFLAGS   = -wd4100 -wd4200 -wd4245 -wd4255 -wd4668
+VPoxNine_INCS     = \
+	$(VPOX_PATH_MESA)/src/gallium/state_trackers/nine
+VPoxNine_SOURCES  = \
+	VPoxNine.c \
+	VPoxNine.rc \
+	VPoxNine.def
+VPoxNine_LIBS     = \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxWddmUmHlp$(VPOX_SUFF_LIB) \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxMesaGalliumAuxLib$(VPOX_SUFF_LIB) \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxMesaUtilLib$(VPOX_SUFF_LIB) \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxMesaNineLib$(VPOX_SUFF_LIB)
+
+ifdef VPOX_SIGN_ADDITIONS
+ VPoxNine_INSTTYPE       = none
+ VPoxNine_DEBUG_INSTTYPE = both
+endif
+
+#
+# VPoxNine-x86 - x86 version of VPoxNine built for amd64 build
+#
+VPoxNine-x86_EXTENDS      = VPoxNine
+VPoxNine-x86_BLD_TRG_ARCH = x86
+VPoxNine-x86_LIBS         = \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxWddmUmHlp-x86$(VPOX_SUFF_LIB) \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxMesaGalliumAuxLib-x86$(VPOX_SUFF_LIB) \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxMesaUtilLib-x86$(VPOX_SUFF_LIB) \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxMesaNineLib-x86$(VPOX_SUFF_LIB)
+VPoxNine-x86_DEFS         = $(VPoxNine_DEFS) VPOX_WOW64
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

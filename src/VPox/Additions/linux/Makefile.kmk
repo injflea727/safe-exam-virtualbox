@@ -1,0 +1,436 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the linux guest additions base directory.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Include sub-makefiles.
+#
+include $(PATH_SUB_CURRENT)/sharedfolders/Makefile.kmk
+include $(PATH_SUB_CURRENT)/drm/Makefile.kmk
+ifdef VPOX_WITH_LIGHTDM_GREETER
+ include $(PATH_SUB_CURRENT)/lightdm-greeter/Makefile.kmk
+endif
+
+
+#
+# Globals
+#
+
+# Basic path components
+VPOX_LNX_ADD_PACKAGE_NAME         := VPoxGuestAdditions
+VPOX_LNX_ADD_INST_OUT_DIR         := $(PATH_TARGET)/Additions/Installer/linux/
+VPOX_LNX_ADD_INST_DBG_DIR         := $(VPOX_LNX_ADD_INST_OUT_DIR)debug/
+VPOX_LNX_ADD_INST_STAGE_DIR       := $(VPOX_LNX_ADD_INST_OUT_DIR)install/
+
+# Installation paths for binaries and files
+VPOX_LNX_ADD_INST_BIN_DIR         := $(VPOX_LNX_ADD_INST_OUT_DIR)bin/
+VPOX_LNX_ADD_INST_SBIN_DIR        := $(VPOX_LNX_ADD_INST_OUT_DIR)sbin/
+VPOX_LNX_ADD_INST_LIB_DIR         := $(VPOX_LNX_ADD_INST_OUT_DIR)lib/
+VPOX_LNX_ADD_INST_OTHER_DIR       := $(VPOX_LNX_ADD_INST_OUT_DIR)other/
+VPOX_LNX_ADD_INST_KMOD_DIR_BASE   := $(VPOX_LNX_ADD_INST_OUT_DIR)src/
+# This is a symbolic link, so no trailing slash.
+VPOX_LNX_ADD_INST_KMOD_PATH       := $(VPOX_LNX_ADD_INST_KMOD_DIR_BASE)vpoxguest-$(VPOX_VERSION_STRING)
+VPOX_LNX_ADD_INST_INIT_DIR        := $(VPOX_LNX_ADD_INST_OUT_DIR)init/
+
+VPOX_LNX_ADD_ARCH_INST_DIRS       := \
+	$(VPOX_LNX_ADD_INST_OUT_DIR) \
+	$(VPOX_LNX_ADD_INST_BIN_DIR) \
+	$(VPOX_LNX_ADD_INST_SBIN_DIR) \
+	$(VPOX_LNX_ADD_INST_INIT_DIR)
+
+# Installation paths for debug symbols
+VPOX_LNX_ADD_DBG_BIN_DIR          := $(VPOX_LNX_ADD_INST_DBG_DIR)bin/
+VPOX_LNX_ADD_DBG_SBIN_DIR         := $(VPOX_LNX_ADD_INST_DBG_DIR)sbin/
+VPOX_LNX_ADD_DBG_LIB_DIR          := $(VPOX_LNX_ADD_INST_DBG_DIR)lib/
+VPOX_LNX_ADD_DBG_OTHER_DIR        := $(VPOX_LNX_ADD_INST_DBG_DIR)other/
+
+VPOX_LNX_ADD_DBG_DIRS             := \
+	$(VPOX_LNX_ADD_DBG_BIN_DIR) \
+	$(VPOX_LNX_ADD_DBG_SBIN_DIR) \
+	$(VPOX_LNX_ADD_DBG_OTHER_DIR)
+
+# Script source directories
+VPOX_PATH_LNX_ADD_INST            := $(PATH_SUB_CURRENT)/installer/
+VPOX_REL_LNX_ADD_INST             := $(subst $(PATH_ROOT)/src/VPox, ../..,$(VPOX_PATH_LNX_ADD_INST))
+VPOX_PATH_X11_ADD_INST            := $(PATH_ROOT)/src/VPox/Additions/x11/Installer/
+VPOX_REL_X11_ADD_INST             := $(subst $(PATH_ROOT)/src/VPox, ../..,$(VPOX_PATH_X11_ADD_INST))
+VPOX_PATH_LNX_INST_SRC            := $(PATH_ROOT)/src/VPox/Installer/linux/
+VPOX_REL_LNX_INST_SRC             := $(subst $(PATH_ROOT)/src/VPox, ../..,$(VPOX_PATH_LNX_INST_SRC))
+VPOX_PATH_LNX_HOST_DRV            := $(PATH_ROOT)/src/VPox/HostDrivers/linux/
+VPOX_REL_LNX_HOST_DRV             := $(subst $(PATH_ROOT)/src/VPox, ../..,$(VPOX_PATH_LNX_HOST_DRV))
+
+# Unset this to speed up things during makefile hacking.
+VPOX_LNX_ADD_INST_DEP_ON_MAKEFILE := $(MAKEFILE_CURRENT)
+
+
+#
+# Targets
+#
+VPOX_SELINUX_CMPLD := $(PATH_SUB_CURRENT)/selinux-fedora/vpox_x11.pp
+VPOX_LNX_ADD_ARCHIVE.x86   := $(PATH_OUT_BASE)/linux.x86/$(KBUILD_TYPE)/bin/additions/VPoxGuestAdditions-x86.tar.bz2
+VPOX_LNX_ADD_ARCHIVE.amd64 := $(PATH_OUT_BASE)/linux.amd64/$(KBUILD_TYPE)/bin/additions/VPoxGuestAdditions-amd64.tar.bz2
+ifndef VPOX_WITH_COMBINED_LINUX_GUEST_PACKAGE
+ VPOX_LNX_ADD_ARCHIVES := $(PATH_STAGE_BIN)/additions/VPoxGuestAdditions-$(KBUILD_TARGET_ARCH).tar.bz2
+else
+ VPOX_LNX_ADD_ARCHIVES := \
+	$(VPOX_LNX_ADD_ARCHIVE.x86) \
+	$(VPOX_LNX_ADD_ARCHIVE.amd64)
+endif
+BLDDIRS     += \
+	$(VPOX_LNX_ADD_ARCH_INST_DIRS) \
+	$(VPOX_LNX_ADD_DBG_DIRS) \
+	$(VPOX_LNX_ADD_INST_STAGE_DIR)
+
+# Use VPOX_WITHOUT_LINUX_GUEST_PACKAGE to skip building the .run installer.
+# This will only take effect if you also use VPOX_WITHOUT_ADDITIONS_ISO.
+PACKING     += \
+	$(if-expr !defined(VPOX_WITHOUT_LINUX_GUEST_PACKAGE), $(PATH_STAGE_BIN)/additions/VPoxLinuxAdditions.run,) \
+	$(VPOX_LNX_ADD_ARCHIVES) \
+	$(PATH_STAGE_BIN)/additions/VPoxGuestAdditions-dbg.tar.bz2
+OTHER_CLEAN += \
+	$(PACKING) \
+	$(VPOX_LNX_ADD_INST_KMOD_PATH) \
+	$(foreach file, $(VPOX_LNX_ADD_ARCHIVES), $(VPOX_LNX_ADD_INST_STAGE_DIR)$(subst -r$(VPOX_SVN_REV),,$(notdir $(file))))
+
+
+#
+# Files to install
+#
+VPOX_LNX_ADD_STRIP_BIN += \
+	VPoxControl \
+	VPoxDRMClient \
+	VPoxClient
+
+VPOX_LNX_ADD_STRIP_SBIN += \
+	VPoxService \
+	$(if $(VPOX_WITH_LIGHTDM_GREETER),vpox-greeter)
+
+VPOX_LNX_ADD_STRIP_MOD = \
+	vpoxmouse_drv_70.so \
+	vpoxmouse_drv_71.so \
+	vpoxmouse_drv_13.so \
+	vpoxmouse_drv_14.so \
+	vpoxmouse_drv_15.so \
+	vpoxmouse_drv_16.so \
+	$(addsuffix .so,$(filter-out %_32,$(filter vpoxvideo_drv_%,$(DLLS)))) \
+	$(if $(VPOX_WITH_PAM),pam_vpox.so,) \
+	mount.vpoxsf
+
+VPOX_LNX_ADD_MOD = \
+	98vpoxadd-xclient \
+	x11config.sh
+
+VPOX_LNX_ADD_STRIP_OBJ = \
+	vpoxmouse_drv.o \
+	vpoxvideo_drv.o
+
+VPOX_LNX_ADD_INIT = \
+	vpoxadd \
+	vpoxadd-service \
+	vpoxadd-x11
+
+#
+# All the files that go into the archive
+#
+VPOX_LNX_ADD_INST_FILES := \
+	$(addprefix $(VPOX_LNX_ADD_INST_BIN_DIR),$(VPOX_LNX_ADD_STRIP_BIN)) \
+	$(addprefix $(VPOX_LNX_ADD_INST_BIN_DIR),$(VPOX_LNX_ADD_BIN)) \
+	$(addprefix $(VPOX_LNX_ADD_INST_SBIN_DIR),$(VPOX_LNX_ADD_STRIP_SBIN)) \
+	$(addprefix $(VPOX_LNX_ADD_INST_LIB_DIR),$(VPOX_LNX_ADD_STRIP_LIB)) \
+	$(addprefix $(VPOX_LNX_ADD_INST_OTHER_DIR),$(VPOX_LNX_ADD_STRIP_MOD)) \
+	$(addprefix $(VPOX_LNX_ADD_INST_OTHER_DIR),$(VPOX_LNX_ADD_MOD)) \
+	$(addprefix $(VPOX_LNX_ADD_INST_OTHER_DIR),$(VPOX_LNX_ADD_STRIP_OBJ)) \
+	$(addprefix $(VPOX_LNX_ADD_INST_INIT_DIR),$(VPOX_LNX_ADD_INIT))
+
+VPOX_LNX_ADD_DBG_FILES := \
+	$(addprefix $(VPOX_LNX_ADD_DBG_BIN_DIR),$(VPOX_LNX_ADD_STRIP_BIN)) \
+	$(addprefix $(VPOX_LNX_ADD_DBG_SBIN_DIR),$(VPOX_LNX_ADD_STRIP_SBIN)) \
+	$(addprefix $(VPOX_LNX_ADD_DBG_LIB_DIR),$(VPOX_LNX_ADD_STRIP_LIB)) \
+	$(addprefix $(VPOX_LNX_ADD_DBG_OTHER_DIR),$(VPOX_LNX_ADD_STRIP_MOD))
+
+ifdef VPOX_WITH_LIGHTDM_GREETER_PACKING
+VPOX_LNX_ADD_INST_FILES += \
+	$(addprefix $(VPOX_LNX_ADD_INST_SBIN_DIR),vpox-greeter)
+endif
+
+# Cleanup of the installer directory files
+OTHER_CLEAN += $(VPOX_LNX_ADD_INST_FILES) $(VPOX_LNX_ADD_DBG_FILES)
+
+# pattern rules for copying the debug info from the VPOX_LNX_ADD_STRIP_* files to the installation directory
+$(addprefix $(VPOX_LNX_ADD_DBG_BIN_DIR),$(VPOX_LNX_ADD_STRIP_BIN)): \
+		$(VPOX_LNX_ADD_DBG_BIN_DIR)% : $(PATH_STAGE_BIN)/additions/% | $$(dir $$@)
+	$(call MSG_TOOL,copydbg,$<,$@)
+	$(QUIET)objcopy --only-keep-debug $< $@
+
+$(addprefix $(VPOX_LNX_ADD_DBG_SBIN_DIR),$(VPOX_LNX_ADD_STRIP_SBIN)): \
+		$(VPOX_LNX_ADD_DBG_SBIN_DIR)% : $(PATH_STAGE_BIN)/additions/% | $$(dir $$@)
+	$(call MSG_TOOL,copydbg,$<,$@)
+	$(QUIET)objcopy --only-keep-debug $< $@
+
+$(addprefix $(VPOX_LNX_ADD_DBG_LIB_DIR),$(VPOX_LNX_ADD_STRIP_LIB)): \
+		$(VPOX_LNX_ADD_DBG_LIB_DIR)% : $(PATH_STAGE_BIN)/additions/% | $$(dir $$@)
+	$(call MSG_TOOL,copydbg,$<,$@)
+	$(QUIET)objcopy --only-keep-debug $< $@
+
+$(addprefix $(VPOX_LNX_ADD_DBG_OTHER_DIR),$(VPOX_LNX_ADD_STRIP_MOD)): \
+		$(VPOX_LNX_ADD_DBG_OTHER_DIR)% : $(PATH_STAGE_BIN)/additions/% | $$(dir $$@)
+	$(call MSG_TOOL,copydbg,$<,$@)
+	$(QUIET)objcopy --only-keep-debug $< $@
+
+# pattern rule for stripping and copying the VPOX_LNX_ADD_STRIP_BIN files to the installation directory
+$(addprefix $(VPOX_LNX_ADD_INST_BIN_DIR),$(VPOX_LNX_ADD_STRIP_BIN)): \
+		$(VPOX_LNX_ADD_INST_BIN_DIR)% : $(PATH_STAGE_BIN)/additions/% \
+		$(VPOX_LNX_ADD_DBG_BIN_DIR)% \
+		| $$(dir $$@)
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -m 0755 $(if $(VPOX_DO_STRIP),-s,) $< $@
+	$(QUIET)objcopy --add-gnu-debuglink=$(subst $(VPOX_LNX_ADD_INST_BIN_DIR),$(VPOX_LNX_ADD_DBG_BIN_DIR),$@) $@
+
+# pattern rule for stripping and copying the VPOX_LNX_ADD_STRIP_SBIN files to the installation directory
+$(addprefix $(VPOX_LNX_ADD_INST_SBIN_DIR),\
+		$(filter-out vpox-greeter,$(VPOX_LNX_ADD_STRIP_SBIN))): \
+		$(VPOX_LNX_ADD_INST_SBIN_DIR)% : $(PATH_STAGE_BIN)/additions/% \
+		$(VPOX_LNX_ADD_DBG_SBIN_DIR)% \
+		| $$(dir $$@)
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -m 0755 $(if $(VPOX_DO_STRIP),-s,) $< $@
+	$(QUIET)objcopy --add-gnu-debuglink=$(subst $(VPOX_LNX_ADD_INST_SBIN_DIR),$(VPOX_LNX_ADD_DBG_SBIN_DIR),$@) $@
+
+# pattern rule for stripping and copying vpox-greeter to the installation directory
+$(addprefix $(VPOX_LNX_ADD_INST_SBIN_DIR),vpox-greeter): \
+		$(VPOX_LNX_ADD_INST_SBIN_DIR)% : $(subst linux.amd64/release,linux.amd64/release/greeter,$(subst linux.x86/release,linux.x86/release/greeter,$(PATH_STAGE_BIN)))/additions/% \
+		| $$(dir $$@)
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -m 0755 $< $@
+
+# pattern rule for stripping and copying the VPOX_LNX_ADD_STRIP_LIB files to the installation directory
+$(addprefix $(VPOX_LNX_ADD_INST_LIB_DIR),$(VPOX_LNX_ADD_STRIP_LIB)): \
+		$(VPOX_LNX_ADD_INST_LIB_DIR)% : $(PATH_STAGE_BIN)/additions/% \
+		$(VPOX_LNX_ADD_DBG_LIB_DIR)% \
+		| $$(dir $$@)
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -m 0755 $(if $(VPOX_DO_STRIP),-s,) $< $@
+	$(QUIET)objcopy --add-gnu-debuglink=$(subst $(VPOX_LNX_ADD_INST_LIB_DIR),$(VPOX_LNX_ADD_DBG_LIB_DIR),$@) $@
+
+# pattern rule for stripping and copying the VPOX_LNX_ADD_STRIP_MOD files to the installation directory
+$(addprefix $(VPOX_LNX_ADD_INST_OTHER_DIR),$(VPOX_LNX_ADD_STRIP_MOD)): \
+		$(VPOX_LNX_ADD_INST_OTHER_DIR)% : $(PATH_STAGE_BIN)/additions/% \
+		$(VPOX_LNX_ADD_DBG_OTHER_DIR)% \
+		| $$(dir $$@)
+	$(call MSG_INST_FILE,$<,$@)
+	$(QUIET)$(INSTALL) -m 0755 $(if $(VPOX_DO_STRIP),-s,) $< $@
+	$(QUIET)objcopy --add-gnu-debuglink=$(subst $(VPOX_LNX_ADD_INST_OTHER_DIR),$(VPOX_LNX_ADD_DBG_OTHER_DIR),$@) $@
+
+# pattern rule for stripping and copying the VPOX_LNX_ADD_STRIP_OBJ files to the installation directory
+$(addprefix $(VPOX_LNX_ADD_INST_OTHER_DIR),$(VPOX_LNX_ADD_STRIP_OBJ)): \
+		$(VPOX_LNX_ADD_INST_OTHER_DIR)% : $(PATH_STAGE_BIN)/additions/% | $$(dir $$@)
+	$(call MSG_INST_FILE,$<,$@)
+ifeq ($(VPOX_DO_STRIP),)
+	$(QUIET)$(INSTALL) -m 0644 $< $@
+else # strip to temp file because of umask.
+	$(QUIET)objcopy --strip-unneeded -R .comment $< $@.tmp
+	$(QUIET)$(INSTALL) -m 0644 $@.tmp $@
+	$(QUIET)$(RM) -f -- $@.tmp
+endif
+
+include $(PATH_ROOT)/src/VPox/Additions/common/VPoxGuest/linux/files_vpoxguest
+VPOX_LNX_ADD_INST_FILES_VPOXGUEST=$(patsubst =>%,$(PATH_STAGE_BIN)/additions/src/vpoxguest/%,$(filter =>%,$(subst =>, =>,$(subst $(DQUOTE),,$(FILES_VPOXGUEST_NOBIN)))))
+include $(PATH_ROOT)/src/VPox/Additions/linux/sharedfolders/files_vpoxsf
+VPOX_LNX_ADD_INST_FILES_VPOXSF=$(patsubst =>%,$(PATH_STAGE_BIN)/additions/src/vpoxsf/%,$(filter =>%,$(subst =>, =>,$(subst $(DQUOTE),,$(FILES_VPOXSF_NOBIN)))))
+include $(PATH_ROOT)/src/VPox/Additions/linux/drm/files_vpoxvideo_drv
+VPOX_LNX_ADD_INST_FILES_VPOXVIDEO=$(patsubst =>%,$(PATH_STAGE_BIN)/additions/src/vpoxvideo/%,$(filter =>%,$(subst =>, =>,$(subst $(DQUOTE),,$(FILES_VPOXVIDEO_DRM_NOBIN)))))
+
+# special rule for the kernel modules
+$(VPOX_LNX_ADD_INST_KMOD_DIR_BASE): \
+		$(PATH_STAGE_BIN)/additions/src/ \
+		$(PATH_ROOT)/Version.kmk \
+		| $(dir $@)
+	$(call MSG_INST_SYM,$<,$@)
+	$(QUIET)$(RM) -Rf $@
+	$(QUIET)$(MKDIR) $@
+	$(QUIET)$(LN_SYMLINK) $< $(VPOX_LNX_ADD_INST_KMOD_PATH)
+
+INSTALLS += GuestDrivers-src
+GuestDrivers-src_INST = $(INST_ADDITIONS)src/
+GuestDrivers-src_MODE = a+r,u+w
+GuestDrivers-src_SOURCES = Makefile
+
+
+INSTALLS += lnx_add_inst-exec
+lnx_add_inst-exec_INST     = $(VPOX_LNX_ADD_INST_OTHER_DIR)
+lnx_add_inst-exec_INSTTYPE = stage
+lnx_add_inst-exec_EXEC_SOURCES  = \
+	$(VPOX_REL_X11_ADD_INST)98vpoxadd-xclient \
+	$(VPOX_REL_X11_ADD_INST)x11config.sh \
+	$(VPOX_REL_LNX_INST_SRC)check_module_dependencies.sh
+
+
+INSTALLS += lnx_add_inst-noexec
+lnx_add_inst-noexec_INST     = $(VPOX_LNX_ADD_INST_OTHER_DIR)
+lnx_add_inst-noexec_INSTTYPE = stage
+lnx_add_inst-noexec_SOURCES  = \
+	$(VPOX_REL_X11_ADD_INST)vpoxclient.desktop \
+	$(VPOX_REL_X11_ADD_INST)vpoxvideo.ids \
+	$(if $(VPOX_WITH_LIGHTDM_GREETER_PACKING),lightdm-greeter/vpox-greeter.desktop,) \
+	selinux-fedora/vpox_x11.pp \
+	selinux-fedora/vpox_accel.pp
+
+INSTALLS += lnx_add_inst-license
+lnx_add_inst-license_INST     = $(VPOX_LNX_ADD_INST_OUT_DIR)
+lnx_add_inst-license_INSTTYPE = stage
+lnx_add_inst-license_SOURCES  = \
+	$(VPOX_BRAND_LICENSE_TXT)=>LICENSE
+
+
+#
+# We need our routines.sh and the uninstallation scripts in the staging
+# directory too
+#
+INSTALLS += LnxAdd-scripts
+LnxAdd-scripts_INST     = $(VPOX_LNX_ADD_INST_STAGE_DIR)
+LnxAdd-scripts_INSTTYPE = stage
+LnxAdd-scripts_SOURCES  = \
+	$(VPOX_REL_LNX_ADD_INST)deffiles
+LnxAdd-scripts_EXEC_SOURCES  = \
+	$(VPOX_REL_LNX_INST_SRC)routines.sh
+
+ifdef VPOX_WITH_LIGHTDM_GREETER_PACKING
+ LnxAdd-scripts_EXEC_SOURCES += \
+	$(VPOX_REL_LNX_ADD_INST)module-autologon.sh=>installer/module-autologon
+endif
+
+
+#
+# And the init scripts
+#
+INSTALLS += LnxAdd-init-scripts
+LnxAdd-init-scripts_INST         = $(VPOX_LNX_ADD_INST_INIT_DIR)
+LnxAdd-init-scripts_INSTTYPE     = stage
+LnxAdd-init-scripts_EXEC_SOURCES = \
+	$(foreach i,$(VPOX_LNX_ADD_INIT), installer/$(i).sh=>$(i))
+
+# this file needs editing before it can be included in the generic installer.
+$(VPOX_LNX_ADD_INST_STAGE_DIR)install.sh: \
+		$(VPOX_PATH_LNX_ADD_INST)install.sh.in \
+		$(VPOX_VERSION_STAMP) | $$(dir $$@)
+	$(RM) -f -- $@
+	$(QUIET)$(SED) \
+		-e "s;_VERSION_;$(VPOX_VERSION_STRING);g" \
+		-e "s;_BUILDTYPE_;$(KBUILD_TYPE);g" \
+		-e "s;_USERNAME_;$(USERNAME);g" \
+		--output $@ \
+		$<
+	$(QUIET)$(CHMOD) 0755 $@
+OTHER_CLEAN += \
+	$(VPOX_LNX_ADD_INST_OUT_DIR)install.sh \
+	$(VPOX_LNX_ADD_INST_STAGE_DIR)install.sh
+
+
+#
+# Build test for the Guest Additions kernel modules (kmk check).
+#
+$(evalcall2 VPOX_LINUX_KMOD_TEST_BUILD_RULE_FN,vpoxvideo-src,,)
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
+
+# All the files that go into our archive
+VPOX_LNX_ADD_ARCH_FILES = \
+	$(lnx_add_inst-noexec_2_STAGE_TARGETS) \
+	$(lnx_add_inst-exec_2_STAGE_TARGETS) \
+	$(lnx_add_inst-license_2_STAGE_TARGETS) \
+	$(VPOX_LNX_ADD_INST_FILES) \
+	$(VPOX_LNX_ADD_INST_KMOD_DIR_BASE)
+
+VPOX_LNX_ADD_INST_ARCH_DEPS := \
+	$(VPOX_LNX_ADD_ARCH_FILES) \
+	$(VPOX_LNX_ADD_INST_DEP_ON_MAKEFILE) \
+	$(VPOX_VERSION_STAMP) \
+	$(VPOX_LNX_ADD_INST_FILES_VPOXGUEST) \
+	$(VPOX_LNX_ADD_INST_FILES_VPOXSF) \
+	$(VPOX_LNX_ADD_INST_FILES_VPOXVIDEO)
+
+#
+# .tar.bz2 for converting into .run
+#
+$(VPOX_LNX_ADD_ARCHIVE.$(KBUILD_TARGET_ARCH)): \
+		$(VPOX_LNX_ADD_INST_ARCH_DEPS)
+	$(call MSG_L1,Packing $@)
+	$(QUIET)$(RM) -f -- $(wildcard $(dir $@)VPoxGuestAdditions-*r*.tar.bz2)
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(CHMOD) 0755 $(VPOX_LNX_ADD_ARCH_INST_DIRS)
+ifdef VPOX_USE_PBZIP2
+ 	$(QUIET)tar --dereference --owner 0 --group 0 -cRf $(patsubst %.bz2,%,$@) \
+ 		-C $(VPOX_LNX_ADD_INST_OUT_DIR) \
+ 		LICENSE bin init lib other sbin src \
+ 		$(if $(filter $(KBUILD_TYPE),debug),debug)
+	$(QUIET)pbzip2 $(patsubst %.bz2,%,$@)
+else
+	$(QUIET)tar --dereference --owner 0 --group 0 --ignore-failed-read -cjRf $@ \
+ 		-C $(VPOX_LNX_ADD_INST_OUT_DIR) \
+ 		LICENSE bin init lib other sbin src \
+ 		$(if $(filter $(KBUILD_TYPE),debug),debug)
+endif
+	$(QUIET)$(CHMOD) 0644 $@
+
+
+#
+# .tar.bz2 containing the debug information
+#
+$(PATH_STAGE_BIN)/additions/VPoxGuestAdditions-dbg.tar.bz2: \
+		$(VPOX_LNX_ADD_DBG_FILES) \
+		$(VPOX_LNX_ADD_INST_DEP_ON_MAKEFILE)
+	$(call MSG_L1,Packing $@)
+	$(QUIET)$(RM) -f -- $@ $(patsubst %.bz2,%,$@)
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(CHMOD) 0755 $(VPOX_LNX_ADD_DBG_DIRS)
+ifdef VPOX_USE_PBZIP2
+ 	$(QUIET)tar --dereference --owner 0 --group 0 -cRf $(patsubst %.bz2,%,$@) \
+ 		-C $(VPOX_LNX_ADD_INST_DBG_DIR) \
+ 		bin lib sbin
+	$(QUIET)pbzip2 $(patsubst %.bz2,%,$@)
+else
+	$(QUIET)tar --dereference --owner 0 --group 0 --ignore-failed-read -cjRf $@ \
+ 		-C $(VPOX_LNX_ADD_INST_DBG_DIR) \
+ 		bin lib sbin
+endif
+	$(QUIET)$(CHMOD) 0644 $@
+
+
+#
+# Build the Linux Guest Additions self extracting installer.
+#
+# Note that $(PATH_SUB_CURRENT) was changed by subfooter.kmk above and
+# any references should be made via variables assigned a know value via := .
+#
+$(PATH_STAGE_BIN)/additions/VPoxLinuxAdditions.run: \
+		$(VPOX_LNX_ADD_ARCHIVES) \
+		$(VPOX_LNX_ADD_INST_STAGE_DIR)install.sh \
+		$$(LnxAdd-scripts_2_STAGE_TARGETS) \
+		$(VPOX_VERSION_STAMP)
+    # Remove any archives left over from previous builds so that they don't
+    # end up in our installer as well.
+	$(QUIET)$(RM) -f $(foreach file, $(wildcard $(VPOX_LNX_ADD_INST_STAGE_DIR)$(VPOX_LNX_ADD_PACKAGE_NAME)-*.tar.bz2), $(file))
+	$(QUIET)$(foreach file, $(VPOX_LNX_ADD_ARCHIVES), \
+		$(CP) -f $(file) $(VPOX_LNX_ADD_INST_STAGE_DIR)$(subst -r$(VPOX_SVN_REV),,$(notdir $(file)))$(NLTAB) )
+	$(QUIET)$(VPOX_MAKESELF) --nocomp $(VPOX_LNX_ADD_INST_STAGE_DIR) $@ \
+		"VirtualPox $(VPOX_VERSION_STRING) Guest Additions for Linux" \
+		/bin/sh ./install.sh "\$$0"
+

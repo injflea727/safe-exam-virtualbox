@@ -1,0 +1,53 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VPoxInstallHelper.dll.
+#
+
+#
+# Copyright (C) 2008-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+DLLS += VPoxInstallHelper
+VPoxInstallHelper_TEMPLATE = VPOXR3STATIC
+VPoxInstallHelper_DEFS     = _WIN32_WINNT=0x0501 _UNICODE UNICODE
+VPoxInstallHelper_DEFS    += VPOX_SVN_REV=$(VPOX_SVN_REV)
+VPoxInstallHelper_DEPS     = $(VPOX_SVN_REV_KMK)
+ifdef VPOX_WITH_NETFLT
+ VPoxInstallHelper_DEFS   += VPOX_WITH_NETFLT=1
+endif
+VPoxInstallHelper_SOURCES  = \
+	VPoxInstallHelper.cpp \
+	VPoxInstallHelper.def \
+	VPoxInstallHelper.rc \
+	VPoxCommon.cpp
+ifndef VPOX_OSE
+ VPoxInstallHelper_SOURCES += internal/VPoxSerial.cpp
+endif
+VPoxInstallHelper_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK)
+VPoxInstallHelper_LIBS     = $(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Msi.lib
+ifdef VPOX_WITH_NETFLT
+ VPoxInstallHelper_LIBS   += \
+	$(PATH_STAGE_LIB)/WinNetConfig.lib \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg.lib \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+ 	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+endif
+
+if "$(KBUILD_TARGET)" == "win" && defined(VPOX_WITH_TESTCASES) && !defined(VPOX_OSE)
+ include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

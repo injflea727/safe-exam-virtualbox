@@ -1,0 +1,402 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the Solaris guest additions base directory.
+#
+
+#
+# Copyright (C) 2008-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#ifneq ($(KBUILD_HOST),solaris)
+#$(error "The Solaris guest additions installer can only be built on Solaris!")
+#endif
+
+ifeq ($(KBUILD_TARGET),solaris)
+ include $(PATH_SUB_CURRENT)/SharedFolders/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/Mouse/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/DRM/Makefile.kmk
+endif
+
+ifdef VPOX_WITH_COMBINED_SOLARIS_PACKAGE ## @todo remove this when tinderclient.pl is updated.
+ VPOX_WITH_COMBINED_GUEST_PACKAGE := 1
+endif
+
+PKGFILENAME                             := VPoxSolarisAdditions.pkg
+PKGINFO_ARCH                             = $(shell uname -p)
+PKGINFO_REVSTAMP                         = $(date %Y.%m.%d.%H.%M)
+VPOX_PATH_SOLARIS_ADDITION_INSTALLER    := $(PATH_SUB_CURRENT)/Installer
+VPOX_PATH_X11_ADDITION_INSTALLER        := $(PATH_ROOT)/src/VPox/Additions/x11/Installer
+
+SOLARIS_ADDDIR_NAME_64                  := amd64
+SOLARIS_ADDDIR_NAME_32                  := i386
+
+SOLARIS_ADDINST_OUT_DIR                 := $(PATH_TARGET)/AdditionsInstaller
+SOLARIS_VPOXADDINST_SUBDIR              := /opt/VirtualPoxAdditions
+SOLARIS_VPOXADDINST_DIR                 := $(SOLARIS_ADDINST_OUT_DIR)$(SOLARIS_VPOXADDINST_SUBDIR)
+SOLARIS_VPOXADDINST_DIR_32              := $(SOLARIS_VPOXADDINST_DIR)/$(SOLARIS_ADDDIR_NAME_32)
+SOLARIS_VPOXADDINST_DIR_64              := $(SOLARIS_VPOXADDINST_DIR)/$(SOLARIS_ADDDIR_NAME_64)
+
+SOLARIS_ADD_OUT_BIN_64                  := $(PATH_OUT_BASE)/solaris.amd64/$(KBUILD_TYPE)/bin/additions
+SOLARIS_ADD_OUT_BIN_32                  := $(PATH_OUT_BASE)/solaris.x86/$(KBUILD_TYPE)/bin/additions
+SOLARIS_ADD_OUT_BIN_ISA                 := $(PATH_OUT_BASE)/solaris.$(KBUILD_TARGET_ARCH)/$(KBUILD_TYPE)/bin/additions
+
+SOLARIS_ADD_DRIVERINST_DIR              := $(SOLARIS_ADDINST_OUT_DIR)/usr/kernel/drv
+SOLARIS_ADD_DRIVERINST_DIR_32           := $(SOLARIS_ADD_DRIVERINST_DIR)
+SOLARIS_ADD_DRIVERINST_DIR_64           := $(SOLARIS_ADD_DRIVERINST_DIR)/amd64
+
+SOLARIS_ADD_SYSLIBINST_DIR_32           := $(SOLARIS_ADDINST_OUT_DIR)/usr/lib
+SOLARIS_ADD_SYSLIBINST_DIR_64           := $(SOLARIS_ADDINST_OUT_DIR)/usr/lib/amd64
+
+SOLARIS_ADD_USRBIN_DIR                  := $(SOLARIS_ADDINST_OUT_DIR)/usr/bin
+SOLARIS_ADD_USRSBIN_DIR                 := $(SOLARIS_ADDINST_OUT_DIR)/usr/sbin
+SOLARIS_ADD_ETCFS_DIR                   := $(SOLARIS_ADDINST_OUT_DIR)/etc/fs/vpoxfs
+SOLARIS_ADD_SERVICESINST_DIR            := $(SOLARIS_ADDINST_OUT_DIR)/var/svc/manifest/application/virtualpox
+
+ifeq ($(KBUILD_TARGET_ARCH),x86)
+ SOLARIS_ADDDIR_NAME_ISA                := $(SOLARIS_ADDDIR_NAME_32)
+ SOLARIS_VPOXADDINST_DIR_ISA            := $(SOLARIS_VPOXADDINST_DIR_32)
+ SOLARIS_ADD_DRIVERINST_DIR_ISA         := $(SOLARIS_ADD_DRIVERINST_DIR_32)
+ SOLARIS_ADD_SYSLIBINST_DIR_ISA         := $(SOLARIS_ADD_SYSLIBINST_DIR_32)
+else
+ SOLARIS_ADDDIR_NAME_ISA                := $(SOLARIS_ADDDIR_NAME_64)
+ SOLARIS_VPOXADDINST_DIR_ISA            := $(SOLARIS_VPOXADDINST_DIR_64)
+ SOLARIS_ADD_DRIVERINST_DIR_ISA         := $(SOLARIS_ADD_DRIVERINST_DIR_64)
+ SOLARIS_ADD_SYSLIBINST_DIR_ISA         := $(SOLARIS_ADD_SYSLIBINST_DIR_64)
+endif
+
+ifeq ($(KBUILD_TYPE),debug)
+ BIN_COPY         := $(CP) -f
+ BIN_COPY_SYMBOLS := $(CP) -f
+else
+ BIN_COPY         := /usr/sfw/bin/gobjcopy -S -R .comment
+ BIN_COPY_SYMBOLS := /usr/sfw/bin/gobjcopy -g -R .comment
+ VPOX_COMPRESS    := compress -f
+endif
+
+INSTALLS          += solaris-addcommon solaris-addcommonbins
+PROGRAMS          += VPoxAddISAExec
+PACKING           += $(PATH_STAGE_BIN)/additions/$(PKGFILENAME)
+OTHER_CLEAN       += $(PACKING) $(SOLARIS_ADDINST_OUT_DIR)/$(PKGFILENAME)
+
+#
+# VPoxAddISAExec
+#
+VPoxAddISAExec_TEMPLATE = VPoxGuestR3Exe
+VPoxAddISAExec_NAME     = VPoxISAExec
+VPoxAddISAExec_INST     = $(INST_ADDITIONS)
+VPoxAddISAExec_DEPS     = $(VPOX_SVN_REV_KMK)
+VPoxAddISAExec_SOURCES  = $(PATH_ROOT)/src/VPox/Installer/solaris/VPoxISAExec.c
+
+#
+# Install to $(PATH_STAGE_BIN)/additions/ files from various source paths (to pack them using rules)
+#
+solaris-addcommonbins_INST = bin/additions/
+solaris-addcommonbins_MODE = a+rx,u+w
+solaris-addcommonbins_SOURCES = \
+	$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxguest.sh \
+	$(VPOX_PATH_X11_ADDITION_INSTALLER)/x11config.pl \
+	$(VPOX_PATH_X11_ADDITION_INSTALLER)/x11config15sol.pl \
+	$(VPOX_PATH_X11_ADDITION_INSTALLER)/x11restore.pl \
+	$(VPOX_PATH_X11_ADDITION_INSTALLER)/98vpoxadd-xclient=>1099.vpoxclient \
+	$(VPOX_PATH_X11_ADDITION_INSTALLER)/solaris_xorg.conf \
+	$(VPOX_PATH_X11_ADDITION_INSTALLER)/solaris_xorg_modeless.conf \
+	$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpox_vendor_select \
+	$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/VPox.sh
+
+solaris-addcommon_INST = bin/additions/
+solaris-addcommon_MODE = a+r,u+w
+solaris-addcommon_SOURCES = \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxGuest/VPoxGuest-solaris.conf=>vpoxguest.conf \
+	$(PATH_ROOT)/src/VPox/Additions/solaris/Mouse/vpoxms.conf=>vpoxms.conf \
+	$(VPOX_PATH_X11_ADDITION_INSTALLER)/vpoxclient.desktop \
+	$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxservice.xml \
+	$(PATH_ROOT)/src/VPox/Additions/solaris/Mouse/vpoxmslnk.xml \
+	$(VPOX_BRAND_LICENSE_TXT)=>LICENSE
+
+#
+# Create full directory tree
+#
+BLDDIRS          += \
+	$(SOLARIS_ADDINST_OUT_DIR) \
+	$(addprefix $(SOLARIS_ADDINST_OUT_DIR)/,\
+	opt \
+	opt/VirtualPoxAdditions \
+	opt/VirtualPoxAdditions/$(SOLARIS_ADDDIR_NAME_32) \
+	opt/VirtualPoxAdditions/$(SOLARIS_ADDDIR_NAME_64) \
+	usr \
+	usr/bin \
+	usr/sbin \
+	usr/lib \
+	usr/lib/amd64 \
+	usr/kernel \
+	usr/kernel/drv \
+	usr/kernel/drv/amd64 \
+	var \
+	var/svc \
+	var/svc/manifest \
+	var/svc/manifest/application \
+	var/svc/manifest/application/virtualpox \
+	)
+
+SOLARIS_ADD_STRIP_BINS = \
+	VPoxClient \
+	VPoxService \
+	VPoxControl \
+	vpoxfsmount \
+	vpoxfs \
+	vpoxmslnk \
+	$(if ($VPOX_WITH_PAM),pam_vpox.so,) \
+	$(if $(VPOX_OSE),,vpoxfs_s10)
+
+SOLARIS_ADD_DRIVERS = \
+	vpoxguest \
+	vpoxms
+
+SOLARIS_ADD_DRIVERS_CONF = \
+	vpoxguest.conf \
+	vpoxms.conf
+
+SOLARIS_ADD_XORG_DRIVERS = \
+	vpoxvideo_drv_13.so \
+	vpoxvideo_drv_14.so \
+	vpoxvideo_drv_15.so \
+	vpoxvideo_drv_16.so \
+	vpoxvideo_drv_17.so \
+	vpoxvideo_drv_18.so \
+	vpoxvideo_drv_19.so \
+	vpoxvideo_drv_110.so \
+	vpoxvideo_drv_111.so \
+	vpoxvideo_drv_112.so \
+	vpoxvideo_drv_113.so \
+	vpoxvideo_drv_114.so \
+	vpoxvideo_drv_117.so \
+	vpoxvideo_drv_118.so \
+	vpoxvideo_drv_70.so \
+	vpoxvideo_drv_71.so
+
+SOLARIS_ADD_COMMON_BINS = \
+	vpoxguest.sh \
+	x11config15sol.pl \
+	x11restore.pl \
+	VPox.sh \
+	1099.vpoxclient \
+	vpox_vendor_select \
+	VPoxISAExec
+
+SOLARIS_ADD_USRBIN_LINKS = \
+	VPoxService \
+	VPoxClient \
+	VPoxControl
+
+SOLARIS_ADD_USRSBIN_LINKS = \
+	vpoxmslnk
+
+SOLARIS_ADD_COMMON = \
+	vpoxclient.desktop \
+	solaris_xorg.conf \
+	solaris_xorg_modeless.conf \
+	LICENSE
+
+SOLARIS_ADD_SERVICES = \
+	vpoxservice.xml \
+	vpoxmslnk.xml
+
+ifdef VPOX_COMPRESS
+ SOLARIS_ADD_COMPRESS_FILES = \
+	$(SOLARIS_ADD_XORG_DRIVERS) \
+	VPoxService \
+	VPoxClient \
+	VPoxControl
+endif
+
+ifdef VPOX_WITH_COMBINED_SOLARIS_GUEST_PACKAGE
+  SOLARIS_ARCH_ADD_DEPFILES = \
+   $(addprefix $(SOLARIS_VPOXADDINST_DIR_64)/,$(SOLARIS_ADD_STRIP_BINS)) \
+	$(addprefix $(SOLARIS_VPOXADDINST_DIR_64)/,$(SOLARIS_ADD_XORG_DRIVERS)) \
+	$(addprefix $(SOLARIS_VPOXADDINST_DIR_32)/,$(SOLARIS_ADD_STRIP_BINS)) \
+	$(addprefix $(SOLARIS_ADD_DRIVERINST_DIR_64)/,$(SOLARIS_ADD_DRIVERS)) \
+	$(addprefix $(SOLARIS_ADD_DRIVERINST_DIR_32)/,$(SOLARIS_ADD_DRIVERS)) \
+	$(addprefix $(SOLARIS_ADD_DRIVERINST_DIR)/,$(SOLARIS_ADD_DRIVERS_CONF)) \
+	$(addprefix $(SOLARIS_VPOXADDINST_DIR_32)/,$(SOLARIS_ADD_XORG_DRIVERS))
+else
+  SOLARIS_ARCH_ADD_DEPFILES = \
+   $(addprefix $(SOLARIS_VPOXADDINST_DIR_ISA)/,$(SOLARIS_ADD_STRIP_BINS)) \
+	$(addprefix $(SOLARIS_ADD_DRIVERINST_DIR_ISA)/,$(SOLARIS_ADD_DRIVERS)) \
+	$(addprefix $(SOLARIS_ADD_DRIVERINST_DIR)/,$(SOLARIS_ADD_DRIVERS_CONF)) \
+	$(addprefix $(SOLARIS_VPOXADDINST_DIR_ISA)/,$(SOLARIS_ADD_XORG_DRIVERS))
+endif
+
+SOLARIS_ARCH_ADD_DEPFILES += \
+	$(addprefix $(SOLARIS_VPOXADDINST_DIR)/,$(SOLARIS_ADD_COMMON_BINS)) \
+	$(addprefix $(SOLARIS_VPOXADDINST_DIR)/,$(SOLARIS_ADD_COMMON)) \
+	$(addprefix $(SOLARIS_ADD_SERVICESINST_DIR)/,$(SOLARIS_ADD_SERVICES)) \
+	$(addprefix $(SOLARIS_ADD_USRBIN_DIR)/,$(SOLARIS_ADD_USRBIN_LINKS)) \
+	$(addprefix $(SOLARIS_ADD_USRSBIN_DIR)/,$(SOLARIS_ADD_USRSBIN_LINKS))
+
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
+#
+# -=-=-=-=-=-=-=- Additions package -=-=-=-=-=-=-=-
+#
+
+$(PATH_STAGE_BIN)/additions/$(PKGFILENAME): \
+		$(VPOX_VERSION_STAMP) \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/makepackage.sh \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/postinstall.sh \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/preremove.sh \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxguest.pkginfo \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxguest.depend \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxguest.sh \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxservice.xml \
+		$(PATH_ROOT)/src/VPox/Additions/solaris/Mouse/vpoxmslnk.xml \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/VPox.sh \
+		$(VPOX_PATH_X11_ADDITION_INSTALLER)/98vpoxadd-xclient \
+		$(VPOX_PATH_X11_ADDITION_INSTALLER)/x11config15sol.pl \
+		$(VPOX_PATH_X11_ADDITION_INSTALLER)/x11restore.pl \
+		$(VPOX_PATH_X11_ADDITION_INSTALLER)/solaris_xorg.conf \
+		$(VPOX_PATH_X11_ADDITION_INSTALLER)/solaris_xorg_modeless.conf \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpox_vendor_select \
+		$(VPOX_BRAND_LICENSE_TXT) \
+		$(PATH_ROOT)/src/VPox/Additions/common/VPoxGuest/VPoxGuest-solaris.conf \
+		$(PATH_SUB_CURRENT)/solaris/Makefile.kmk \
+		$(SOLARIS_ARCH_ADD_DEPFILES)
+	$(call MSG_L1,Installing guest additions)
+	$(QUIET)$(SED) \
+		-e "s/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g" \
+		-e "s/@VPOX_VENDOR@/$(VPOX_VENDOR)/g" \
+		-e "s/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g" \
+		-e "s/@VPOX_SVN_REV@/$(VPOX_SVN_REV)/g" \
+		-e "s/@VPOX_VERSION_REVSTAMP@/$(PKGINFO_REVSTAMP)/g" \
+		-e "s/@UNAME_P@/$(PKGINFO_ARCH)/g" \
+		--output $(SOLARIS_ADDINST_OUT_DIR)/vpoxguest.pkginfo \
+		$(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxguest.pkginfo
+	$(QUIET)$(INSTALL) -m 0755 $(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/makepackage.sh                     $(SOLARIS_ADDINST_OUT_DIR)/makepackage.sh
+	$(QUIET)$(INSTALL) -m 0755 $(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/postinstall.sh                     $(SOLARIS_ADDINST_OUT_DIR)/postinstall.sh
+	$(QUIET)$(INSTALL) -m 0755 $(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/preremove.sh                       $(SOLARIS_ADDINST_OUT_DIR)/preremove.sh
+	$(QUIET)$(INSTALL) -m 0644 $(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxguest.space                    $(SOLARIS_ADDINST_OUT_DIR)/vpoxguest.space
+	$(QUIET)$(INSTALL) -m 0644 $(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxguest.depend                   $(SOLARIS_ADDINST_OUT_DIR)/vpoxguest.depend
+	# don't display the license on package install, since 4.0
+	#$(QUIET)$(INSTALL) -m 0644 $(VPOX_BRAND_LICENSE_TXT)                                                  $(SOLARIS_ADDINST_OUT_DIR)/vpoxguest.copyright
+	$(call MSG_L1,Creating install package: $@)
+	$(QUIET)$(MKDIR) -p $(SOLARIS_ADD_ETCFS_DIR)
+	$(QUIET)$(MKDIR) -p $(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)
+	$(QUIET)$(LN_SYMLINK) -f ../..$(SOLARIS_VPOXADDINST_SUBDIR)/1099.vpoxclient                           $(SOLARIS_ADD_USRBIN_DIR)/VPoxClient-all
+ifdef VPOX_WITH_COMBINED_SOLARIS_GUEST_PACKAGE
+ ifdef VPOX_COMPRESS
+	$(QUIET)$(VPOX_COMPRESS) $(addprefix $(SOLARIS_VPOXADDINST_DIR_32)/,$(SOLARIS_ADD_COMPRESS_FILES))
+	$(QUIET)$(VPOX_COMPRESS) $(addprefix $(SOLARIS_VPOXADDINST_DIR_64)/,$(SOLARIS_ADD_COMPRESS_FILES))
+ endif
+	$(QUIET)$(LN_SYMLINK) -f ../../..$(SOLARIS_VPOXADDINST_SUBDIR)/$(SOLARIS_ADDDIR_NAME_32)/vpoxfsmount  $(SOLARIS_ADD_ETCFS_DIR)/mount
+else # !VPOX_WITH_COMBINED_SOLARIS_GUEST_PACKAGE
+ ifdef VPOX_COMPRESS
+	$(QUIET)$(VPOX_COMPRESS) $(addprefix $(SOLARIS_VPOXADDINST_DIR_ISA)/,$(SOLARIS_ADD_COMPRESS_FILES))
+ endif
+	$(LN_SYMLINK) -f ../../..$(SOLARIS_VPOXADDINST_SUBDIR)/$(SOLARIS_ADDDIR_NAME_ISA)/vpoxfsmount         $(SOLARIS_ADD_ETCFS_DIR)/mount
+endif
+	$(QUIET)$(INSTALL) -m 0644 $(VPOX_PATH_SOLARIS_ADDITION_INSTALLER)/vpoxservice.xml                    $(SOLARIS_ADD_SERVICESINST_DIR)/vpoxservice.xml
+	$(QUIET)$(INSTALL) -m 0644 	$(PATH_ROOT)/src/VPox/Additions/solaris/Mouse/vpoxmslnk.xml                      $(SOLARIS_ADD_SERVICESINST_DIR)/vpoxmslnk.xml
+	$(QUIET)$(SOLARIS_ADDINST_OUT_DIR)/makepackage.sh $(SOLARIS_ADDINST_OUT_DIR) $(PKGFILENAME) $(VPOX_SVN_REV) $(VPOX_SOL_PKG_DEV)
+	$(QUIET)$(INSTALL) -m 0644 $(SOLARIS_ADDINST_OUT_DIR)/$(PKGFILENAME) $(PATH_STAGE_BIN)/additions/$(PKGFILENAME)
+	$(QUIET)$(RM) -f $(SOLARIS_ADDINST_OUT_DIR)/$(PKGFILENAME)
+
+
+
+#
+# -=-=-=-=-=-=-=- Package rules -=-=-=-=-=-=-=-
+#
+
+#
+# 32-bit files
+#
+$(addprefix $(SOLARIS_VPOXADDINST_DIR_32)/,$(SOLARIS_ADD_STRIP_BINS)): \
+		$(SOLARIS_VPOXADDINST_DIR_32)/% : $(SOLARIS_ADD_OUT_BIN_32)/% | $$(dir $$@)
+	$(INSTALL) -m 0755 $(if $(VPOX_DO_STRIP),-s,) $< $@
+
+$(addprefix $(SOLARIS_ADD_DRIVERINST_DIR_32)/,$(SOLARIS_ADD_DRIVERS)): \
+		$(SOLARIS_ADD_DRIVERINST_DIR_32)/% : $(SOLARIS_ADD_OUT_BIN_32)/% | $$(dir $$@)
+	$(INSTALL) -m 0644 $< $@
+
+$(addprefix $(SOLARIS_VPOXADDINST_DIR_32)/,$(SOLARIS_ADD_XORG_DRIVERS)): \
+		$(SOLARIS_VPOXADDINST_DIR_32)/% : $(SOLARIS_ADD_OUT_BIN_32)/% | $$(dir $$@)
+	$(BIN_COPY) $< $@
+
+
+#
+# 64-bit files
+#
+$(addprefix $(SOLARIS_VPOXADDINST_DIR_64)/,$(SOLARIS_ADD_STRIP_BINS)): \
+		$(SOLARIS_VPOXADDINST_DIR_64)/% : $(SOLARIS_ADD_OUT_BIN_64)/% | $$(dir $$@)
+	$(INSTALL) -m 0755 $(if $(VPOX_DO_STRIP),-s,) $< $@
+
+$(addprefix $(SOLARIS_ADD_DRIVERINST_DIR_64)/,$(SOLARIS_ADD_DRIVERS)): \
+		$(SOLARIS_ADD_DRIVERINST_DIR_64)/% : $(SOLARIS_ADD_OUT_BIN_64)/% | $$(dir $$@)
+	$(INSTALL) -m 0644 $< $@
+
+$(addprefix $(SOLARIS_VPOXADDINST_DIR_64)/,$(SOLARIS_ADD_XORG_DRIVERS)): \
+		$(SOLARIS_VPOXADDINST_DIR_64)/% : $(SOLARIS_ADD_OUT_BIN_64)/% | $$(dir $$@)
+	$(BIN_COPY) $< $@
+
+
+#
+# Common files
+#
+$(addprefix $(SOLARIS_VPOXADDINST_DIR)/,$(SOLARIS_ADD_COMMON)): \
+		$(SOLARIS_VPOXADDINST_DIR)/% : $(SOLARIS_ADD_OUT_BIN_ISA)/% | $$(dir $$@)
+	$(INSTALL) -m 0644 $< $@
+
+#
+# Common binaries/shell scripts
+#
+$(addprefix $(SOLARIS_VPOXADDINST_DIR)/,$(SOLARIS_ADD_COMMON_BINS)): \
+		$(SOLARIS_VPOXADDINST_DIR)/% : $(SOLARIS_ADD_OUT_BIN_ISA)/% | $$(dir $$@)
+	$(INSTALL) -m 0755 $< $@
+
+#
+# Driver .conf files
+#
+$(addprefix $(SOLARIS_ADD_DRIVERINST_DIR)/,$(SOLARIS_ADD_DRIVERS_CONF)): \
+		$(SOLARIS_ADD_DRIVERINST_DIR)/% : $(SOLARIS_ADD_OUT_BIN_ISA)/% | $$(dir $$@)
+	$(INSTALL) -m 0644 $< $@
+
+#
+# SMF Service files
+#
+$(addprefix $(SOLARIS_ADD_SERVICESINST_DIR)/,$(SOLARIS_ADD_SERVICES)): \
+		$(SOLARIS_ADD_SERVICESINST_DIR)/% : $(SOLARIS_ADD_OUT_BIN_ISA)/% | $$(dir $$@)
+	$(INSTALL) -m 0644 $< $@
+
+#
+# Symlinks from /usr/bin/ to /opt/VirtualPoxAdditions
+#
+$(addprefix $(SOLARIS_ADD_USRBIN_DIR)/,$(SOLARIS_ADD_USRBIN_LINKS)): \
+		$(SOLARIS_ADD_USRBIN_DIR)/% : % | $$(dir $$@)
+	$(LN_SYMLINK) -f ../..$(SOLARIS_VPOXADDINST_SUBDIR)/$< $@
+
+#
+# Symlinks from /usr/sbin/ to /opt/VirtualPoxAdditions
+#
+$(addprefix $(SOLARIS_ADD_USRSBIN_DIR)/,$(SOLARIS_ADD_USRSBIN_LINKS)): \
+		$(SOLARIS_ADD_USRSBIN_DIR)/% : % | $$(dir $$@)
+	$(LN_SYMLINK) -f ../..$(SOLARIS_VPOXADDINST_SUBDIR)/$< $@

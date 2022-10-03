@@ -1,0 +1,97 @@
+; $Id: VPoxNetAdp6.inf $
+;; @file
+; VPoxNetAdp6.inf - VirtualPox NDIS6 Miniport Driver inf file
+;
+; Note: We use the same component id as the old NetAdp implementation ?
+;
+
+;
+; Copyright (C) 2014-2020 Oracle Corporation
+;
+; This file is part of VirtualPox Open Source Edition (OSE), as
+; available from http://www.virtualpox.org. This file is free software;
+; you can redistribute it and/or modify it under the terms of the GNU
+; General Public License (GPL) as published by the Free Software
+; Foundation, in version 2 as it comes in the "COPYING" file of the
+; VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+; hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+;
+; The contents of this file may alternatively be used under the terms
+; of the Common Development and Distribution License Version 1.0
+; (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+; VirtualPox OSE distribution, in which case the provisions of the
+; CDDL are applicable instead of those of the GPL.
+;
+; You may elect to license modified versions of this file under the
+; terms and conditions of either the GPL or the CDDL or both.
+;
+
+[Version]
+Signature   = "$Windows NT$"
+;cat  CatalogFile = VPoxNetAdp6.cat
+Class       = Net
+ClassGUID   = {4D36E972-E325-11CE-BFC1-08002BE10318}
+Provider    = %Provider%
+;edit-DriverVer=10/23/2014,1.0.1.0
+
+
+[Manufacturer]
+%Provider% = VPox,NTx86,NTamd64
+
+[ControlFlags]
+
+[VPox]
+%VPoxNetAdp6_Desc% = VPoxNetAdp6.ndi, sun_VPoxNetAdp
+
+[VPox.NTx86]
+%VPoxNetAdp6_Desc% = VPoxNetAdp6.ndi, sun_VPoxNetAdp
+
+[VPox.NTamd64]
+%VPoxNetAdp6_Desc% = VPoxNetAdp6.ndi, sun_VPoxNetAdp
+
+[VPoxNetAdp6.ndi]
+AddReg             = VPoxNetAdp6.ndi.AddReg
+Characteristics    = 0x1 ; NCF_VIRTUAL
+*IfType            = 0x6 ; IF_TYPE_ETHERNET_CSMACD
+*MediaType         = 0x0 ; NdisMedium802_3
+*PhysicalMediaType = 14  ; NdisPhysicalMedium802_3
+CopyFiles          = VPoxNetAdp6.Files.Sys
+
+[VPoxNetAdp6.ndi.Services]
+AddService = VPoxNetAdp, 2, VPoxNetAdp6.AddService
+
+[VPoxNetAdp6.AddService]
+DisplayName    = %VPoxNetAdp6Service_Desc%
+ServiceType    = 1 ;SERVICE_KERNEL_DRIVER
+StartType      = 3 ;SERVICE_DEMAND_START
+ErrorControl   = 1 ;SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\VPoxNetAdp6.sys
+LoadOrderGroup = NDIS
+
+[SourceDisksNames]
+1=%DiskDescription%,"",,
+
+[SourceDisksFiles]
+VPoxNetAdp6.sys=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+VPoxNetAdp6.Files.Sys   = 12   ; %windir%\System32\drivers
+
+[VPoxNetAdp6.Files.Sys]
+VPoxNetAdp6.sys,,,2
+
+[VPoxNetAdp6.ndi.AddReg]
+HKR,    ,            *NdisDeviceType, 0x00010001, 1   ; NDIS_DEVICE_TYPE_ENDPOINT
+HKR,    ,            BusNumber,  0, "0"
+HKR, Ndi,            Service,    0, VPoxNetAdp
+HKR, Ndi,            HelpText,    , %VPoxNetAdp6_HELP%
+HKR, Ndi\Interfaces, UpperRange, 0, ndis5
+HKR, Ndi\Interfaces, LowerRange, 0, ethernet
+
+[Strings]
+Provider = "Oracle Corporation"
+DiskDescription = "VirtualPox NDIS 6.0 Miniport Driver"
+VPoxNetAdp6_Desc = "VirtualPox Host-Only Ethernet Adapter"
+VPoxNetAdp6_HELP = "VirtualPox NDIS 6.0 Miniport Driver"
+VPoxNetAdp6Service_Desc = "VirtualPox NDIS 6.0 Miniport Service"

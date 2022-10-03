@@ -1,0 +1,57 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Solaris VPoxUSB kernel extension.
+#
+
+#
+# Copyright (C) 2008-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# vpoxusbmon - The Solaris USB Monitor Kernel module.
+#
+SYSMODS.solaris         += vpoxusbmon
+vpoxusbmon_TEMPLATE      = VPOXR0DRV
+vpoxusbmon_DEFS          = IN_RT_R0 VPOX_SVN_REV=$(VPOX_SVN_REV)
+vpoxusbmon_DEPS         += $(VPOX_SVN_REV_KMK)
+vpoxusbmon_INCS         := . .. include
+vpoxusbmon_LDFLAGS      += -N drv/vpoxdrv -N misc/usba
+vpoxusbmon_SOURCES       = \
+	VPoxUSBMon-solaris.c \
+	../USBFilter.cpp \
+	../VPoxUSBFilterMgr.cpp
+
+#
+# vpoxusb - The Solaris Generic USB Client Kernel module.
+#
+SYSMODS.solaris         += vpoxusb
+vpoxusb_TEMPLATE         = VPOXR0DRV
+vpoxusb_DEFS             = IN_RT_R0 IN_SUP_R0 VPOX_SVN_REV=$(VPOX_SVN_REV)
+vpoxusb_DEPS            += $(VPOX_SVN_REV_KMK)
+vpoxusb_INCS            := . include/
+vpoxusb_LDFLAGS         += -N drv/vpoxdrv -N drv/vpoxusbmon -N misc/usba
+vpoxusb_SOURCES          = \
+	VPoxUSB-solaris.c
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

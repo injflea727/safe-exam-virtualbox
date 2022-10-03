@@ -1,0 +1,90 @@
+; $Id: VPoxGuest.inf $
+;; @file
+; INF file for installing the VirtualPox Windows guest driver.
+;
+
+;
+; Copyright (C) 2006-2020 Oracle Corporation
+;
+; This file is part of VirtualPox Open Source Edition (OSE), as
+; available from http://www.virtualpox.org. This file is free software;
+; you can redistribute it and/or modify it under the terms of the GNU
+; General Public License (GPL) as published by the Free Software
+; Foundation, in version 2 as it comes in the "COPYING" file of the
+; VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+; hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+;
+; The contents of this file may alternatively be used under the terms
+; of the Common Development and Distribution License Version 1.0
+; (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+; VirtualPox OSE distribution, in which case the provisions of the
+; CDDL are applicable instead of those of the GPL.
+;
+; You may elect to license modified versions of this file under the
+; terms and conditions of either the GPL or the CDDL or both.
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Provider=%ORACLE%
+ClassGuid={4D36E97D-E325-11CE-BFC1-08002BE10318}
+Class=System
+DriverPackageType=PlugAndPlay
+;edit-DriverVer=08/26/2008,2.00.0000
+;cat CatalogFile=VPoxGuest.cat
+
+[SourceDisksNames]
+1 = %VPoxGuest.MediaDesc%
+
+[SourceDisksFiles]
+VPoxGuest.sys = 1
+VPoxControl.exe = 1
+VPoxTray.exe = 1
+
+[DestinationDirs]
+DefaultDestDir = 12 ; drivers
+VPoxTray_CopyFiles = 11 ; system32
+
+[Manufacturer]
+;x86   %ORACLE%=VPoxGuest
+;amd64 %ORACLE%=VPoxGuest, NTamd64
+
+;x86   [VPoxGuest]
+;amd64 [VPoxGuest.NTamd64]
+%VPoxGuest.DeviceDesc%=VPoxGuest_Install,PCI\VEN_80ee&DEV_cafe
+
+[VPoxGuest_Install]
+CopyFiles = VPoxGuest_CopyFiles, VPoxTray_CopyFiles
+AddReg = VPoxTray_Add_Reg
+
+[VPoxGuest_CopyFiles]
+VPoxGuest.sys
+
+[VPoxTray_CopyFiles]
+VPoxTray.exe
+VPoxControl.exe
+
+[VPoxGuest_Install.Services]
+AddService = VPoxGuest, 0x00000002, VPoxGuest_ServiceInstallSection
+DelService = VPoxTray, 0x00000004
+
+[VPoxGuest_ServiceInstallSection]
+DisplayName    = %VPoxGuest_svcdesc%
+ServiceType    = 0x00000001 ; kernel driver
+StartType      = 0x00000000 ; boot start
+ErrorControl   = 0x00000001 ; normal error handling
+LoadOrderGroup = Base
+ServiceBinary  = %12%\VPoxGuest.sys
+
+[VPoxTray_Add_Reg]
+HKLM, SOFTWARE\Microsoft\Windows\CurrentVersion\Run, VPoxTray, 0x00020000, %%SystemRoot%%\system32\VPoxTray.exe
+
+[ClassInstall32]
+; This should fix the error 0xe0000101 (The required section was not found in the INF).
+
+[Strings]
+ORACLE = "Oracle Corporation"
+VPoxGuest.DeviceDesc = "VirtualPox Guest Device"
+VPoxGuest_svcdesc = "VirtualPox Guest Driver"
+VPoxTray_svcdesc = "VirtualPox Guest Tray"
+VPoxGuest.MediaDesc = "VirtualPox Guest Driver Installation Disk"

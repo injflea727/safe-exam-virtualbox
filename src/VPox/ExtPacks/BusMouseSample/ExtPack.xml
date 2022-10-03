@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<VirtualPoxExtensionPack xmlns="http://www.virtualpox.org/VirtualPoxExtensionPack" version="1.0">
+    <Name>BusMouse</Name>
+    <Description>The bus mouse sample extension pack.</Description>
+    <Version revision="@VPOX_SVN_REV@">@VPOX_VERSION_STRING@</Version>
+    <MainModule>VPoxBusMouseMain</MainModule>
+    <MainVMModule>VPoxBusMouseMainVM</MainVMModule>
+    <ShowLicense/>
+</VirtualPoxExtensionPack>
+

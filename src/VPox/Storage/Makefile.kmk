@@ -1,0 +1,80 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Storage library.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+VPOX_PATH_STORAGE_SRC := $(PATH_SUB_CURRENT)
+
+if !defined(VPOX_ONLY_EXTPACKS)
+ include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+
+ #
+ # StorageLib - The storage Library.
+ #
+ LIBRARIES += StorageLib #StorageLibNoDB
+
+ StorageLib_TEMPLATE = VPOXR3
+ StorageLib_DEFS     = IN_VPOXDDU
+ ifeq ($(USER),bird)
+  StorageLib_DEFS.debug += RTMEM_WRAP_TO_EF_APIS
+ endif
+
+ StorageLib_SOURCES  = \
+ 	VD.cpp \
+ 	VDPlugin.cpp \
+ 	VDVfs.cpp \
+ 	VDIfVfs.cpp \
+ 	VDIfVfs2.cpp \
+ 	VDIfTcpNet.cpp \
+ 	VDI.cpp \
+ 	VMDK.cpp \
+ 	VHD.cpp \
+ 	DMG.cpp \
+ 	Parallels.cpp \
+ 	ISCSI.cpp \
+ 	RAW.cpp \
+ 	QED.cpp \
+ 	QCOW.cpp \
+ 	VHDX.cpp \
+ 	CUE.cpp \
+ 	VISO.cpp \
+ 	VCICache.cpp
+endif # !VPOX_ONLY_EXTPACKS
+
+if defined(VPOX_WITH_EXTPACK_PUEL) && defined(VPOX_WITH_EXTPACK_PUEL_BUILD)
+ if defined(VPOX_WITH_PLUGIN_CRYPT)
+  DLLS += VDPluginCrypt
+  VDPluginCrypt_TEMPLATE      = VPoxR3ExtPackPuelWithOpenSsl
+  VDPluginCrypt_LDFLAGS.linux = $(VPOX_GCC_NO_UNDEFINED)
+  VDPluginCrypt_DEFS          = $(if $(VD_WITH_IPRT_CRYPTO),VD_WITH_IPRT_CRYPTO,)
+  VDPluginCrypt_SOURCES  = \
+  	VDFilterCrypt.cpp \
+  	VDKeyStore.cpp
+  VDPluginCrypt_SOURCES.win = \
+  	VDPluginCrypt.rc
+ endif
+endif # VPOX_WITH_EXTPACK_PUEL
+
+#StorageLibNoDB_TEMPLATE = VPOXR3
+#StorageLibNoDB_DEFS     = IN_VPOXDDU VPOX_HDD_NO_DYNAMIC_BACKENDS
+#StorageLibNoDB_SOURCES  = \
+#	$(StorageLib_SOURCES)
+
+# generate rules
+include $(FILE_KBUILD_SUB_FOOTER)
+

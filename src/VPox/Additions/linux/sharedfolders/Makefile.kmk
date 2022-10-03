@@ -1,0 +1,47 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the vpoxsf (linux shared folders module).
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# Populate FILES_VPOXSF_NOBIN
+#
+INSTALLS += vpoxsf-src
+include $(PATH_SUB_CURRENT)/files_vpoxsf
+vpoxsf-src_INST         = $(INST_ADDITIONS)src/vpoxsf/
+vpoxsf-src_SOURCES      = \
+	$(subst $(DQUOTE),,$(FILES_VPOXSF_NOBIN))
+vpoxsf-src_EXEC_SOURCES = \
+	$(subst $(DQUOTE),,$(FILES_VPOXSF_BIN))
+
+# Build test for the Guest Additions kernel modules (kmk check).
+$(evalcall2 VPOX_LINUX_KMOD_TEST_BUILD_RULE_FN,vpoxsf-src,vpoxguest-src,)
+
+#
+# The mount util.
+#
+PROGRAMS += mount.vpoxsf
+mount.vpoxsf_TEMPLATE    = NewVPoxGuestR3Exe
+mount.vpoxsf_DEFS        = _GNU_SOURCE
+mount.vpoxsf_SOURCES     = \
+	mount.vpoxsf.c \
+	vbsfmount.c
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

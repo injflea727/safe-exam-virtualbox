@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=VirtualPox Greeter
+Comment=Provides Single Sign-On (SSO) support
+Exec=/usr/sbin/vpox-greeter
+Type=Application

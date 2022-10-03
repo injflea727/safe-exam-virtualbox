@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundlePackageType</key>              <string>APPL</string>
+    <key>CFBundleSignature</key>                <string>VPOX</string>
+    <key>CFBundleDevelopmentRegion</key>        <string>English</string>
+    <key>CFBundleIdentifier</key>               <string>org.virtualpox.app.VirtualPox</string>
+    <key>CFBundleName</key>                     <string>VirtualPox</string>
+    <key>CFBundleExecutable</key>               <string>VirtualPox</string>
+    <key>CFBundleVersion</key>                  <string>@VPOX_VERSION_MAJOR@.@VPOX_VERSION_MINOR@.@VPOX_VERSION_BUILD@</string>
+    <key>CFBundleShortVersionString</key>       <string>@VPOX_VERSION_MAJOR@.@VPOX_VERSION_MINOR@.@VPOX_VERSION_BUILD@</string>
+    <key>CFBundleGetInfoString</key>            <string>@VPOX_PRODUCT@ Manager @VPOX_VERSION_STRING@, © 2007-@VPOX_C_YEAR@ @VPOX_VENDOR@</string>
+    <key>CFBundleIconFile</key>                 <string>virtualpox</string>
+    <key>CFBundleInfoDictionaryVersion</key>    <string>6.0</string>
+    <key>LSCanProvideIMVideoDataSource</key>    <false/>
+    <key>NSHighResolutionCapable</key>          <true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+    <key>NSCameraUsageDescription</key>         <string>VirtualPox needs camera access for emulated webcam passthrough</string>
+    <key>NSMicrophoneUsageDescription</key>     <string>VirtualPox needs microphone access for guest audio input</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+     <dict>
+      <key>CFBundleTypeName</key>               <string>VirtualPox Extension Pack</string>
+      <key>CFBundleTypeExtensions</key>         <array><string>vpox-extpack</string></array>
+      <key>CFBundleTypeRole</key>               <string>Viewer</string>
+      <key>LSHandlerRank</key>                  <string>Owner</string>
+      <key>CFBundleTypeIconFile</key>           <string>virtualpox-vpox-extpack</string>
+     </dict>
+     <dict>
+      <key>CFBundleTypeName</key>               <string>Open Virtualization Format</string>
+      <key>CFBundleTypeExtensions</key>         <array><string>ovf</string></array>
+      <key>CFBundleTypeRole</key>               <string>Viewer</string>
+      <key>CFBundleTypeIconFile</key>           <string>virtualpox-ovf</string>
+     </dict>
+     <dict>
+      <key>CFBundleTypeName</key>               <string>Open Virtualization Format Archive</string>
+      <key>CFBundleTypeExtensions</key>         <array><string>ova</string></array>
+      <key>CFBundleTypeRole</key>               <string>Viewer</string>
+      <key>CFBundleTypeIconFile</key>           <string>virtualpox-ova</string>
+     </dict>
+     <dict>
+      <key>CFBundleTypeName</key>               <string>Virtual Disk Image</string>
+      <key>CFBundleTypeExtensions</key>         <array><string>vdi</string></array>
+      <key>CFBundleTypeRole</key>               <string>None</string>
+      <key>CFBundleTypeIconFile</key>           <string>virtualpox-vdi</string>
+     </dict>
+     <dict>
+      <key>CFBundleTypeName</key>               <string>Virtual Machine Disk Format</string>
+      <key>CFBundleTypeExtensions</key>         <array><string>vmdk</string></array>
+      <key>CFBundleTypeRole</key>               <string>None</string>
+      <key>CFBundleTypeIconFile</key>           <string>virtualpox-vmdk</string>
+     </dict>
+     <dict>
+      <key>CFBundleTypeName</key>               <string>Virtual Hard Disk</string>
+      <key>CFBundleTypeExtensions</key>         <array><string>vhd</string></array>
+      <key>CFBundleTypeRole</key>               <string>None</string>
+      <key>CFBundleTypeIconFile</key>           <string>virtualpox-vhd</string>
+     </dict>
+     <dict>
+      <key>CFBundleTypeName</key>               <string>Virtual Hard Disk</string>
+      <key>CFBundleTypeExtensions</key>         <array><string>hdd</string></array>
+      <key>CFBundleTypeRole</key>               <string>None</string>
+      <key>CFBundleTypeIconFile</key>           <string>virtualpox-hdd</string>
+     </dict>
+    </array>
+</dict>
+</plist>

@@ -1,0 +1,8 @@
+virtualpox
+    command=VirtualPox
+    requires_terminal=false
+    expects_uris=false
+    can_open_multiple_files=true
+    name=@VPOX_PRODUCT@
+    mime_types=application/x-virtualpox-vpox;application/x-virtualpox-vpox-extpack;application/x-virtualpox-ovf;application/x-virtualpox-ova;application/x-virtualpox-vdi;application/x-virtualpox-vmdk;application/x-virtualpox-vhd;application/x-virtualpox-hdd
+

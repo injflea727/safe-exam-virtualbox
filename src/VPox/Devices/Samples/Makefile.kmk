@@ -1,0 +1,105 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the device and driver samples.
+#
+
+#
+# Copyright (C) 2009-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# VPoxSampleDevice - A sample device module.
+#
+DLLS += VPoxSampleDevice
+VPoxSampleDevice_TEMPLATE = VPOXR3
+VPoxSampleDevice_SOURCES  = \
+	VPoxSampleDevice.cpp
+VPoxSampleDevice_LIBS     = \
+	$(LIB_RUNTIME) \
+	$(LIB_VMM)
+
+#
+# VPoxSampleDriver - A sample driver module.
+#
+DLLS += VPoxSampleDriver
+VPoxSampleDriver_TEMPLATE = VPOXR3
+VPoxSampleDriver_SOURCES  = \
+	DrvStorageFilter.cpp
+VPoxSampleDriver_LIBS     = \
+	$(LIB_RUNTIME) \
+	$(LIB_VMM)
+
+
+#
+# VPoxPlaygroundDevice - A device module demonstrating some unusual features.
+#
+DLLS += VPoxPlaygroundDevice
+VPoxPlaygroundDevice_TEMPLATE = VPOXR3
+VPoxPlaygroundDevice_SOURCES  = \
+	DevPlayground.cpp
+VPoxPlaygroundDevice_LIBS     = \
+	$(PATH_STAGE_LIB)/VPoxCOM$(VPOX_SUFF_LIB) \
+	$(LIB_RUNTIME) \
+	$(LIB_VMM)
+
+ifdef VPOX_WITH_XPCOM
+ ## @todo may be worth creating the VPOX_XPCOM SDK def, or just a SDK_VPOXXPCOM.
+ VPoxPlaygroundDevice_DEFS += VPOX_WITH_XPCOM
+ ifdef VPOX_WITH_XPCOM_NAMESPACE_CLEANUP
+  VPoxPlaygroundDevice_DEFS += VPOX_WITH_XPCOM_NAMESPACE_CLEANUP
+ endif
+ VPoxPlaygroundDevice_INCS += \
+	$(VPOX_XPCOM_INCS)
+ VPoxPlaygroundDevice_INTERMEDIATES += \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include/VirtualPox_XPCOM.h
+ VPoxPlaygroundDevice_LIBS += \
+	$(LIB_XPCOM)
+else  # COM
+ VPoxPlaygroundDevice_INCS += \
+	$(VPOX_PATH_SDK)/bindings/mscom/include
+ VPoxPlaygroundDevice_INTERMEDIATES += \
+	$(VPOX_PATH_SDK)/bindings/mscom/include/VirtualPox.h
+endif # COM
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
+
+#
+# Installs the filter.
+#
+install-filter:
+	$(if-expr "$(VPOX_MANAGE)" == "",$(error VPOX_MANAGE is not defined,))
+	$(if-expr "$(VPOX_VMNAME)" == "",$(error VPOX_VMNAME is not defined,))
+# Make VPox load the driver
+	$(VPOX_MANAGE) setextradata "$(VPOX_VMNAME)" "VPoxInternal/PDM/Drivers/VPoxSampleDriver/Path" \
+		"$(if $(VPoxSampleDriver_1_INST_TARGET),$(VPoxSampleDriver_1_INST_TARGET),$(VPoxSampleDriver_1_TARGET))"
+# Configure the matching.
+	$(VPOX_MANAGE) setextradata "$(VPOX_VMNAME)" "VPoxInternal/PDM/DriverTransformations/StorageFilter/AboveDriver" \
+		"VD"
+# The config of the injected driver.
+	$(VPOX_MANAGE) setextradata "$(VPOX_VMNAME)" "VPoxInternal/PDM/DriverTransformations/StorageFilter/AttachedDriver/Driver" \
+		"StorageFilter"
+	$(VPOX_MANAGE) setextradata "$(VPOX_VMNAME)" "VPoxInternal/PDM/DriverTransformations/StorageFilter/AttachedDriver/Config/AsyncIOSupported" \
+		"1"
+
+uninstall-filter:
+	$(if-expr "$(VPOX_MANAGE)" == "",$(error VPOX_MANAGE is not defined,))
+	$(if-expr "$(VPOX_VMNAME)" == "",$(error VPOX_VMNAME is not defined,))
+	$(VPOX_MANAGE) showvminfo "$(VPOX_VMNAME)"
+	$(VPOX_MANAGE) setextradata "$(VPOX_VMNAME)" "VPoxInternal/PDM/Drivers/VPoxSampleDriver/Path"
+	$(VPOX_MANAGE) setextradata "$(VPOX_VMNAME)" "VPoxInternal/PDM/DriverTransformations/StorageFilter/AboveDriver"
+	$(VPOX_MANAGE) setextradata "$(VPOX_VMNAME)" "VPoxInternal/PDM/DriverTransformations/StorageFilter/AttachedDriver/Config/AsyncIOSupported"
+

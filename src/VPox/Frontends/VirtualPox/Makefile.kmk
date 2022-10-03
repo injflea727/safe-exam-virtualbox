@@ -1,0 +1,2056 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the VirtualPox Qt GUI.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# Globals.
+#
+VPOX_VIRTUALPOX_SRC := $(PATH_SUB_CURRENT)
+VPOX_VIRTUALPOX_OUT_DIR := $(PATH_TARGET)/VirtualPox/misc
+USES += qt5
+
+
+#
+# Targets.
+#
+ifdef VPOX_WITH_HARDENING
+ PROGRAMS += VirtualPox
+ PROGRAMS += VirtualPoxHardenedVM
+ DLLS += VirtualPoxVM
+ DLLS += UICommon
+else
+ PROGRAMS += VirtualPox
+ PROGRAMS += VirtualPoxVM
+ DLLS += UICommon
+endif
+INSTALLS += VirtualPox.nls
+
+
+#
+# Include the language lists.
+#
+include $(PATH_SUB_CURRENT)/nls/ApprovedLanguages.kmk
+
+
+#
+# Hardened VirtualPoxVM.
+#
+ifdef VPOX_WITH_HARDENING
+VirtualPoxHardenedVM_TEMPLATE = VPOXR3HARDENEDEXE
+VirtualPoxHardenedVM_INST.darwin = $(INST_VIRTUALPOX)Contents/Resources/VirtualPoxVM.app/Contents/MacOS/
+VirtualPoxHardenedVM_NAME = VirtualPoxVM
+VirtualPoxHardenedVM_SOURCES = src/hardenedmain.cpp
+VirtualPoxHardenedVM_LDFLAGS.win = /SUBSYSTEM:$(if-expr "$(KBUILD_TYPE)" != "release",console,windows)
+$(call VPOX_SET_VER_INFO_EXE,VirtualPoxHardenedVM,VirtualPox Virtual Machine,$(VPOX_WINDOWS_ICON_FILE))
+endif
+
+
+#
+# Include Qt project file, we'll use FORMS and TRANSLATIONS in
+# the VirtualPox setup below.
+#
+# This is a bit messy.  We boldly ASSUME that LANGUAGE, IMAGES, FORMS
+# and TRANSLATIONS are all unused by kBuild and the host toolchain.
+#
+SAVED_TEMPLATE := $(TEMPLATE)
+include $(PATH_SUB_CURRENT)/VPoxUI.pro
+TEMPLATE       := $(SAVED_TEMPLATE)
+SAVED_TEMPLATE :=
+LANGUAGE       :=
+IMAGES         :=
+# FORMS and TRANSLATIONS are reset further down.
+
+
+#
+# Perform initial new version check on startup.
+# If this setting is disabled the user can still check using the menu.
+#
+ifndef VPOX_OSE
+VPOX_WITH_UPDATE_REQUEST := 1
+endif
+
+
+#
+# VirtualPox Manager Application
+#
+VirtualPox_TEMPLATE      := VPOXQTGUIEXE
+VirtualPox_NAME           = VirtualPox
+VirtualPox_DEPS           = $(UICommon_0_OUTDIR)/include/COMWrappers
+VirtualPox_SDKS.win       = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK)
+VirtualPox_DEFS           =
+VirtualPox_DEFS.debug     = VPOX_CHECK_STATE # QT_FATAL_ASSERT
+VirtualPox_DEFS.linux     = VPOX_WS_X11
+VirtualPox_DEFS.solaris   = VPOX_WS_X11
+VirtualPox_DEFS.freebsd   = VPOX_WS_X11
+VirtualPox_DEFS.darwin    = VPOX_WS_MAC
+VirtualPox_DEFS.win       = VPOX_WS_WIN
+VirtualPox_DEFS.linux     += VPOX_WITH_MASKED_SEAMLESS VPOX_WITH_TRANSLUCENT_SEAMLESS
+VirtualPox_DEFS.solaris   += VPOX_WITH_MASKED_SEAMLESS VPOX_WITH_TRANSLUCENT_SEAMLESS
+VirtualPox_DEFS.freebsd   += VPOX_WITH_MASKED_SEAMLESS VPOX_WITH_TRANSLUCENT_SEAMLESS
+VirtualPox_DEFS.darwin    += VPOX_WITH_TRANSLUCENT_SEAMLESS # VPOX_WITH_MASKED_SEAMLESS
+VirtualPox_DEFS.win       += VPOX_WITH_MASKED_SEAMLESS # VPOX_WITH_TRANSLUCENT_SEAMLESS
+VirtualPox_DEFS.darwin    += VPOX_DARWIN_USE_NATIVE_CONTROLS
+VirtualPox_DEFS.win       += UNICODE QT_DLL
+VirtualPox_DEFS           += \
+	$(if $(VPOX_WITH_ADDITIONS_AUTOUPDATE_UI),VPOX_WITH_ADDITIONS_AUTOUPDATE_UI) \
+	$(if $(VPOX_WITH_UPDATE_REQUEST),VPOX_WITH_UPDATE_REQUEST) \
+	$(if $(VPOX_WITH_AUDIO_OSS),VPOX_WITH_AUDIO_OSS) \
+	$(if $(VPOX_WITH_AUDIO_ALSA),VPOX_WITH_AUDIO_ALSA) \
+	$(if $(VPOX_WITH_AUDIO_PULSE),VPOX_WITH_AUDIO_PULSE) \
+	$(if $(VPOX_WITH_E1000),VPOX_WITH_E1000) \
+	$(if $(VPOX_WITH_NETFLT)$(eq $(KBUILD_TARGET),freebsd),VPOX_WITH_NETFLT) \
+	$(if $(VPOX_WITH_VDE),VPOX_WITH_VDE) \
+	$(if $(VPOX_WITH_UDPTUNNEL),VPOX_WITH_UDPTUNNEL) \
+	$(if $(VPOX_WITH_EXTPACK),VPOX_WITH_EXTPACK) \
+	$(if $(VPOX_WITH_EHCI),VPOX_WITH_EHCI) \
+	$(if $(VPOX_WITH_HARDENING),VPOXR3_HARDENED_DLL) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPOX_WITH_DRAG_AND_DROP) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_PROMISES),VPOX_WITH_DRAG_AND_DROP_PROMISES) \
+	$(if $(VPOX_WITH_3D_ACCELERATION),VPOX_WITH_3D_ACCELERATION) \
+	$(if $(VPOX_WITH_VIRTIO),VPOX_WITH_VIRTIO) \
+	$(if $(VPOX_WITH_WDDM),VPOX_WITH_WDDM) \
+	$(if $(VPOX_GUI_WITH_PIDFILE),VPOX_GUI_WITH_PIDFILE) \
+	$(if $(VPOX_GUI_WITH_KEYS_RESET_HANDLER),VPOX_GUI_WITH_KEYS_RESET_HANDLER) \
+	$(if $(VPOX_GUI_WITH_CUSTOMIZATIONS1),VPOX_GUI_WITH_CUSTOMIZATIONS1) \
+	$(if $(VPOX_GUI_WITH_CLOUD_VMS),VPOX_GUI_WITH_CLOUD_VMS) \
+	$(if $(VPOX_WITH_RAW_MODE),VPOX_WITH_RAW_MODE) \
+	$(if $(VPOX_WITH_SDS),VPOX_WITH_SDS,)
+ifdef VPOX_WITH_DEBUGGER_GUI
+ VirtualPox_DEFS          += VPOX_WITH_DEBUGGER_GUI
+ if "$(KBUILD_TYPE)" != "release"
+  VirtualPox_DEFS         += VPOX_WITH_DEBUGGER_GUI_MENU
+ endif
+endif
+ifdef VPOX_WITH_VIDEOHWACCEL
+ VirtualPox_DEFS          += VPOX_WITH_VIDEOHWACCEL VPOX_GUI_USE_QGL
+else ifdef VPOX_GUI_USE_QGL
+ VirtualPox_DEFS          += VPOX_GUI_USE_QGL
+endif
+ifdef VPOX_WITH_LIBCURL
+ VirtualPox_DEFS          += VPOX_GUI_WITH_NETWORK_MANAGER
+ VPOX_GUI_WITH_NETWORK_MANAGER := 1
+endif
+if  "$(KBUILD_TYPE)" != "release" || defined(VPOX_GUI_WITH_EXTRADATA_MANAGER_UI)
+ VirtualPox_DEFS          += VPOX_GUI_WITH_EXTRADATA_MANAGER_UI
+endif
+ifndef VPOX_WITHOUT_LESS_VIRTUALPOX_INCLUDING
+ VirtualPox_DEFS          += VPOX_WITH_LESS_VIRTUALPOX_INCLUDING
+endif
+
+
+#
+# VirtualPox Virtual Machine Application
+#
+VirtualPoxVM_TEMPLATE       := $(if $(VPOX_WITH_HARDENING),VPOXQTGUI,VPOXQTGUIEXE)
+VirtualPoxVM_NAME           = VirtualPoxVM
+ifndef VPOX_WITH_HARDENING
+VirtualPoxVM_INST.darwin    = $(INST_VIRTUALPOX)Contents/Resources/VirtualPoxVM.app/Contents/MacOS/
+endif
+VirtualPoxVM_DEPS           = $(UICommon_0_OUTDIR)/include/COMWrappers
+VirtualPoxVM_SDKS.win       = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK)
+VirtualPoxVM_DEFS           += VPOX_RUNTIME_UI
+VirtualPoxVM_DEFS.debug     = VPOX_CHECK_STATE # QT_FATAL_ASSERT
+VirtualPoxVM_DEFS.linux     = VPOX_WS_X11
+VirtualPoxVM_DEFS.solaris   = VPOX_WS_X11
+VirtualPoxVM_DEFS.freebsd   = VPOX_WS_X11
+VirtualPoxVM_DEFS.darwin    = VPOX_WS_MAC
+VirtualPoxVM_DEFS.win       = VPOX_WS_WIN
+VirtualPoxVM_DEFS.linux     += VPOX_WITH_MASKED_SEAMLESS VPOX_WITH_TRANSLUCENT_SEAMLESS
+VirtualPoxVM_DEFS.solaris   += VPOX_WITH_MASKED_SEAMLESS VPOX_WITH_TRANSLUCENT_SEAMLESS
+VirtualPoxVM_DEFS.freebsd   += VPOX_WITH_MASKED_SEAMLESS VPOX_WITH_TRANSLUCENT_SEAMLESS
+VirtualPoxVM_DEFS.darwin    += VPOX_WITH_TRANSLUCENT_SEAMLESS # VPOX_WITH_MASKED_SEAMLESS
+VirtualPoxVM_DEFS.win       += VPOX_WITH_MASKED_SEAMLESS # VPOX_WITH_TRANSLUCENT_SEAMLESS
+VirtualPoxVM_DEFS.darwin    += VPOX_DARWIN_USE_NATIVE_CONTROLS
+VirtualPoxVM_DEFS.win       += UNICODE QT_DLL
+VirtualPoxVM_DEFS           += \
+	$(if $(VPOX_WITH_ADDITIONS_AUTOUPDATE_UI),VPOX_WITH_ADDITIONS_AUTOUPDATE_UI) \
+	$(if $(VPOX_WITH_UPDATE_REQUEST),VPOX_WITH_UPDATE_REQUEST) \
+	$(if $(VPOX_WITH_AUDIO_OSS),VPOX_WITH_AUDIO_OSS) \
+	$(if $(VPOX_WITH_AUDIO_ALSA),VPOX_WITH_AUDIO_ALSA) \
+	$(if $(VPOX_WITH_AUDIO_PULSE),VPOX_WITH_AUDIO_PULSE) \
+	$(if $(VPOX_WITH_E1000),VPOX_WITH_E1000) \
+	$(if $(VPOX_WITH_NETFLT)$(eq $(KBUILD_TARGET),freebsd),VPOX_WITH_NETFLT) \
+	$(if $(VPOX_WITH_VDE),VPOX_WITH_VDE) \
+	$(if $(VPOX_WITH_UDPTUNNEL),VPOX_WITH_UDPTUNNEL) \
+	$(if $(VPOX_WITH_EXTPACK),VPOX_WITH_EXTPACK) \
+	$(if $(VPOX_WITH_EHCI),VPOX_WITH_EHCI) \
+	$(if $(VPOX_WITH_HARDENING),VPOXR3_HARDENED_DLL) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPOX_WITH_DRAG_AND_DROP) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_PROMISES),VPOX_WITH_DRAG_AND_DROP_PROMISES) \
+	$(if $(VPOX_WITH_3D_ACCELERATION),VPOX_WITH_3D_ACCELERATION) \
+	$(if $(VPOX_WITH_VIRTIO),VPOX_WITH_VIRTIO) \
+	$(if $(VPOX_WITH_WDDM),VPOX_WITH_WDDM) \
+	$(if $(VPOX_GUI_WITH_PIDFILE),VPOX_GUI_WITH_PIDFILE) \
+	$(if $(VPOX_GUI_WITH_KEYS_RESET_HANDLER),VPOX_GUI_WITH_KEYS_RESET_HANDLER) \
+	$(if $(VPOX_GUI_WITH_CUSTOMIZATIONS1),VPOX_GUI_WITH_CUSTOMIZATIONS1) \
+	$(if $(VPOX_WITH_RAW_MODE),VPOX_WITH_RAW_MODE) \
+	$(if $(VPOX_WITH_SDS),VPOX_WITH_SDS,)
+ifdef VPOX_WITH_DEBUGGER_GUI
+ VirtualPoxVM_DEFS          += VPOX_WITH_DEBUGGER_GUI
+ if "$(KBUILD_TYPE)" != "release"
+  VirtualPoxVM_DEFS         += VPOX_WITH_DEBUGGER_GUI_MENU
+ endif
+endif
+ifdef VPOX_WITH_VIDEOHWACCEL
+ VirtualPoxVM_DEFS          += VPOX_WITH_VIDEOHWACCEL VPOX_GUI_USE_QGL
+else ifdef VPOX_GUI_USE_QGL
+ VirtualPoxVM_DEFS          += VPOX_GUI_USE_QGL
+endif
+ifdef VPOX_GUI_WITH_QTGLFRAMEBUFFER
+ VirtualPoxVM_DEFS          += VPOX_GUI_WITH_QTGLFRAMEBUFFER
+endif
+ifdef VPOX_WITH_LIBCURL
+ VirtualPoxVM_DEFS          += VPOX_GUI_WITH_NETWORK_MANAGER
+ VPOX_GUI_WITH_NETWORK_MANAGER := 1
+endif
+if  "$(KBUILD_TYPE)" != "release" || defined(VPOX_GUI_WITH_EXTRADATA_MANAGER_UI)
+ VirtualPoxVM_DEFS          += VPOX_GUI_WITH_EXTRADATA_MANAGER_UI
+endif
+ifndef VPOX_WITHOUT_LESS_VIRTUALPOX_INCLUDING
+ VirtualPoxVM_DEFS          += VPOX_WITH_LESS_VIRTUALPOX_INCLUDING
+endif
+
+
+#
+# VirtualPox - GUI Global Shared Library.
+#
+UICommon_TEMPLATE = VPOXQTGUI
+UICommon_NAME = UICommon
+UICommon_DEFS         =
+UICommon_DEFS        += VPOX_GUI_LIBRARY
+UICommon_DEFS.darwin  = VPOX_WS_MAC
+UICommon_DEFS.freebsd = VPOX_WS_X11
+UICommon_DEFS.linux   = VPOX_WS_X11
+UICommon_DEFS.solaris = VPOX_WS_X11
+UICommon_DEFS.win     = VPOX_WS_WIN
+UICommon_DEFS.debug   = VPOX_CHECK_STATE # QT_FATAL_ASSERT
+UICommon_DEFS.darwin  += VPOX_DARWIN_USE_NATIVE_CONTROLS
+#UICommon_DEFS.win     += UNICODE QT_DLL
+UICommon_DEFS         += \
+	$(if $(VPOX_WITH_UPDATE_REQUEST),VPOX_WITH_UPDATE_REQUEST) \
+	$(if $(VPOX_WITH_AUDIO_OSS),VPOX_WITH_AUDIO_OSS) \
+	$(if $(VPOX_WITH_AUDIO_ALSA),VPOX_WITH_AUDIO_ALSA) \
+	$(if $(VPOX_WITH_AUDIO_PULSE),VPOX_WITH_AUDIO_PULSE) \
+	$(if $(VPOX_WITH_CLOUD_NET),VPOX_WITH_CLOUD_NET) \
+	$(if $(VPOX_WITH_E1000),VPOX_WITH_E1000) \
+	$(if $(VPOX_WITH_NETFLT)$(eq $(KBUILD_TARGET),freebsd),VPOX_WITH_NETFLT) \
+	$(if $(VPOX_WITH_VDE),VPOX_WITH_VDE) \
+	$(if $(VPOX_WITH_EXTPACK),VPOX_WITH_EXTPACK) \
+	$(if $(VPOX_WITH_HARDENING),VPOXR3_HARDENED_DLL) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPOX_WITH_DRAG_AND_DROP) \
+	$(if $(VPOX_WITH_3D_ACCELERATION),VPOX_WITH_3D_ACCELERATION) \
+	$(if $(VPOX_WITH_VIRTIO),VPOX_WITH_VIRTIO) \
+	$(if $(VPOX_GUI_WITH_PIDFILE),VPOX_GUI_WITH_PIDFILE) \
+	$(if $(VPOX_GUI_WITH_CUSTOMIZATIONS1),VPOX_GUI_WITH_CUSTOMIZATIONS1) \
+	$(if $(VPOX_WITH_RAW_MODE),VPOX_WITH_RAW_MODE) \
+	$(if $(VPOX_WITH_SDS),VPOX_WITH_SDS,)
+ifdef VPOX_WITH_DEBUGGER_GUI
+ UICommon_DEFS        += VPOX_WITH_DEBUGGER_GUI
+ if "$(KBUILD_TYPE)" != "release"
+  UICommon_DEFS       += VPOX_WITH_DEBUGGER_GUI_MENU
+ endif
+endif
+ifdef VPOX_WITH_VIDEOHWACCEL
+ UICommon_DEFS        += VPOX_WITH_VIDEOHWACCEL VPOX_GUI_USE_QGL
+else ifdef VPOX_GUI_USE_QGL
+ UICommon_DEFS        += VPOX_GUI_USE_QGL
+endif
+ifdef VPOX_WITH_LIBCURL
+ UICommon_DEFS        += VPOX_GUI_WITH_NETWORK_MANAGER
+ VPOX_GUI_WITH_NETWORK_MANAGER := 1
+endif
+if  "$(KBUILD_TYPE)" != "release" || defined(VPOX_GUI_WITH_EXTRADATA_MANAGER_UI)
+ UICommon_DEFS        += VPOX_GUI_WITH_EXTRADATA_MANAGER_UI
+endif
+ifndef VPOX_WITHOUT_LESS_VIRTUALPOX_INCLUDING
+ UICommon_DEFS        += VPOX_WITH_LESS_VIRTUALPOX_INCLUDING
+endif
+
+
+#
+# Include folders.
+#
+VPOX_GUI_INC_DIRS = \
+	./src \
+	./src/cloud \
+	./src/converter \
+	./src/extensions \
+	./src/extensions/graphics \
+	./src/extradata \
+	./src/globals \
+	./src/hostnetwork \
+	./src/logviewer \
+	./src/medium \
+	./src/medium/viso \
+	./src/objects \
+	./src/platform \
+	./src/platform/darwin \
+	./src/platform/win \
+	./src/platform/x11 \
+	./src/runtime \
+	./src/runtime/fullscreen \
+	./src/runtime/normal \
+	./src/runtime/scale \
+	./src/runtime/seamless \
+	./src/runtime/information \
+	./src/guestctrl \
+	./src/settings \
+	./src/settings/global \
+	./src/settings/machine \
+	./src/softkeyboard \
+	./src/snapshots \
+	./src/widgets \
+	./src/widgets/graphics \
+	./src/wizards \
+	./src/wizards/newcloudvm \
+	./src/wizards/newvm \
+	./src/wizards/newvd \
+	./src/wizards/clonevm \
+	./src/wizards/clonevd \
+	./src/wizards/exportappliance \
+	./src/wizards/importappliance \
+	./src/wizards/firstrun
+
+VPOX_GUI_INC_DIRS += \
+	./src/manager \
+	./src/manager/chooser \
+	./src/manager/details \
+	./src/manager/tools
+
+ifdef VPOX_GUI_WITH_NETWORK_MANAGER
+VPOX_GUI_INC_DIRS += \
+	./src/net
+endif
+
+#
+# VirtualPox Manager Application
+# Include folders.
+#
+VirtualPox_INCS = \
+	$(VPOX_GUI_INC_DIRS) \
+	$(UICommon_0_OUTDIR)/include \
+	$(VPOX_GRAPHICS_INCS)
+
+#
+# VirtualPox Virtual Machine Application
+# Include folders.
+#
+VirtualPoxVM_INCS = \
+	$(VPOX_GUI_INC_DIRS) \
+	$(UICommon_0_OUTDIR)/include \
+	$(VPOX_GRAPHICS_INCS)
+
+#
+# VirtualPox - GUI Global Shared Library.
+# Include folders.
+#
+UICommon_INCS = \
+	$(VPOX_GUI_INC_DIRS) \
+	$(UICommon_0_OUTDIR)/include
+
+
+#
+# VirtualPox Manager Application
+# Compiling/linking flags.
+#
+ifneq ($(KBUILD_TARGET),win)
+VirtualPox_CXXFLAGS += -Wno-switch
+endif
+
+VirtualPox_CXXFLAGS.linux += -Wno-class-memaccess
+
+## @todo we're using a number of deprecated APIs, please fix and remove these!
+ifdef VPOX_WITH_NEW_XCODE
+ VirtualPox_CXXFLAGS.darwin    += -Wno-error=deprecated-declarations
+ VirtualPox_OBJCFLAGS.darwin   += -Wno-error=deprecated-declarations
+ VirtualPox_OBJCXXFLAGS.darwin += -Wno-error=deprecated-declarations
+else
+ VirtualPox_CXXFLAGS.darwin    += -Wno-deprecated-declarations
+ VirtualPox_OBJCFLAGS.darwin   += -Wno-deprecated-declarations
+ VirtualPox_OBJCXXFLAGS.darwin += -Wno-deprecated-declarations
+endif
+
+ifeq ($(KBUILD_TYPE),release)
+ VirtualPox_LDFLAGS.win   += /SUBSYSTEM:windows
+else
+ VirtualPox_LDFLAGS.linux += -rdynamic # for backtrace_symbols()
+ VirtualPox_LDFLAGS.win   += /SUBSYSTEM:console
+endif
+
+VirtualPox_LDFLAGS.darwin = \
+	$(if $(VPOX_WITH_HARDENING),,-rpath @executable_path/../MacOS -rpath @executable_path/../Frameworks) \
+	-framework AppKit -framework Carbon -framework IOKit
+
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ VirtualPox_LDFLAGS.darwin += -framework OpenGL
+endif
+
+
+#
+# VirtualPox Virtual Machine Application
+# Compiling/linking flags.
+#
+ifneq ($(KBUILD_TARGET),win)
+ VirtualPoxVM_CXXFLAGS += -Wno-switch
+endif
+
+VirtualPoxVM_CXXFLAGS.linux += -Wno-class-memaccess
+
+## @todo we're using a number of deprecated APIs, please fix and remove these!
+ifdef VPOX_WITH_NEW_XCODE
+ VirtualPoxVM_CXXFLAGS.darwin    += -Wno-error=deprecated-declarations
+ VirtualPoxVM_OBJCFLAGS.darwin   += -Wno-error=deprecated-declarations
+ VirtualPoxVM_OBJCXXFLAGS.darwin += -Wno-error=deprecated-declarations
+else
+ VirtualPoxVM_CXXFLAGS.darwin    += -Wno-deprecated-declarations
+ VirtualPoxVM_OBJCFLAGS.darwin   += -Wno-deprecated-declarations
+ VirtualPoxVM_OBJCXXFLAGS.darwin += -Wno-deprecated-declarations
+endif
+
+ifeq ($(KBUILD_TYPE),release)
+ VirtualPoxVM_LDFLAGS.win   += /SUBSYSTEM:windows
+else
+ VirtualPoxVM_LDFLAGS.linux += -rdynamic # for backtrace_symbols()
+ VirtualPoxVM_LDFLAGS.win   += /SUBSYSTEM:console
+endif
+
+VirtualPoxVM_LDFLAGS.darwin = \
+	$(if $(VPOX_WITH_HARDENING)\
+	,-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VirtualPoxVM.dylib \
+	,-rpath @executable_path/../../../../MacOS \
+	-rpath @executable_path/../../../../Frameworks) \
+	-framework AppKit -framework Carbon -framework IOKit \
+
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ VirtualPoxVM_LDFLAGS.darwin += -framework OpenGL
+endif
+
+
+#
+# VirtualPox - GUI Global Shared Library.
+# Compiling/linking flags.
+#
+
+UICommon_CXXFLAGS.linux += -Wno-class-memaccess
+
+## @todo we're using a number of deprecated APIs, please fix and remove these!
+ifdef VPOX_WITH_NEW_XCODE
+ UICommon_CXXFLAGS.darwin    += -Wno-error=deprecated-declarations
+ UICommon_OBJCFLAGS.darwin   += -Wno-error=deprecated-declarations
+ UICommon_OBJCXXFLAGS.darwin += -Wno-error=deprecated-declarations
+else
+ UICommon_CXXFLAGS.darwin    += -Wno-deprecated-declarations
+ UICommon_OBJCFLAGS.darwin   += -Wno-deprecated-declarations
+ UICommon_OBJCXXFLAGS.darwin += -Wno-deprecated-declarations
+endif
+
+UICommon_LDFLAGS.darwin = \
+	-install_name "$(VPOX_DYLD_EXECUTABLE_PATH)/UICommon.dylib" \
+	-framework AppKit \
+	-framework Carbon \
+	-framework IOKit
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ UICommon_LDFLAGS.darwin += -framework OpenGL
+endif
+
+
+#
+# VirtualPox Manager Application
+# Libraries.
+#
+
+# Library required for the hdd backend enumeration:
+VirtualPox_LIBS = $(LIB_DDU)
+
+# Runtime library loader required on X11 hosts:
+if1of ($(KBUILD_TARGET), linux netbsd openbsd)
+ VirtualPox_LIBS += dl
+endif
+
+# Xinerama library required for multi-monitor support:
+VirtualPox_LIBS.linux   += Xinerama
+VirtualPox_LIBS.solaris += Xinerama
+VirtualPox_LIBS.freebsd += Xinerama
+
+# XCB library required for direct XCB native code support:
+VirtualPox_LIBS.linux   += xcb
+VirtualPox_LIBS.solaris += xcb
+VirtualPox_LIBS.freebsd += xcb
+
+# Various Windows hosts libraries:
+VirtualPox_LIBS.win = \
+	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Htmlhelp.Lib \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/ddraw.lib \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/dxguid.lib
+
+# VPox keyboard shared library for X11 hosts:
+if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd solaris)
+ VirtualPox_LIBS += $(PATH_STAGE_DLL)/VPoxKeyboard$(VPOX_SUFF_DLL)
+endif
+
+# These are 2D Video Acceleration and 3D Acceleration related libs:
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ VirtualPox_LIBS.win       += $(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Opengl32.lib
+ VirtualPox_LIBS.solaris   += GL
+ VirtualPox_LIBS.linux     += GL
+ VirtualPox_LIBS.freebsd   += GL
+endif
+ifdef VPOX_WITH_3D_ACCELERATION
+ VirtualPox_LIBS += $(PATH_STAGE_LIB)/VPoxOGLTest$(VPOX_SUFF_LIB)
+endif
+
+# This one is global shared GUI library:
+ifeq ($(KBUILD_TARGET),win)
+ VirtualPox_LIBS += $(PATH_STAGE_LIB)/UICommon$(VPOX_SUFF_LIB)
+else
+ VirtualPox_LIBS += $(PATH_STAGE_DLL)/UICommon$(VPOX_SUFF_DLL)
+endif
+
+
+#
+# VirtualPox Virtual Machine Application
+# Libraries.
+#
+
+# Library required for the hdd backend enumeration:
+VirtualPoxVM_LIBS = $(LIB_DDU)
+
+# Runtime library loader required on X11 hosts:
+if1of ($(KBUILD_TARGET), linux netbsd openbsd)
+ VirtualPoxVM_LIBS += dl
+endif
+
+# Xinerama library required for multi-monitor support:
+VirtualPoxVM_LIBS.linux   += Xinerama
+VirtualPoxVM_LIBS.solaris += Xinerama
+VirtualPoxVM_LIBS.freebsd += Xinerama
+
+# XCB library required for direct XCB native code support:
+VirtualPoxVM_LIBS.linux   += xcb
+VirtualPoxVM_LIBS.solaris += xcb
+VirtualPoxVM_LIBS.freebsd += xcb
+
+# Various Windows hosts libraries:
+VirtualPoxVM_LIBS.win = \
+	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Htmlhelp.Lib \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/ddraw.lib \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/dxguid.lib
+
+# VPox keyboard shared library for X11 hosts:
+if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd solaris)
+ VirtualPoxVM_LIBS += $(PATH_STAGE_DLL)/VPoxKeyboard$(VPOX_SUFF_DLL)
+endif
+
+# These are 2D Video Acceleration and 3D Acceleration related libs:
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ VirtualPoxVM_LIBS.win       += $(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Opengl32.lib
+ VirtualPoxVM_LIBS.solaris   += GL
+ VirtualPoxVM_LIBS.linux     += GL
+ VirtualPoxVM_LIBS.freebsd   += GL
+endif
+ifdef VPOX_WITH_3D_ACCELERATION
+ VirtualPoxVM_LIBS += $(PATH_STAGE_LIB)/VPoxOGLTest$(VPOX_SUFF_LIB)
+endif
+
+ifeq ($(KBUILD_TARGET),win)
+ VirtualPoxVM_LIBS += $(PATH_STAGE_LIB)/UICommon$(VPOX_SUFF_LIB)
+else
+ VirtualPoxVM_LIBS += $(PATH_STAGE_DLL)/UICommon$(VPOX_SUFF_DLL)
+endif
+
+
+#
+# VirtualPox - GUI Global Shared Library.
+# Libraries.
+#
+
+# Xinerama library required for multi-monitor support:
+UICommon_LIBS.linux   += Xinerama
+UICommon_LIBS.solaris += Xinerama
+UICommon_LIBS.freebsd += Xinerama
+
+# Various Windows hosts libraries:
+UICommon_LIBS.win = \
+	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Htmlhelp.Lib
+
+# VPox keyboard shared library for X11 hosts:
+if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd solaris)
+ UICommon_LIBS += $(PATH_STAGE_DLL)/VPoxKeyboard$(VPOX_SUFF_DLL)
+endif
+
+# These are 2D Video Acceleration and 3D Acceleration related libs:
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ UICommon_LIBS.win     += $(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Opengl32.lib
+ UICommon_LIBS.solaris += GL
+ UICommon_LIBS.linux   += GL
+ UICommon_LIBS.freebsd += GL
+endif
+ifdef VPOX_WITH_3D_ACCELERATION
+ UICommon_LIBS += $(PATH_STAGE_LIB)/VPoxOGLTest$(VPOX_SUFF_LIB)
+endif
+if defined(VPOX_WITH_VIDEOHWACCEL)
+ if1of ($(KBUILD_TARGET), win linux freebsd)
+  UICommon_LIBS += $(PATH_STAGE_LIB)/VPoxOGL2D$(VPOX_SUFF_LIB)
+ endif
+endif
+
+
+#
+# VirtualPox Manager Application
+# Headers containing definitions of classes that use the Q_OBJECT macro.
+#
+VirtualPox_QT_MOCHDRS = \
+	src/cloud/UICloudProfileDetailsWidget.h \
+	src/cloud/UICloudProfileManager.h \
+	src/globals/UIStarter.h \
+	src/hostnetwork/UIHostNetworkDetailsWidget.h \
+	src/hostnetwork/UIHostNetworkManager.h \
+	src/manager/UIErrorPane.h \
+	src/manager/UITaskCloudAcquireInstances.h \
+	src/manager/UITaskCloudGetInstanceState.h \
+	src/manager/UIToolPaneGlobal.h \
+	src/manager/UIToolPaneMachine.h \
+	src/manager/UIVirtualPoxManager.h \
+	src/manager/UIVirtualPoxManagerWidget.h \
+	src/manager/UIVirtualMachineItem.h \
+	src/manager/UIVirtualMachineItemCloud.h \
+	src/manager/UIVirtualMachineItemLocal.h \
+	src/manager/UIWelcomePane.h \
+	src/manager/chooser/UIChooser.h \
+	src/manager/chooser/UIChooserAbstractModel.h \
+	src/manager/chooser/UIChooserModel.h \
+	src/manager/chooser/UIChooserView.h \
+	src/manager/chooser/UIChooserHandlerMouse.h \
+	src/manager/chooser/UIChooserHandlerKeyboard.h \
+	src/manager/chooser/UIChooserItem.h \
+	src/manager/chooser/UIChooserItemGroup.h \
+	src/manager/chooser/UIChooserItemGlobal.h \
+	src/manager/chooser/UIChooserItemMachine.h \
+	src/manager/chooser/UIChooserNode.h \
+	src/manager/chooser/UIChooserNodeGroup.h \
+	src/manager/chooser/UIChooserNodeGlobal.h \
+	src/manager/chooser/UIChooserNodeMachine.h \
+	src/manager/chooser/UIChooserSearchWidget.h \
+	src/manager/details/UIDetails.h \
+	src/manager/details/UIDetailsContextMenu.h \
+	src/manager/details/UIDetailsModel.h \
+	src/manager/details/UIDetailsView.h \
+	src/manager/details/UIDetailsItem.h \
+	src/manager/details/UIDetailsGroup.h \
+	src/manager/details/UIDetailsSet.h \
+	src/manager/details/UIDetailsElement.h \
+	src/manager/details/UIDetailsElements.h \
+	src/manager/details/UIMachinePreview.h \
+	src/manager/tools/UITools.h \
+	src/manager/tools/UIToolsModel.h \
+	src/manager/tools/UIToolsView.h \
+	src/manager/tools/UIToolsHandlerMouse.h \
+	src/manager/tools/UIToolsHandlerKeyboard.h \
+	src/manager/tools/UIToolsItem.h \
+	src/medium/UIMediumDetailsWidget.h \
+	src/medium/UIMediumManager.h \
+	src/snapshots/UISnapshotDetailsWidget.h \
+	src/snapshots/UISnapshotPane.h \
+	src/widgets/UIApplianceEditorWidget.h \
+	src/widgets/UIApplianceExportEditorWidget.h \
+	src/widgets/UIApplianceImportEditorWidget.h \
+	src/widgets/UIEmptyFilePathSelector.h \
+	src/widgets/UIFormEditorWidget.h \
+	src/widgets/UIGuestOSTypeSelectionButton.h \
+	src/widgets/UILineTextEdit.h \
+	src/widgets/UISlidingAnimation.h \
+	src/widgets/UISlidingWidget.h \
+	src/widgets/UITabBar.h \
+	src/widgets/UIMenuToolBar.h \
+	src/widgets/graphics/UIGraphicsButton.h \
+	src/widgets/graphics/UIGraphicsRotatorButton.h \
+	src/widgets/graphics/UIGraphicsScrollArea.h \
+	src/widgets/graphics/UIGraphicsScrollBar.h \
+	src/widgets/graphics/UIGraphicsZoomButton.h \
+	src/widgets/graphics/UIGraphicsToolBar.h \
+	src/widgets/graphics/UIGraphicsTextPane.h \
+	src/wizards/newcloudvm/UIWizardNewCloudVM.h \
+	src/wizards/newcloudvm/UIWizardNewCloudVMPageBasic1.h \
+	src/wizards/newcloudvm/UIWizardNewCloudVMPageBasic2.h \
+	src/wizards/newcloudvm/UIWizardNewCloudVMPageExpert.h \
+	src/wizards/newvm/UIWizardNewVM.h \
+	src/wizards/newvm/UIWizardNewVMPageBasic1.h \
+	src/wizards/newvm/UIWizardNewVMPageBasic2.h \
+	src/wizards/newvm/UIWizardNewVMPageBasic3.h \
+	src/wizards/newvm/UIWizardNewVMPageExpert.h \
+	src/wizards/clonevm/UIWizardCloneVM.h \
+	src/wizards/clonevm/UIWizardCloneVMPageBasic1.h \
+	src/wizards/clonevm/UIWizardCloneVMPageBasic2.h \
+	src/wizards/clonevm/UIWizardCloneVMPageBasic3.h \
+	src/wizards/clonevm/UIWizardCloneVMPageExpert.h \
+	src/wizards/clonevd/UIWizardCloneVD.h \
+	src/wizards/clonevd/UIWizardCloneVDPageBasic1.h \
+	src/wizards/clonevd/UIWizardCloneVDPageBasic2.h \
+	src/wizards/clonevd/UIWizardCloneVDPageBasic3.h \
+	src/wizards/clonevd/UIWizardCloneVDPageExpert.h \
+	src/wizards/exportappliance/UIWizardExportApp.h \
+	src/wizards/exportappliance/UIWizardExportAppPageBasic1.h \
+	src/wizards/exportappliance/UIWizardExportAppPageBasic2.h \
+	src/wizards/exportappliance/UIWizardExportAppPageBasic3.h \
+	src/wizards/exportappliance/UIWizardExportAppPageExpert.h \
+	src/wizards/importappliance/UIApplianceUnverifiedCertificateViewer.h \
+	src/wizards/importappliance/UIWizardImportApp.h \
+	src/wizards/importappliance/UIWizardImportAppPageBasic1.h \
+	src/wizards/importappliance/UIWizardImportAppPageBasic2.h \
+	src/wizards/importappliance/UIWizardImportAppPageExpert.h
+
+
+#
+# VirtualPox Virtual Machine Application
+# Headers containing definitions of classes that use the Q_OBJECT macro.
+#
+VirtualPoxVM_QT_MOCHDRS = \
+	src/globals/UIStarter.h \
+	src/runtime/UIConsoleEventHandler.h \
+	src/runtime/UIFrameBuffer.h \
+	src/runtime/UIIndicatorsPool.h \
+	src/runtime/UIKeyboardHandler.h \
+	src/runtime/UIMachine.h \
+	src/runtime/UIMachineLogic.h \
+	src/runtime/UIMachineWindow.h \
+	src/runtime/UIMachineView.h \
+	src/runtime/UIMouseHandler.h \
+	src/runtime/UIMultiScreenLayout.h \
+	src/runtime/UISession.h \
+	src/runtime/UIVMCloseDialog.h \
+	src/runtime/fullscreen/UIKeyboardHandlerFullscreen.h \
+	src/runtime/fullscreen/UIMachineLogicFullscreen.h \
+	src/runtime/fullscreen/UIMachineViewFullscreen.h \
+	src/runtime/fullscreen/UIMachineWindowFullscreen.h \
+	src/runtime/information/UIInformationConfiguration.h \
+	src/runtime/information/UIVMInformationDialog.h \
+	src/runtime/information/UIInformationPerformanceMonitor.h \
+	src/runtime/information/UIInformationRuntime.h \
+	src/guestctrl/UIFileManager.h \
+	src/guestctrl/UIFileManagerDialog.h \
+	src/guestctrl/UIFileManagerGuestTable.h \
+	src/guestctrl/UIFileManagerHostTable.h \
+	src/guestctrl/UIFileManagerLogPanel.h \
+	src/guestctrl/UIFileManagerOperationsPanel.h \
+	src/guestctrl/UIFileManagerOptionsPanel.h \
+	src/guestctrl/UIFileManagerSessionPanel.h \
+	src/guestctrl/UIFileManagerTable.h \
+	src/guestctrl/UIGuestControlConsole.h \
+	src/guestctrl/UIGuestControlInterface.h \
+	src/guestctrl/UIGuestControlTreeItem.h \
+	src/guestctrl/UIGuestProcessControlDialog.h \
+	src/guestctrl/UIGuestProcessControlWidget.h \
+	src/runtime/normal/UIKeyboardHandlerNormal.h \
+	src/runtime/normal/UIMachineLogicNormal.h \
+	src/runtime/normal/UIMachineViewNormal.h \
+	src/runtime/normal/UIMachineWindowNormal.h \
+	src/runtime/scale/UIKeyboardHandlerScale.h \
+	src/runtime/scale/UIMachineLogicScale.h \
+	src/runtime/scale/UIMachineViewScale.h \
+	src/runtime/scale/UIMachineWindowScale.h \
+	src/runtime/seamless/UIKeyboardHandlerSeamless.h \
+	src/runtime/seamless/UIMachineLogicSeamless.h \
+	src/runtime/seamless/UIMachineViewSeamless.h \
+	src/runtime/seamless/UIMachineWindowSeamless.h \
+	src/softkeyboard/UISoftKeyboard.h \
+	src/widgets/UIMiniToolBar.h \
+	src/wizards/firstrun/UIWizardFirstRun.h \
+	src/wizards/firstrun/UIWizardFirstRunPageBasic.h
+
+ifdef VPOX_WITH_DRAG_AND_DROP
+ VirtualPoxVM_QT_MOCHDRS += \
+	src/runtime/UIDnDHandler.h
+ ifdef VPOX_WITH_DRAG_AND_DROP_GH
+  VirtualPoxVM_QT_MOCHDRS += \
+	src/runtime/UIDnDMIMEData.h
+ endif
+endif
+
+
+#
+# VirtualPox - GUI Global Shared Library.
+# Headers containing definitions of classes that use the Q_OBJECT macro.
+#
+UICommon_QT_MOCHDRS = \
+	src/VPoxAboutDlg.h \
+	src/VPoxLicenseViewer.h \
+	src/UITakeSnapshotDialog.h \
+	src/extensions/QIAdvancedSlider.h \
+	src/extensions/QIArrowButtonPress.h \
+	src/extensions/QIArrowButtonSwitch.h \
+	src/extensions/QIArrowSplitter.h \
+	src/extensions/QIComboBox.h \
+	src/extensions/QIDialog.h \
+	src/extensions/QIDialogButtonBox.h \
+	src/extensions/QIDialogContainer.h \
+	src/extensions/QIFileDialog.h \
+	src/extensions/QIFlowLayout.h \
+	src/extensions/QIInputDialog.h \
+	src/extensions/QILabel.h \
+	src/extensions/QILabelSeparator.h \
+	src/extensions/QILineEdit.h \
+	src/extensions/QIMainDialog.h \
+	src/extensions/QIManagerDialog.h \
+	src/extensions/QIMenu.h \
+	src/extensions/QIMessageBox.h \
+	src/extensions/QIProcess.h \
+	src/extensions/QIRichTextLabel.h \
+	src/extensions/QIRichToolButton.h \
+	src/extensions/QISplitter.h \
+	src/extensions/QIStatusBar.h \
+	src/extensions/QIStatusBarIndicator.h \
+	src/extensions/QIStyledItemDelegate.h \
+	src/extensions/QITableView.h \
+	src/extensions/QITabWidget.h \
+	src/extensions/QIToolButton.h \
+	src/extensions/QITreeView.h \
+	src/extensions/QITreeWidget.h \
+	src/extensions/QIWidgetValidator.h \
+	src/extensions/graphics/QIGraphicsView.h \
+	src/extensions/graphics/QIGraphicsWidget.h \
+	src/extradata/UIExtraDataDefs.h \
+	src/extradata/UIExtraDataManager.h \
+	src/globals/UIActionPool.h \
+	src/globals/UIActionPoolManager.h \
+	src/globals/UIActionPoolRuntime.h \
+	src/globals/UIAnimationFramework.h \
+	src/globals/UICommon.h \
+	src/globals/UICustomFileSystemModel.h \
+	src/globals/UIDesktopWidgetWatchdog.h \
+	src/globals/UIDialogPanel.h \
+	src/globals/UIMainEventListener.h \
+	src/globals/UIMessageCenter.h \
+	src/globals/UIModalWindowManager.h \
+	src/globals/UIPathOperations.h \
+	src/globals/UIPopupCenter.h \
+	src/globals/UIProgressEventHandler.h \
+	src/globals/UIShortcutPool.h \
+	src/globals/UITask.h \
+	src/globals/UIThreadPool.h \
+	src/globals/UITextTable.h \
+	src/globals/UIVirtualPoxEventHandler.h \
+	src/globals/VPoxUtils.h \
+	src/logviewer/UIVMLogPage.h \
+	src/logviewer/UIVMLogViewerBookmarksPanel.h \
+	src/logviewer/UIVMLogViewerDialog.h \
+	src/logviewer/UIVMLogViewerFilterPanel.h \
+	src/logviewer/UIVMLogViewerOptionsPanel.h \
+	src/logviewer/UIVMLogViewerPanel.h \
+	src/logviewer/UIVMLogViewerSearchPanel.h \
+	src/logviewer/UIVMLogViewerTextEdit.h \
+	src/logviewer/UIVMLogViewerWidget.h \
+	src/medium/UIFDCreationDialog.h \
+	src/medium/UIMediumEnumerator.h \
+	src/medium/UIMediumItem.h \
+	src/medium/UIMediumSearchWidget.h \
+	src/medium/UIMediumSelector.h \
+	src/medium/viso/UIVisoBrowserBase.h \
+	src/medium/viso/UIVisoContentBrowser.h \
+	src/medium/viso/UIVisoCreator.h \
+	src/medium/viso/UIVisoConfigurationPanel.h \
+	src/medium/viso/UIVisoCreatorOptionsPanel.h \
+	src/medium/viso/UIVisoHostBrowser.h \
+	src/settings/UISettingsDialog.h \
+	src/settings/UISettingsDialogSpecific.h \
+	src/settings/UISettingsPage.h \
+	src/settings/UISettingsSelector.h \
+	src/settings/UISettingsSerializer.h \
+	src/settings/global/UIGlobalSettingsExtension.h \
+	src/settings/global/UIGlobalSettingsGeneral.h \
+	src/settings/global/UIGlobalSettingsInput.h \
+	src/settings/global/UIGlobalSettingsLanguage.h \
+	src/settings/global/UIGlobalSettingsDisplay.h \
+	src/settings/global/UIGlobalSettingsNetwork.h \
+	src/settings/global/UIGlobalSettingsNetworkDetailsNAT.h \
+	src/settings/global/UIGlobalSettingsPortForwardingDlg.h \
+	src/settings/machine/UIMachineSettingsAudio.h \
+	src/settings/machine/UIMachineSettingsDisplay.h \
+	src/settings/machine/UIMachineSettingsGeneral.h \
+	src/settings/machine/UIMachineSettingsInterface.h \
+	src/settings/machine/UIMachineSettingsNetwork.h \
+	src/settings/machine/UIMachineSettingsPortForwardingDlg.h \
+	src/settings/machine/UIMachineSettingsSF.h \
+	src/settings/machine/UIMachineSettingsSFDetails.h \
+	src/settings/machine/UIMachineSettingsSerial.h \
+	src/settings/machine/UIMachineSettingsStorage.h \
+	src/settings/machine/UIMachineSettingsSystem.h \
+	src/settings/machine/UIMachineSettingsUSB.h \
+	src/settings/machine/UIMachineSettingsUSBFilterDetails.h \
+	src/widgets/UIAddDiskEncryptionPasswordDialog.h \
+	src/widgets/UIAudioControllerEditor.h \
+	src/widgets/UIAudioHostDriverEditor.h \
+	src/widgets/UIBaseMemoryEditor.h \
+	src/widgets/UIBaseMemorySlider.h \
+	src/widgets/UIBootOrderEditor.h \
+	src/widgets/UIFilePathSelector.h \
+	src/widgets/UIFilmContainer.h \
+	src/widgets/UIGraphicsControllerEditor.h \
+	src/widgets/UIHostComboEditor.h \
+	src/widgets/UIHotKeyEditor.h \
+	src/widgets/UIMediaComboBox.h \
+	src/widgets/UIMediumSizeEditor.h \
+	src/widgets/UIMenuBar.h \
+	src/widgets/UIMenuBarEditorWindow.h \
+	src/widgets/UINameAndSystemEditor.h \
+	src/widgets/UINetworkAttachmentEditor.h \
+	src/widgets/UIPopupBox.h \
+	src/widgets/UIPopupPane.h \
+	src/widgets/UIPopupPaneButtonPane.h \
+	src/widgets/UIPopupPaneMessage.h \
+	src/widgets/UIPopupPaneDetails.h \
+	src/widgets/UIPopupStack.h \
+	src/widgets/UIPopupStackViewport.h \
+	src/widgets/UIPortForwardingTable.h \
+	src/widgets/UIProgressDialog.h \
+	src/widgets/UIScaleFactorEditor.h \
+	src/widgets/UISlidingToolBar.h \
+	src/widgets/UISpecialControls.h \
+	src/widgets/UIStatusBarEditorWindow.h \
+	src/widgets/UISearchLineEdit.h \
+	src/widgets/UIToolBar.h \
+	src/widgets/UIVideoMemoryEditor.h \
+	src/widgets/UIWarningPane.h \
+	src/wizards/UIWizard.h \
+	src/wizards/UIWizardPage.h \
+	src/wizards/newvd/UIWizardNewVD.h \
+	src/wizards/newvd/UIWizardNewVDPageBasic1.h \
+	src/wizards/newvd/UIWizardNewVDPageBasic2.h \
+	src/wizards/newvd/UIWizardNewVDPageBasic3.h \
+	src/wizards/newvd/UIWizardNewVDPageExpert.h
+
+ifdef VPOX_GUI_WITH_NETWORK_MANAGER
+ UICommon_QT_MOCHDRS += \
+	src/net/UIDownloader.h \
+	src/net/UIDownloaderAdditions.h \
+	src/net/UIDownloaderExtensionPack.h \
+	src/net/UIDownloaderUserManual.h \
+	src/net/UINetworkCustomer.h \
+	src/net/UINetworkManager.h \
+	src/net/UINetworkManagerDialog.h \
+	src/net/UINetworkManagerIndicator.h \
+	src/net/UINetworkRequest.h \
+	src/net/UINetworkRequestWidget.h \
+	src/net/UINetworkReply.h \
+	src/net/UIUpdateManager.h \
+	src/settings/global/UIGlobalSettingsProxy.h \
+	src/settings/global/UIGlobalSettingsUpdate.h
+endif
+
+UICommon_QT_MOCHDRS.darwin += \
+	src/platform/darwin/UICocoaSpecialControls.h \
+	src/platform/darwin/UIWindowMenuManager.h
+
+
+#
+# VirtualPox Manager Application
+# Sources containing local definitions of classes that use the Q_OBJECT macro.
+#
+VirtualPox_QT_MOCSRCS = \
+	src/hostnetwork/UIHostNetworkManager.cpp \
+	src/manager/UIWelcomePane.cpp \
+	src/snapshots/UISnapshotDetailsWidget.cpp \
+	src/snapshots/UISnapshotPane.cpp \
+	src/widgets/UIApplianceEditorWidget.cpp \
+	src/widgets/UIFormEditorWidget.cpp \
+	src/widgets/UIMenuToolBar.cpp \
+	src/widgets/UITabBar.cpp \
+	src/widgets/graphics/UIGraphicsScrollBar.cpp \
+	src/wizards/importappliance/UIWizardImportApp.cpp
+
+
+#
+# VirtualPox Virtual Machine Application
+# Sources containing local definitions of classes that use the Q_OBJECT macro.
+#
+VirtualPoxVM_QT_MOCSRCS = \
+	src/runtime/UIConsoleEventHandler.cpp \
+	src/runtime/UIFrameBuffer.cpp \
+	src/runtime/UIIndicatorsPool.cpp \
+	src/runtime/information/UIInformationPerformanceMonitor.cpp \
+	src/runtime/information/UIInformationRuntime.cpp \
+	src/guestctrl/UIFileManager.cpp \
+	src/guestctrl/UIFileManagerLogPanel.cpp \
+	src/guestctrl/UIFileManagerOperationsPanel.cpp \
+	src/guestctrl/UIFileManagerSessionPanel.cpp \
+	src/guestctrl/UIFileManagerTable.cpp \
+	src/guestctrl/UIFileManagerGuestTable.cpp \
+	src/guestctrl/UIFileManagerHostTable.cpp \
+	src/guestctrl/UIGuestProcessControlWidget.cpp \
+	src/softkeyboard/UISoftKeyboard.cpp \
+	src/widgets/UIMiniToolBar.cpp
+
+
+#
+# VirtualPox - GUI Global Shared Library.
+# Sources.
+#
+UICommon_QT_MOCSRCS = \
+	src/extensions/QIAdvancedSlider.cpp \
+	src/extensions/QIArrowSplitter.cpp \
+	src/extensions/QISplitter.cpp \
+	src/extradata/UIExtraDataManager.cpp \
+	src/globals/UIActionPool.cpp \
+	src/globals/UIActionPoolManager.cpp \
+	src/globals/UIActionPoolRuntime.cpp \
+	src/globals/UIMainEventListener.cpp \
+	src/globals/UIThreadPool.cpp \
+	src/globals/UIVirtualPoxEventHandler.cpp \
+	src/logviewer/UIVMLogViewerFilterPanel.cpp \
+	src/logviewer/UIVMLogViewerSearchPanel.cpp \
+	src/logviewer/UIVMLogViewerTextEdit.cpp \
+	src/medium/UIMediumEnumerator.cpp \
+	src/medium/viso/UIVisoContentBrowser.cpp \
+	src/medium/viso/UIVisoHostBrowser.cpp \
+	src/medium/viso/UIVisoBrowserBase.cpp \
+	src/settings/global/UIGlobalSettingsExtension.cpp \
+	src/settings/global/UIGlobalSettingsInput.cpp \
+	src/settings/global/UIGlobalSettingsLanguage.cpp \
+	src/settings/global/UIGlobalSettingsNetwork.cpp \
+	src/settings/machine/UIMachineSettingsNetwork.cpp \
+	src/settings/machine/UIMachineSettingsSerial.cpp \
+	src/settings/machine/UIMachineSettingsSF.cpp \
+	src/settings/machine/UIMachineSettingsStorage.cpp \
+	src/settings/machine/UIMachineSettingsUSB.cpp \
+	src/widgets/UIAddDiskEncryptionPasswordDialog.cpp \
+	src/widgets/UIBootOrderEditor.cpp \
+	src/widgets/UIFilmContainer.cpp \
+	src/widgets/UIHotKeyEditor.cpp \
+	src/widgets/UIPortForwardingTable.cpp \
+	src/widgets/UIStatusBarEditorWindow.cpp
+
+ifdef VPOX_GUI_WITH_NETWORK_MANAGER
+ UICommon_QT_MOCSRCS += \
+	src/net/UINetworkReply.cpp \
+	src/net/UIUpdateManager.cpp
+endif
+
+ifdef VPOX_WITH_XPCOM
+ UICommon_QT_MOCSRCS += \
+	src/globals/COMDefs.cpp
+endif
+
+UICommon_QT_MOCSRCS.darwin += \
+	src/platform/darwin/UIWindowMenuManager.cpp
+
+ifndef VPOX_GUI_WITH_CUSTOMIZATIONS1
+ UICommon_QT_MOCSRCS.linux += \
+	src/globals/UIDesktopWidgetWatchdog.cpp
+ UICommon_QT_MOCSRCS.solaris += \
+	src/globals/UIDesktopWidgetWatchdog.cpp
+ UICommon_QT_MOCSRCS.freebsd += \
+	src/globals/UIDesktopWidgetWatchdog.cpp
+endif
+
+
+#
+# VirtualPox Manager Application
+# Sources.
+#
+VirtualPox_SOURCES = \
+	src/main.cpp \
+	src/cloud/UICloudProfileDetailsWidget.cpp \
+	src/cloud/UICloudProfileManager.cpp \
+	src/globals/UIStarter.cpp \
+	src/hostnetwork/UIHostNetworkDetailsWidget.cpp \
+	src/hostnetwork/UIHostNetworkManager.cpp \
+	src/hostnetwork/UIHostNetworkUtils.cpp \
+	src/manager/UICloudMachine.cpp \
+	src/manager/UICloudNetworkingStuff.cpp \
+	src/manager/UIErrorPane.cpp \
+	src/manager/UITaskCloudAcquireInstances.cpp \
+	src/manager/UITaskCloudGetInstanceState.cpp \
+	src/manager/UIToolPaneGlobal.cpp \
+	src/manager/UIToolPaneMachine.cpp \
+	src/manager/UIVirtualPoxManager.cpp \
+	src/manager/UIVirtualPoxManagerWidget.cpp \
+	src/manager/UIVirtualMachineItem.cpp \
+	src/manager/UIVirtualMachineItemCloud.cpp \
+	src/manager/UIVirtualMachineItemLocal.cpp \
+	src/manager/UIWelcomePane.cpp \
+	src/manager/chooser/UIChooser.cpp \
+	src/manager/chooser/UIChooserAbstractModel.cpp \
+	src/manager/chooser/UIChooserModel.cpp \
+	src/manager/chooser/UIChooserView.cpp \
+	src/manager/chooser/UIChooserHandlerMouse.cpp \
+	src/manager/chooser/UIChooserHandlerKeyboard.cpp \
+	src/manager/chooser/UIChooserItem.cpp \
+	src/manager/chooser/UIChooserItemGroup.cpp \
+	src/manager/chooser/UIChooserItemGlobal.cpp \
+	src/manager/chooser/UIChooserItemMachine.cpp \
+	src/manager/chooser/UIChooserNode.cpp \
+	src/manager/chooser/UIChooserNodeGroup.cpp \
+	src/manager/chooser/UIChooserNodeGlobal.cpp \
+	src/manager/chooser/UIChooserNodeMachine.cpp \
+	src/manager/chooser/UIChooserSearchWidget.cpp \
+	src/manager/details/UIDetails.cpp \
+	src/manager/details/UIDetailsContextMenu.cpp \
+	src/manager/details/UIDetailsModel.cpp \
+	src/manager/details/UIDetailsView.cpp \
+	src/manager/details/UIDetailsItem.cpp \
+	src/manager/details/UIDetailsGroup.cpp \
+	src/manager/details/UIDetailsSet.cpp \
+	src/manager/details/UIDetailsElement.cpp \
+	src/manager/details/UIDetailsElements.cpp \
+	src/manager/details/UIMachinePreview.cpp \
+	src/manager/tools/UITools.cpp \
+	src/manager/tools/UIToolsModel.cpp \
+	src/manager/tools/UIToolsView.cpp \
+	src/manager/tools/UIToolsHandlerMouse.cpp \
+	src/manager/tools/UIToolsHandlerKeyboard.cpp \
+	src/manager/tools/UIToolsItem.cpp \
+	src/medium/UIMediumDetailsWidget.cpp \
+	src/medium/UIMediumManager.cpp \
+	src/snapshots/UISnapshotDetailsWidget.cpp \
+	src/snapshots/UISnapshotPane.cpp \
+	src/widgets/UIApplianceEditorWidget.cpp \
+	src/widgets/UIApplianceExportEditorWidget.cpp \
+	src/widgets/UIApplianceImportEditorWidget.cpp \
+	src/widgets/UIEmptyFilePathSelector.cpp \
+	src/widgets/UIFormEditorWidget.cpp \
+	src/widgets/UIGuestOSTypeSelectionButton.cpp \
+	src/widgets/UILineTextEdit.cpp \
+	src/widgets/UISlidingAnimation.cpp \
+	src/widgets/UISlidingWidget.cpp \
+	src/widgets/UITabBar.cpp \
+	src/widgets/UIMenuToolBar.cpp \
+	src/widgets/graphics/UIGraphicsButton.cpp \
+	src/widgets/graphics/UIGraphicsRotatorButton.cpp \
+	src/widgets/graphics/UIGraphicsScrollArea.cpp \
+	src/widgets/graphics/UIGraphicsScrollBar.cpp \
+	src/widgets/graphics/UIGraphicsZoomButton.cpp \
+	src/widgets/graphics/UIGraphicsToolBar.cpp \
+	src/widgets/graphics/UIGraphicsTextPane.cpp \
+	src/wizards/newcloudvm/UIWizardNewCloudVM.cpp \
+	src/wizards/newcloudvm/UIWizardNewCloudVMPageBasic1.cpp \
+	src/wizards/newcloudvm/UIWizardNewCloudVMPageBasic2.cpp \
+	src/wizards/newcloudvm/UIWizardNewCloudVMPageExpert.cpp \
+	src/wizards/newvm/UIWizardNewVM.cpp \
+	src/wizards/newvm/UIWizardNewVMPageBasic1.cpp \
+	src/wizards/newvm/UIWizardNewVMPageBasic2.cpp \
+	src/wizards/newvm/UIWizardNewVMPageBasic3.cpp \
+	src/wizards/newvm/UIWizardNewVMPageExpert.cpp \
+	src/wizards/clonevm/UIWizardCloneVM.cpp \
+	src/wizards/clonevm/UIWizardCloneVMPageBasic1.cpp \
+	src/wizards/clonevm/UIWizardCloneVMPageBasic2.cpp \
+	src/wizards/clonevm/UIWizardCloneVMPageBasic3.cpp \
+	src/wizards/clonevm/UIWizardCloneVMPageExpert.cpp \
+	src/wizards/clonevd/UIWizardCloneVD.cpp \
+	src/wizards/clonevd/UIWizardCloneVDPageBasic1.cpp \
+	src/wizards/clonevd/UIWizardCloneVDPageBasic2.cpp \
+	src/wizards/clonevd/UIWizardCloneVDPageBasic3.cpp \
+	src/wizards/clonevd/UIWizardCloneVDPageExpert.cpp \
+	src/wizards/exportappliance/UIWizardExportApp.cpp \
+	src/wizards/exportappliance/UIWizardExportAppPageBasic1.cpp \
+	src/wizards/exportappliance/UIWizardExportAppPageBasic2.cpp \
+	src/wizards/exportappliance/UIWizardExportAppPageBasic3.cpp \
+	src/wizards/exportappliance/UIWizardExportAppPageExpert.cpp \
+	src/wizards/importappliance/UIApplianceUnverifiedCertificateViewer.cpp \
+	src/wizards/importappliance/UIWizardImportApp.cpp \
+	src/wizards/importappliance/UIWizardImportAppPageBasic1.cpp \
+	src/wizards/importappliance/UIWizardImportAppPageBasic2.cpp \
+	src/wizards/importappliance/UIWizardImportAppPageExpert.cpp
+
+VirtualPox_SOURCES.darwin += \
+	src/platform/darwin/UIDesktopServices_darwin.cpp \
+	src/platform/darwin/UIDesktopServices_darwin_cocoa.mm
+
+if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd solaris) # X11
+ VirtualPox_SOURCES += \
+ 	src/platform/x11/UIDesktopServices_x11.cpp
+endif
+
+VirtualPox_SOURCES.win += \
+	src/platform/win/UIDesktopServices_win.cpp
+
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ VirtualPox_SOURCES += \
+	src/VPox2DHelpers.cpp \
+	src/VPoxFBOverlay.cpp \
+	src/VPoxGLSupportInfo.cpp
+endif
+
+$(call VPOX_SET_VER_INFO_EXE,VirtualPox,VirtualPox Manager,$(VPOX_WINDOWS_ICON_FILE),VirtualPoxGUI)
+
+
+#
+# VirtualPox Virtual Machine Application
+# Sources.
+#
+VirtualPoxVM_SOURCES = \
+	src/main.cpp \
+	src/globals/UIStarter.cpp \
+	src/runtime/UIConsoleEventHandler.cpp \
+	src/runtime/UIFrameBuffer.cpp \
+	src/runtime/UIIndicatorsPool.cpp \
+	src/runtime/UIKeyboardHandler.cpp \
+	src/runtime/UIMachine.cpp \
+	src/runtime/UIMachineLogic.cpp \
+	src/runtime/UIMachineView.cpp \
+	src/runtime/UIMachineWindow.cpp \
+	src/runtime/UIMouseHandler.cpp \
+	src/runtime/UIMultiScreenLayout.cpp \
+	src/runtime/UISession.cpp \
+	src/runtime/UIVMCloseDialog.cpp \
+	src/runtime/fullscreen/UIKeyboardHandlerFullscreen.cpp \
+	src/runtime/fullscreen/UIMachineLogicFullscreen.cpp \
+	src/runtime/fullscreen/UIMachineViewFullscreen.cpp \
+	src/runtime/fullscreen/UIMachineWindowFullscreen.cpp \
+	src/runtime/information/UIInformationConfiguration.cpp \
+	src/runtime/information/UIVMInformationDialog.cpp \
+	src/runtime/information/UIInformationPerformanceMonitor.cpp \
+	src/runtime/information/UIInformationRuntime.cpp \
+	src/guestctrl/UIFileManager.cpp \
+	src/guestctrl/UIFileManagerDialog.cpp \
+	src/guestctrl/UIFileManagerGuestTable.cpp \
+	src/guestctrl/UIFileManagerHostTable.cpp \
+	src/guestctrl/UIFileManagerLogPanel.cpp \
+	src/guestctrl/UIFileManagerOperationsPanel.cpp \
+	src/guestctrl/UIFileManagerOptionsPanel.cpp \
+	src/guestctrl/UIFileManagerSessionPanel.cpp \
+	src/guestctrl/UIFileManagerTable.cpp \
+	src/guestctrl/UIGuestControlConsole.cpp \
+	src/guestctrl/UIGuestControlInterface.cpp \
+	src/guestctrl/UIGuestControlTreeItem.cpp \
+	src/guestctrl/UIGuestProcessControlWidget.cpp \
+	src/guestctrl/UIGuestProcessControlDialog.cpp \
+	src/runtime/normal/UIKeyboardHandlerNormal.cpp \
+	src/runtime/normal/UIMachineLogicNormal.cpp \
+	src/runtime/normal/UIMachineViewNormal.cpp \
+	src/runtime/normal/UIMachineWindowNormal.cpp \
+	src/runtime/scale/UIKeyboardHandlerScale.cpp \
+	src/runtime/scale/UIMachineLogicScale.cpp \
+	src/runtime/scale/UIMachineViewScale.cpp \
+	src/runtime/scale/UIMachineWindowScale.cpp \
+	src/runtime/seamless/UIKeyboardHandlerSeamless.cpp \
+	src/runtime/seamless/UIMachineLogicSeamless.cpp \
+	src/runtime/seamless/UIMachineViewSeamless.cpp \
+	src/runtime/seamless/UIMachineWindowSeamless.cpp \
+	src/softkeyboard/UISoftKeyboard.cpp \
+	src/widgets/UIMiniToolBar.cpp \
+	src/wizards/firstrun/UIWizardFirstRun.cpp \
+	src/wizards/firstrun/UIWizardFirstRunPageBasic.cpp
+
+ifdef VPOX_WITH_DRAG_AND_DROP
+ VirtualPoxVM_SOURCES += \
+	src/runtime/UIDnDHandler.cpp
+ ifdef VPOX_WITH_DRAG_AND_DROP_GH
+  VirtualPoxVM_SOURCES += \
+	src/runtime/UIDnDMIMEData.cpp
+  VirtualPoxVM_SOURCES.win += \
+	src/runtime/UIDnDDropSource_win.cpp \
+	src/runtime/UIDnDDataObject_win.cpp \
+	src/runtime/UIDnDEnumFormat_win.cpp
+ endif
+endif
+
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ VirtualPoxVM_SOURCES += \
+	src/VPox2DHelpers.cpp \
+	src/VPoxFBOverlay.cpp \
+	src/VPoxGLSupportInfo.cpp
+endif
+
+VirtualPoxVM_SOURCES.darwin += \
+	src/platform/darwin/UIAbstractDockIconPreview.cpp \
+	src/platform/darwin/UICocoaDockIconPreview.mm
+
+ifdef VPOX_WITH_HARDENING
+$(call VPOX_SET_VER_INFO_DLL,VirtualPoxVM,VirtualPox Virtual Machine (dll),$(VPOX_WINDOWS_ICON_FILE))
+else
+$(call VPOX_SET_VER_INFO_EXE,VirtualPoxVM,VirtualPox Virtual Machine,$(VPOX_WINDOWS_ICON_FILE))
+endif
+
+
+#
+# VirtualPox - GUI Global Shared Library.
+# Sources.
+#
+UICommon_SOURCES = \
+	src/VPoxAboutDlg.cpp \
+	src/VPoxLicenseViewer.cpp \
+	src/UITakeSnapshotDialog.cpp \
+	src/extensions/QIAdvancedSlider.cpp \
+	src/extensions/QIArrowButtonPress.cpp \
+	src/extensions/QIArrowButtonSwitch.cpp \
+	src/extensions/QIArrowSplitter.cpp \
+	src/extensions/QIComboBox.cpp \
+	src/extensions/QIDialog.cpp \
+	src/extensions/QIDialogButtonBox.cpp \
+	src/extensions/QIDialogContainer.cpp \
+	src/extensions/QIFileDialog.cpp \
+	src/extensions/QIFlowLayout.cpp \
+	src/extensions/QIInputDialog.cpp \
+	src/extensions/QILabel.cpp \
+	src/extensions/QILabelSeparator.cpp \
+	src/extensions/QILineEdit.cpp \
+	src/extensions/QIMainDialog.cpp \
+	src/extensions/QIManagerDialog.cpp \
+	src/extensions/QIMenu.cpp \
+	src/extensions/QIMessageBox.cpp \
+	src/extensions/QIProcess.cpp \
+	src/extensions/QIRichTextLabel.cpp \
+	src/extensions/QIRichToolButton.cpp \
+	src/extensions/QISplitter.cpp \
+	src/extensions/QIStatusBar.cpp \
+	src/extensions/QIStatusBarIndicator.cpp \
+	src/extensions/QIStyledItemDelegate.cpp \
+	src/extensions/QITableView.cpp \
+	src/extensions/QITabWidget.cpp \
+	src/extensions/QIToolButton.cpp \
+	src/extensions/QITreeView.cpp \
+	src/extensions/QITreeWidget.cpp \
+	src/extensions/QIWidgetValidator.cpp \
+	src/extensions/graphics/QIGraphicsView.cpp \
+	src/extensions/graphics/QIGraphicsWidget.cpp \
+	src/extradata/UIExtraDataDefs.cpp \
+	src/extradata/UIExtraDataManager.cpp \
+	src/converter/UIConverter.cpp \
+	src/converter/UIConverterBackendCOM.cpp \
+	src/converter/UIConverterBackendGlobal.cpp \
+	src/globals/COMDefs.cpp \
+	src/globals/UIActionPool.cpp \
+	src/globals/UIActionPoolManager.cpp \
+	src/globals/UIActionPoolRuntime.cpp \
+	src/globals/UIAnimationFramework.cpp \
+	src/globals/UICommon.cpp \
+	src/globals/UICustomFileSystemModel.cpp \
+	src/globals/UIDefs.cpp \
+	src/globals/UIDesktopWidgetWatchdog.cpp \
+	src/globals/UIDetailsGenerator.cpp \
+	src/globals/UIDialogPanel.cpp \
+	src/globals/UIErrorString.cpp \
+	src/globals/UIIconPool.cpp \
+	src/globals/UIImageTools.cpp \
+	src/globals/UIMachineAttributeSetter.cpp \
+	src/globals/UIMainEventListener.cpp \
+	src/globals/UIMessageCenter.cpp \
+	src/globals/UIModalWindowManager.cpp \
+	src/globals/UIMousePointerShapeData.cpp \
+	src/globals/UIPathOperations.cpp \
+	src/globals/UIPopupCenter.cpp \
+	src/globals/UIProgressEventHandler.cpp \
+	src/globals/UIShortcutPool.cpp \
+	src/globals/UITextTable.cpp \
+	src/globals/UITask.cpp \
+	src/globals/UIThreadPool.cpp \
+	src/globals/UIVersion.cpp \
+	src/globals/UIVirtualPoxEventHandler.cpp \
+	src/logviewer/UIVMLogPage.cpp \
+	src/logviewer/UIVMLogViewerBookmarksPanel.cpp \
+	src/logviewer/UIVMLogViewerDialog.cpp \
+	src/logviewer/UIVMLogViewerFilterPanel.cpp \
+	src/logviewer/UIVMLogViewerOptionsPanel.cpp \
+	src/logviewer/UIVMLogViewerPanel.cpp \
+	src/logviewer/UIVMLogViewerSearchPanel.cpp \
+	src/logviewer/UIVMLogViewerTextEdit.cpp \
+	src/logviewer/UIVMLogViewerWidget.cpp \
+	src/medium/UIFDCreationDialog.cpp \
+	src/medium/UIMedium.cpp \
+	src/medium/UIMediumDefs.cpp \
+	src/medium/UIMediumEnumerator.cpp \
+	src/medium/UIMediumItem.cpp \
+	src/medium/UIMediumSearchWidget.cpp \
+	src/medium/UIMediumSelector.cpp \
+	src/medium/viso/UIVisoBrowserBase.cpp \
+	src/medium/viso/UIVisoContentBrowser.cpp \
+	src/medium/viso/UIVisoCreator.cpp \
+	src/medium/viso/UIVisoConfigurationPanel.cpp \
+	src/medium/viso/UIVisoCreatorOptionsPanel.cpp \
+	src/medium/viso/UIVisoHostBrowser.cpp \
+	src/objects/UIRichTextString.cpp \
+	src/settings/UISettingsDefs.cpp \
+	src/settings/UISettingsDialog.cpp \
+	src/settings/UISettingsDialogSpecific.cpp \
+	src/settings/UISettingsPage.cpp \
+	src/settings/UISettingsSelector.cpp \
+	src/settings/UISettingsSerializer.cpp \
+	src/settings/global/UIGlobalSettingsExtension.cpp \
+	src/settings/global/UIGlobalSettingsGeneral.cpp \
+	src/settings/global/UIGlobalSettingsInput.cpp \
+	src/settings/global/UIGlobalSettingsLanguage.cpp \
+	src/settings/global/UIGlobalSettingsDisplay.cpp \
+	src/settings/global/UIGlobalSettingsNetwork.cpp \
+	src/settings/global/UIGlobalSettingsNetworkDetailsNAT.cpp \
+	src/settings/global/UIGlobalSettingsPortForwardingDlg.cpp \
+	src/settings/machine/UIMachineSettingsAudio.cpp \
+	src/settings/machine/UIMachineSettingsDisplay.cpp \
+	src/settings/machine/UIMachineSettingsGeneral.cpp \
+	src/settings/machine/UIMachineSettingsInterface.cpp \
+	src/settings/machine/UIMachineSettingsNetwork.cpp \
+	src/settings/machine/UIMachineSettingsPortForwardingDlg.cpp \
+	src/settings/machine/UIMachineSettingsSF.cpp \
+	src/settings/machine/UIMachineSettingsSFDetails.cpp \
+	src/settings/machine/UIMachineSettingsSerial.cpp \
+	src/settings/machine/UIMachineSettingsStorage.cpp \
+	src/settings/machine/UIMachineSettingsSystem.cpp \
+	src/settings/machine/UIMachineSettingsUSB.cpp \
+	src/settings/machine/UIMachineSettingsUSBFilterDetails.cpp \
+	src/widgets/UIAddDiskEncryptionPasswordDialog.cpp \
+	src/widgets/UIAudioControllerEditor.cpp \
+	src/widgets/UIAudioHostDriverEditor.cpp \
+	src/widgets/UIBaseMemoryEditor.cpp \
+	src/widgets/UIBaseMemorySlider.cpp \
+	src/widgets/UIBootOrderEditor.cpp \
+	src/widgets/UIFilePathSelector.cpp \
+	src/widgets/UIFilmContainer.cpp \
+	src/widgets/UIGraphicsControllerEditor.cpp \
+	src/widgets/UIHostComboEditor.cpp \
+	src/widgets/UIHotKeyEditor.cpp \
+	src/widgets/UIMediaComboBox.cpp \
+	src/widgets/UIMediumSizeEditor.cpp \
+	src/widgets/UIMenuBar.cpp \
+	src/widgets/UIMenuBarEditorWindow.cpp \
+	src/widgets/UINameAndSystemEditor.cpp \
+	src/widgets/UINetworkAttachmentEditor.cpp \
+	src/widgets/UIPopupBox.cpp \
+	src/widgets/UIPopupPane.cpp \
+	src/widgets/UIPopupPaneButtonPane.cpp \
+	src/widgets/UIPopupPaneMessage.cpp \
+	src/widgets/UIPopupPaneDetails.cpp \
+	src/widgets/UIPopupStack.cpp \
+	src/widgets/UIPopupStackViewport.cpp \
+	src/widgets/UIPortForwardingTable.cpp \
+	src/widgets/UIProgressDialog.cpp \
+	src/widgets/UIScaleFactorEditor.cpp \
+	src/widgets/UISearchLineEdit.cpp \
+	src/widgets/UISlidingToolBar.cpp \
+	src/widgets/UISpecialControls.cpp \
+	src/widgets/UIStatusBarEditorWindow.cpp \
+	src/widgets/UIToolBar.cpp \
+	src/widgets/UIVideoMemoryEditor.cpp \
+	src/widgets/UIWarningPane.cpp \
+	src/wizards/UIWizard.cpp \
+	src/wizards/UIWizardPage.cpp \
+	src/wizards/newvd/UIWizardNewVD.cpp \
+	src/wizards/newvd/UIWizardNewVDPageBasic1.cpp \
+	src/wizards/newvd/UIWizardNewVDPageBasic2.cpp \
+	src/wizards/newvd/UIWizardNewVDPageBasic3.cpp \
+	src/wizards/newvd/UIWizardNewVDPageExpert.cpp
+
+ifdef VPOX_GUI_WITH_NETWORK_MANAGER
+ UICommon_SOURCES += \
+	src/net/UIDownloader.cpp \
+	src/net/UIDownloaderAdditions.cpp \
+	src/net/UIDownloaderExtensionPack.cpp \
+	src/net/UIDownloaderUserManual.cpp \
+	src/net/UINetworkCustomer.cpp \
+	src/net/UINetworkManager.cpp \
+	src/net/UINetworkManagerDialog.cpp \
+	src/net/UINetworkManagerIndicator.cpp \
+	src/net/UINetworkRequest.cpp \
+	src/net/UINetworkRequestWidget.cpp \
+	src/net/UINetworkReply.cpp \
+	src/net/UIUpdateDefs.cpp \
+	src/net/UIUpdateManager.cpp \
+	src/settings/global/UIGlobalSettingsProxy.cpp \
+	src/settings/global/UIGlobalSettingsUpdate.cpp
+endif
+
+if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd solaris) # X11
+ UICommon_SOURCES += \
+	src/platform/x11/VPoxX11Helper.cpp \
+	src/platform/x11/XKeyboard-new.cpp
+endif
+
+UICommon_SOURCES.win += \
+	src/platform/win/VPoxUtils-win.cpp \
+	src/platform/win/WinKeyboard.cpp
+
+UICommon_SOURCES.darwin += \
+	src/platform/darwin/CocoaEventHelper.mm \
+	src/platform/darwin/DarwinKeyboard.cpp \
+	src/platform/darwin/UICocoaApplication.mm \
+	src/platform/darwin/UICocoaSpecialControls.mm \
+	src/platform/darwin/UIWindowMenuManager.cpp \
+	src/platform/darwin/VPoxUtils-darwin-cocoa.mm \
+	src/platform/darwin/VPoxUtils-darwin.cpp
+
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ UICommon_SOURCES += \
+	src/VPox2DHelpers.cpp \
+	src/VPoxGLSupportInfo.cpp
+endif
+
+
+#
+# VirtualPox Manager Application
+# Deployment.
+#
+if defined(VPOX_WITH_ORACLE_QT) || defined(VPOX_WITH_QT_PAYLOAD)
+ INSTALLS.linux += VirtualPox.qt.conf
+ INSTALLS.solaris += VirtualPox.qt.conf
+ VirtualPox.qt.conf_INST = $(INST_BIN)
+ VirtualPox.qt.conf_MODE = 644
+ VirtualPox.qt.conf_SOURCES = $(VirtualPox_0_OUTDIR)/qt.conf=>qt.conf
+
+$$(VirtualPox_0_OUTDIR)/qt.conf: $(PATH_SUB_CURRENT)/Makefile.kmk $(VPOX_VERSION_MK) | $$(@D)/
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(APPEND) $@ "[Paths]"
+	$(QUIET)$(APPEND) $@ "Plugins =" $(PATH_OUT)/$(INST_BIN)/plugins
+endif
+
+
+#
+# VirtualPox Manager Application
+# The Qt modules we're using.
+# (The include directory and lib/framework for each module will be added by the Qt unit.)
+#
+VirtualPox_QT_MODULES = Core Gui Widgets PrintSupport
+VirtualPox_QT_MODULES.linux   += X11Extras
+VirtualPox_QT_MODULES.solaris += X11Extras
+VirtualPox_QT_MODULES.freebsd += X11Extras
+VirtualPox_QT_MODULES.darwin  += MacExtras
+VirtualPox_QT_MODULES.win     += WinExtras
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ VirtualPox_QT_MODULES += OpenGL
+endif
+
+
+#
+# VirtualPox Virtual Machine Application
+# The Qt modules we're using.
+# (The include directory and lib/framework for each module will be added by the Qt unit.)
+#
+VirtualPoxVM_QT_MODULES = Core Gui Widgets PrintSupport
+VirtualPoxVM_QT_MODULES.linux   += X11Extras
+VirtualPoxVM_QT_MODULES.solaris += X11Extras
+VirtualPoxVM_QT_MODULES.freebsd += X11Extras
+VirtualPoxVM_QT_MODULES.darwin  += MacExtras
+VirtualPoxVM_QT_MODULES.win     += WinExtras
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ VirtualPoxVM_QT_MODULES += OpenGL
+endif
+
+
+#
+# VirtualPox - GUI Global Shared Library.
+# The Qt modules we're using.
+# (The include directory and lib/framework for each module will be added by the Qt unit.)
+#
+UICommon_QT_MODULES = Core Gui Widgets
+UICommon_QT_MODULES.linux   += X11Extras
+UICommon_QT_MODULES.solaris += X11Extras
+UICommon_QT_MODULES.freebsd += X11Extras
+UICommon_QT_MODULES.darwin  += MacExtras
+UICommon_QT_MODULES.win     += WinExtras
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ UICommon_QT_MODULES += OpenGL
+endif
+
+
+# Pull in the ui files
+$(eval VirtualPox_SOURCES += $(FORMS))
+$(eval VirtualPoxVM_SOURCES += $(FORMS))
+$(eval UICommon_SOURCES += $(FORMS))
+
+
+# Resource files with some OSE differences (VirtualPoxBrand.qrc is created further down).
+UICommon_SOURCES          += VirtualPox1.qrc
+VirtualPox1.qrc_RCCFLAGS     = -name BASIC1
+UICommon_SOURCES          += VirtualPox2.qrc
+VirtualPox2.qrc_RCCFLAGS     = -name BASIC2
+UICommon_SOURCES          += VirtualPox1_x2.qrc
+VirtualPox1_x2.qrc_RCCFLAGS  = -name BASIC1_X2
+UICommon_SOURCES          += VirtualPox2_x2.qrc
+VirtualPox2_x2.qrc_RCCFLAGS  = -name BASIC2_X2
+UICommon_SOURCES          += VirtualPox1_x3.qrc
+VirtualPox1_x3.qrc_RCCFLAGS  = -name BASIC1_X3
+UICommon_SOURCES          += VirtualPox2_x3.qrc
+VirtualPox2_x3.qrc_RCCFLAGS  = -name BASIC2_X3
+UICommon_SOURCES          += VirtualPox1_x4.qrc
+VirtualPox1_x4.qrc_RCCFLAGS  = -name BASIC1_X4
+UICommon_SOURCES          += VirtualPox2_x4.qrc
+VirtualPox2_x4.qrc_RCCFLAGS  = -name BASIC2_X4
+UICommon_SOURCES          += VirtualPox_xml.qrc
+VirtualPox_xml.qrc_RCCFLAGS  = -name BASIC_XML
+UICommon_SOURCES += $(VPOX_VIRTUALPOX_OUT_DIR)/VirtualPoxBrand.qrc
+$(VPOX_VIRTUALPOX_OUT_DIR)/VirtualPoxBrand.qrc_RCCFLAGS = -name BRAND
+if defined(VPOX_WITH_VIDEOHWACCEL) || defined(VPOX_GUI_USE_QGL)
+ UICommon_SOURCES += VirtualPoxShaders.qrc
+ VirtualPoxShaders.qrc_RCCFLAGS = -name SHADERS
+endif
+
+
+# Import the translation source from VPoxUI.pro and add the qt_xx_YY counterparts
+VirtualPox_QT_TRANSLATIONS := $(TRANSLATIONS) \
+	$(patsubst nls/VirtualPox_%.ts,nls/qt_%.ts, $(filter nls/VirtualPox_%.ts,$(TRANSLATIONS)))
+# Compress the translation units.
+VirtualPox_LRCFLAGS = -silent
+# Where to install the translations (a separate install target, VirtualPox-nls-inst is created).
+VirtualPox_QT_TRANSLATIONS_INST = $(INST_BIN)nls/
+# All files which contain translatable strings.
+VirtualPox_VPOX_ALL_NLS_SOURCES = $(VirtualPox_SOURCES) $(VirtualPoxVM_SOURCES) $(UICommon_SOURCES)
+
+
+## @todo how to detect what tool is used?
+## @todo GCC3 seems to lack -Wno-missing-base-class-initializer, so we use
+#  more generic -Wno-extra
+# bird: What about $(if $(VPOX_GCC_Wno-missing-base-class-initializer),$(VPOX_GCC_Wno-missing-base-class-initializer),$(VPOX_GCC_Wno-extra))?
+ifdef VPOX_WITH_XPCOM
+ VirtualPox_src/globals/COMDefs.cpp_CXXFLAGS  = $(VPOX_GCC_Wno-extra)
+endif
+
+
+#
+# Build generated COM wrappers as part of app.
+# VirtualPox - GUI Global Shared Library.
+#
+includedep $(PATH_TARGET)/UICommonComWrapperFiles.dep
+UICommon_BLDDIRS       += $(UICommon_0_OUTDIR)/include
+UICommon_INTERMEDIATES += $(UICommon_0_OUTDIR)/include/COMWrappers
+UICommon_SOURCES       += $(UICommon_0_OUTDIR)/include/COMWrappers.cpp
+UICommon_CLEAN         += $(wildcard $(UICommon_0_OUTDIR)/include/*) $(PATH_TARGET)/UICommonComWrapperFiles.dep
+
+## @todo kmk doesn't remake optional outputs when they are missing...
+$$(UICommon_0_OUTDIR)/include/COMWrappers \
++ $(PATH_TARGET)/UICommonComWrapperFiles.dep \
++| $(if-expr defined(UICommon_VPOX_COMWRAPPERS) \
+, $(UICommon_VPOX_COMWRAPPERS) \
+, $$(UICommon_0_OUTDIR)/include/COMEnums.h \
+  $$(UICommon_0_OUTDIR)/include/COMWrappers.cpp \
+): \
+		$(VPOX_XIDL_FILE) \
+		$(VPOX_VIRTUALPOX_SRC)/src/globals/COMWrappers.xsl \
+		$(VPOX_FILESPLIT) \
+		| $$(dir $$@)
+	$(call MSG_GENERATE,UICommon,$<,$@)
+	$(QUIET)$(RM) -f -- "$@" "$(PATH_TARGET)/UICommonComWrapperFiles.dep"
+	$(QUIET)$(VPOX_XSLTPROC) -o $@ \
+		$(VPOX_VIRTUALPOX_SRC)/src/globals/COMWrappers.xsl $<
+	$(QUIET)$(VPOX_FILESPLIT) $@ $(UICommon_0_OUTDIR)/include \
+		$(PATH_TARGET)/UICommonComWrapperFiles.dep UICommon_VPOX_COMWRAPPERS
+	$(APPEND) "$@"
+
+# alias for generating the COM Wrappers file.
+testwrappers:: $$(UICommon_0_OUTDIR)/include/COMWrappers
+
+
+#
+# Generate qrc file with branded icons.
+#
+VirtualPox_BLDDIRS       += $(VPOX_VIRTUALPOX_OUT_DIR)
+VirtualPox_CLEAN         += $(VPOX_VIRTUALPOX_OUT_DIR)/VirtualPoxBrand.qrc
+$(VPOX_VIRTUALPOX_OUT_DIR)/VirtualPoxBrand.qrc: \
+		$(VPOX_VIRTUALPOX_SRC)/VirtualPoxBrand.qrc \
+		$(PATH_ROOT)/Config.kmk \
+		| $$(dir $$@)
+	$(call MSG_GENERATE,VirtualPox,$<,$@)
+	$(QUIET)$(SED) \
+		-e 's;@VPOX_ABOUT_PNG@;$(VPOX_BRAND_GUI_ABOUT_PNG);g' \
+		-e 's;@VPOX_ABOUT_X2_PNG@;$(VPOX_BRAND_GUI_ABOUT_X2_PNG);g' \
+		-e 's;@VPOX_ABOUT_X3_PNG@;$(VPOX_BRAND_GUI_ABOUT_X3_PNG);g' \
+		-e 's;@VPOX_ABOUT_X4_PNG@;$(VPOX_BRAND_GUI_ABOUT_X4_PNG);g' \
+		-e 's;@VPOX_ABOUT_16PX_PNG@;$(VPOX_BRAND_GUI_ABOUT_16PX_PNG);g' \
+		-e 's;@VPOX_ABOUT_16PX_X2_PNG@;$(VPOX_BRAND_GUI_ABOUT_16PX_X2_PNG);g' \
+		-e 's;@VPOX_ABOUT_16PX_X3_PNG@;$(VPOX_BRAND_GUI_ABOUT_16PX_X3_PNG);g' \
+		-e 's;@VPOX_ABOUT_16PX_X4_PNG@;$(VPOX_BRAND_GUI_ABOUT_16PX_X4_PNG);g' \
+		-e 's;@VPOX_VPOX_16PX_PNG@;$(VPOX_BRAND_GUI_VPOX_16PX_PNG);g' \
+		-e 's;@VPOX_VPOX_20PX_PNG@;$(VPOX_BRAND_GUI_VPOX_20PX_PNG);g' \
+		-e 's;@VPOX_VPOX_32PX_PNG@;$(VPOX_BRAND_GUI_VPOX_32PX_PNG);g' \
+		-e 's;@VPOX_VPOX_40PX_PNG@;$(VPOX_BRAND_GUI_VPOX_40PX_PNG);g' \
+		-e 's;@VPOX_VPOX_48PX_PNG@;$(VPOX_BRAND_GUI_VPOX_48PX_PNG);g' \
+		-e 's;@VPOX_VPOX_64PX_PNG@;$(VPOX_BRAND_GUI_VPOX_64PX_PNG);g' \
+		-e 's;@VPOX_CUBE_42PX_PNG@;$(VPOX_BRAND_GUI_CUBE_42PX_PNG);g' \
+		-e 's;@VPOX_CUBE_SVG@;$(VPOX_BRAND_GUI_VPOX_SVG);g' \
+		--output $@ \
+		$<
+
+
+#
+# Precompiled header
+# 	win.amd64 without:  kmk_time: 3m51.962058s
+# 	win.amd64 with:     kmk_time: 2m23.336252s
+#      linux.amd64 without: time: real 1m03.719s   user 26m26.766s  sys 2m03.526s
+#      linux.amd64 with:    time: real 0m42.650s   user 14m46.332s  sys 1m28.463s
+#
+ifdef VPOX_WITH_PRECOMPILED_HEADERS
+ if1of ($(KBUILD_TARGET),win)
+  VirtualPox_USES      += vccprecomp
+  VirtualPox_PCH_HDR   := $(PATH_SUB_CURRENT)/src/precomp_vcc.h
+
+  VirtualPoxVM_USES    += vccprecomp
+  VirtualPoxVM_PCH_HDR := $(PATH_SUB_CURRENT)/src/precomp_vcc.h
+
+  UICommon_USES      += vccprecomp
+  UICommon_PCH_HDR   := $(PATH_SUB_CURRENT)/src/precomp_vcc.h
+
+ else if $(KBUILD_KMK_REVISION) >= 3256 && "$(KBUILD_TARGET)" != "darwin" && !defined(VPOX_WITHOUT_PRECOMPILED_HEADERS)
+  if $(VPOX_GCC_VERSION_CXX) >= 50000 # GCC 4.x runs into trouble compiling the header.
+   UICommon_USES      += gccprecomp
+   UICommon_PCH_HDR   := $(PATH_SUB_CURRENT)/src/precomp_gcc.h
+   #UICommon_CXXFLAGS.linux += -H
+
+   VirtualPox_USES      += gccprecomp
+   VirtualPox_PCH_HDR   := $(PATH_SUB_CURRENT)/src/precomp_gcc.h
+   #VirtualPox_CXXFLAGS.linux += -H
+
+   VirtualPoxVM_USES    += gccprecomp
+   VirtualPoxVM_PCH_HDR := $(PATH_SUB_CURRENT)/src/precomp_gcc.h
+   #VirtualPoxVM_CXXFLAGS.linux += -H
+
+   # GCC precompiled headers seems to work more efficiently when #pragma once is involved.
+   # So, we've cooked our own camel cased qt wrapper headers with #pragma once inside.
+   VPOX_GUI_INC_DIRS <= precomptricks
+  endif
+ endif
+endif
+
+ifeq ($(KBUILD_TARGET),win)
+#
+# On Windows we'll have to generate/edit part of the resource file.
+# The IDI_ICON1 name is Qt specific.
+#
+src/platform/win/VirtualPox.rc_INCS  = $(VirtualPox_0_OUTDIR)
+src/platform/win/VirtualPox.rc_DEPS  = $(VirtualPox_0_OUTDIR)/VirtualPox-icon.rc
+src/platform/win/VirtualPox.rc_CLEAN = $(VirtualPox_0_OUTDIR)/VirtualPox-icon.rc
+src/platform/win/VirtualPoxVM.rc_INCS  = $(VirtualPox_0_OUTDIR)
+src/platform/win/VirtualPoxVM.rc_DEPS  = $(VirtualPox_0_OUTDIR)/VirtualPox-icon.rc
+src/platform/win/VirtualPoxVM.rc_CLEAN = $(VirtualPox_0_OUTDIR)/VirtualPox-icon.rc
+
+$$(VirtualPox_0_OUTDIR)/VirtualPox-icon.rc: $(MAKEFILE_CURRENT) $(VPOX_WINDOWS_ICON_FILE) | $$(dir $$@)
+	$(APPEND) -t $@ 'IDI_ICON1 ICON "$(subst /,\\,$(VPOX_WINDOWS_ICON_FILE))"'
+
+endif # win
+
+
+#
+# Unset everything that was loaded from VPoxUI.pro.
+#
+FORMS :=
+TRANSLATIONS :=
+
+
+ifeq ($(KBUILD_TARGET),darwin)
+#
+# Create directories for each approved language or the application
+# menu won't be translated.
+#
+INSTALLS += VirtualPox.lproj
+VirtualPox.lproj_INST = $(INST_VIRTUALPOX)Contents/Resources/
+VirtualPox.lproj_MODE = 755
+VirtualPox.lproj_DIRS := $(addsuffix .lproj,$(VPOX_APPROVED_GUI_LANGUAGES))
+
+#
+# On OS X (darwin) we need to install icon resources and compulsory bundle contents.
+# The VirtualPoxVM.app helper is for launching VMs (fixes some issues with the dock).
+#
+INSTALLS += VirtualPox.app
+VirtualPox.app_INST = $(INST_VIRTUALPOX)Contents/
+VirtualPox.app_MODE = 644
+VirtualPox.app_SOURCES = \
+	src/platform/darwin/PkgInfo \
+	$(VirtualPox.app_0_OUTDIR)/Info.plist \
+	$(VPOX_MACOSX_ICON_FILE)=>Resources/virtualpox.icns \
+	$(VPOX_BRAND_GUI_VPOX_64PX_PNG)=>Resources/virtualpox.png \
+	$(PATH_ROOT)/src/VPox/Artwork/darwin/virtualpox-vpox.icns=>Resources/virtualpox-vpox.icns \
+	$(PATH_ROOT)/src/VPox/Artwork/darwin/virtualpox-vpox-extpack.icns=>Resources/virtualpox-vpox-extpack.icns \
+	$(PATH_ROOT)/src/VPox/Artwork/darwin/virtualpox-ovf.icns=>Resources/virtualpox-ovf.icns \
+	$(PATH_ROOT)/src/VPox/Artwork/darwin/virtualpox-ova.icns=>Resources/virtualpox-ova.icns \
+	$(PATH_ROOT)/src/VPox/Artwork/darwin/virtualpox-vdi.icns=>Resources/virtualpox-vdi.icns \
+	$(PATH_ROOT)/src/VPox/Artwork/darwin/virtualpox-vmdk.icns=>Resources/virtualpox-vmdk.icns \
+	$(PATH_ROOT)/src/VPox/Artwork/darwin/virtualpox-vhd.icns=>Resources/virtualpox-vhd.icns \
+	$(PATH_ROOT)/src/VPox/Artwork/darwin/virtualpox-hdd.icns=>Resources/virtualpox-hdd.icns
+
+ # Qt5 requires qt.conf on Mac OS X:
+ VirtualPox.app_SOURCES += \
+ 	$(VirtualPox.app_0_OUTDIR)/qt.conf=>Resources/qt.conf
+
+ $$(VirtualPox.app_0_OUTDIR)/Info.plist: $(PATH_SUB_CURRENT)/src/platform/darwin/Info.plist $(VPOX_VERSION_MK) | $$(@D)/
+	$(call MSG_GENERATE,VirtualPox.app,$<,$@)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		$< > $@
+
+ $$(VirtualPox.app_0_OUTDIR)/qt.conf: $(PATH_SUB_CURRENT)/Makefile.kmk $(VPOX_VERSION_MK) | $$(@D)/
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(APPEND) $@ "[Paths]"
+ ifdef VPOX_WITH_HARDENING # Not necessary and will screwup copying files elsewhere to test.
+	$(QUIET)$(APPEND) $@ "Prefix =" $(PATH_OUT)/$(VirtualPox.app_INST)
+ endif
+
+ INSTALLS += VirtualPoxVM.app
+ VirtualPoxVM.app_INST = $(VirtualPox.app_INST)Resources/VirtualPoxVM.app/Contents/
+ VirtualPoxVM.app_MODE = 644
+ VirtualPoxVM.app_SOURCES = \
+ 	src/platform/darwin/VM-PkgInfo=>PkgInfo \
+ 	$(VirtualPoxVM.app_0_OUTDIR)/VM-Info.plist=>Info.plist \
+ 	$(foreach mysrc,$(VirtualPox.app_SOURCES),$(if-expr $(pos =>Resources/,$(mysrc)) > 0,$(mysrc),))
+
+ $$(VirtualPoxVM.app_0_OUTDIR)/VM-Info.plist: $(PATH_SUB_CURRENT)/src/platform/darwin/VM-Info.plist $(VPOX_VERSION_MK) | $$(@D)/
+	$(call MSG_GENERATE,VirtualPoxVM.app,$<,$@)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $@ $<
+
+ PROGRAMS += vmstarter
+ vmstarter_TEMPLATE = VPOXR3EXE
+ ifdef VPOX_WITH_NEW_XCODE
+  vmstarter_OBJCXXFLAGS += -Wno-error=deprecated-declarations ## @todo fix deprecate API use!
+ else
+  vmstarter_OBJCXXFLAGS += -Wno-deprecated-declarations
+ endif
+ vmstarter_LDFLAGS += -framework AppKit
+ vmstarter_SOURCES = src/platform/darwin/vmstarter.mm
+ vmstarter_INST = $(INST_BIN)vmstarter
+
+ INSTALLS += vmstarter.app
+ vmstarter.app_INST = $(VirtualPox.app_INST)Resources/vmstarter.app/Contents/
+ vmstarter.app_MODE = 644
+ vmstarter.app_SOURCES = \
+ 	src/platform/darwin/vmstarter-PkgInfo=>PkgInfo \
+ 	$(vmstarter.app_0_OUTDIR)/vmstarter-Info.plist=>Info.plist \
+ 	$(foreach mysrc,$(VirtualPox.app_SOURCES),$(if-expr $(pos =>Resources/,$(mysrc)) > 0,$(mysrc),))
+ vmstarter.app_SYMLINKS = \
+ 	MacOS=>../../../MacOS \
+
+ $$(vmstarter.app_0_OUTDIR)/vmstarter-Info.plist: $(PATH_SUB_CURRENT)/src/platform/darwin/vmstarter-Info.plist $(VPOX_VERSION_MK) | $$(@D)/
+	$(call MSG_GENERATE,vmstarter.app,$<,$@)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $@ $<
+endif # darwin
+
+#
+# App for testing GL support
+#
+if defined(VPOX_WITH_VIDEOHWACCEL)
+ if1of ($(KBUILD_TARGET), win linux freebsd)
+  LIBRARIES += VPoxOGL2D
+  VPoxOGL2D_TEMPLATE = $(if $(VPOX_WITH_VIDEOHWACCEL),$(if $(VPOX_WITH_HARDENING),VPOXQTGUI,VPOXQTGUIEXE),VPOXMAINEXE)
+  VPoxOGL2D_DEFS = QT_NO_DEBUG QT_THREAD_SUPPORT QT_SHARED HAVE_CONFIG_H VPOX_WITH_VIDEOHWACCEL VPOX_GUI_USE_QGL
+  VPoxOGL2D_QT_MODULES += OpenGL
+  VPoxOGL2D_SOURCES = \
+	src/VPoxGLSupportInfo.cpp
+  VPoxOGL2D_INCS = include
+ endif
+endif
+
+
+#
+# Testcase for the darwin keyboard routines.
+#
+ifdef VPOX_WITH_TESTCASES
+ PROGRAMS.darwin += tstDarwinKeyboard
+ tstDarwinKeyboard_TEMPLATE = VPOXR3TSTEXE
+ tstDarwinKeyboard_DEFS.x86 = USE_HID_FOR_MODIFIERS
+ tstDarwinKeyboard_INCS = \
+ 	$(VPOX_GUI_INC_DIRS)
+ tstDarwinKeyboard_SOURCES = \
+ 	src/platform/darwin/tstDarwinKeyboard.cpp \
+ 	src/platform/darwin/DarwinKeyboard.cpp
+ tstDarwinKeyboard_SOURCES.amd64 = \
+ 	src/platform/darwin/CocoaEventHelper.mm
+ tstDarwinKeyboard_LDFLAGS = -framework IOKit -framework Carbon -framework AppKit
+ tstDarwinKeyboard_LIBS = \
+ 	$(LIB_RUNTIME)
+ tstDarwinKeyboard_LIBS += $(PATH_STAGE_DLL)/UICommon$(VPOX_SUFF_DLL)
+endif
+
+
+#
+# Testcase for SSL certificate downloading.
+#
+if defined(VPOX_WITH_TESTCASES) && defined(VPOX_GUI_WITH_NETWORK_MANAGER)
+ PROGRAMS += tstSSLCertDownloads
+ tstSSLCertDownloads_TEMPLATE   = VPOXQTGUIEXE
+ tstSSLCertDownloads_USES       = qt5
+ tstSSLCertDownloads_QTTOOL     = QT5
+ tstSSLCertDownloads_QT_MODULES = Core Gui
+ tstSSLCertDownloads_DEFS = VPOX_GUI_IN_TST_SSL_CERT_DOWNLOADS
+ tstSSLCertDownloads_INCS = \
+ 	$(VPOX_GUI_INC_DIRS)
+ tstSSLCertDownloads_SOURCES = \
+ 	src/net/tstSSLCertDownloads.cpp
+endif
+
+
+#
+# Doxygen documentation.
+#
+QTGUI_DOXYFILE_OUTPUT = $(PATH_OUT)/docs/qtgui
+BLDDIRS += $(QTGUI_DOXYFILE_OUTPUT)
+OTHER_CLEAN += \
+	$(QTGUI_DOXYFILE_OUTPUT)/Doxyfile.qtgui \
+	$(QTGUI_DOXYFILE_OUTPUT)/Doxyfile.qtgui.dep \
+	$(QTGUI_DOXYFILE_OUTPUT)/docs.qtgui
+
+QTGUI_DOXYFILE_INPUT_DIRS := \
+	$(addprefix $(PATH_SUB_CURRENT)/src/, \
+		converter \
+		extensions \
+		extensions/graphics \
+		extradata \
+		globals \
+		manager \
+		manager/chooser \
+		manager/details \
+		manager/tools \
+		manager \
+		manager \
+		medium \
+		net \
+		objects \
+		platform \
+		platform/darwin \
+		platform/os2 \
+		platform/win \
+		platform/x11 \
+		runtime \
+		runtime/fullscreen \
+		runtime/information \
+		runtime/guestctrl \
+		runtime/normal \
+		runtime/scale \
+		runtime/seamless \
+		selector \
+		selector/graphics \
+		selector/graphics/chooser \
+		selector/graphics/details \
+		settings \
+		settings/global \
+		settings/machine \
+		widgets \
+		widgets/graphics \
+		wizards \
+		wizards/clonevd \
+		wizards/clonevm \
+		wizards/exportappliance \
+		wizards/firstrun \
+		wizards/importappliance \
+		wizards/newcloudvm \
+		wizards/newvd \
+		wizards/newvm)
+
+QTGUI_DOXYFILE_INPUT := \
+	$(foreach dir, $(QTGUI_DOXYFILE_INPUT_DIRS), \
+		$(sort $(wildcard $(dir)/*.h)) \
+		$(sort $(wildcard $(dir)/*.cpp $(dir)/*.m $(dir)/*.mm)))
+
+includedep $(QTGUI_DOXYFILE_OUTPUT)/Doxyfile.qtgui.dep
+
+# Generate the Doxyfile
+$(QTGUI_DOXYFILE_OUTPUT)/Doxyfile.qtgui: \
+		$(PATH_SUB_CURRENT)/Doxyfile \
+		$(PATH_SUB_CURRENT)/Makefile.kmk \
+		$(comp-vars QTGUI_DOXYFILE_INPUT,DOXYGEN_QTGUI_INPUT_PREV,FORCE) \
+		$(comp-vars QTGUI_DOXYFILE_OUTPUT,DOXYGEN_QTGUI_OUTPUT_PREV,FORCE) \
+		| $$(dir $$@)
+	$(QUIET)$(RM) -f $@ $@.tmp $@.dep
+	$(QUIET)$(CP) -f $< $@.tmp
+	$(QUIET)$(APPEND) $@.tmp
+	$(QUIET)$(APPEND) $@.tmp "OUTPUT_DIRECTORY = $(QTGUI_DOXYFILE_OUTPUT)"
+	$(QUIET)$(APPEND) $@.tmp "WARN_LOGFILE = $(QTGUI_DOXYFILE_OUTPUT)/errors"
+	$(QUIET)$(APPEND) $@.tmp "INCLUDE_PATH = $(PATH_ROOT)/include ."
+	$(QUIET)$(APPEND) $@.tmp "PREDEFINED += $(ARCH_BITS_DEFS)"
+	$(QUIET)$(APPEND) $@.tmp
+	$(QUIET)$(APPEND) $@.tmp 'INPUT = $(foreach x,$(QTGUI_DOXYFILE_INPUT),\$(NLTAB)$(x))'
+	$(QUIET)$(APPEND) $@.tmp
+	$(QUIET)$(MV) -f $@.tmp $@
+	@$(APPEND) $@.dep "DOXYGEN_QTGUI_OUTPUT_PREV = $(QTGUI_DOXYFILE_OUTPUT)"
+	@$(APPEND) $@.dep "DOXYGEN_QTGUI_INPUT_PREV = $(QTGUI_DOXYFILE_INPUT)"
+
+# Do the actual job.
+$(QTGUI_DOXYFILE_OUTPUT)/docs.qtgui: $(QTGUI_DOXYFILE_OUTPUT)/Doxyfile.qtgui $$(QTGUI_DOXYFILE_INPUT) \
+		| $(QTGUI_DOXYFILE_OUTPUT)/
+	$(call MSG_L1,doxygen qtgui)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(RM) -Rf -- $(QTGUI_DOXYFILE_OUTPUT)/html/
+	doxygen $(QTGUI_DOXYFILE_OUTPUT)/Doxyfile.qtgui
+	$(APPEND) $@
+
+# aliases
+docs.qtgui: $(QTGUI_DOXYFILE_OUTPUT)/docs.qtgui
+if !defined(VPOX_ONLY_DOCS) && defined(VPOX_WITH_ALL_DOXYGEN_TARGETS)
+docs: $(QTGUI_DOXYFILE_OUTPUT)/docs.qtgui
+endif
+
+
+# Commit the magic.
+# (note: before custom rules that make usage of generated variables!).
+include $(FILE_KBUILD_SUB_FOOTER)
+
+
+#
+# Update all known NLS translation (.ts) files in the nls/ subdirectory.
+#
+# NOTE: This target is intended to be run only by the GUI maintainer shortly
+# before a new product release. VirtualPox_xx_YY.ts is a template for new
+# languages and should never be actually translated or installed.
+#
+# Use the checknls target for checking again common mistakes done by the
+# translators.
+#
+# For Qt >= 4.6.0 it maybe necessary to add -I $(VPOX_GUI_INC_DIRS) to the
+# lupdate call
+#
+#VirtualPox_QT_TRANSLATIONS = nls/VirtualPox_de.ts
+checknls::
+	# Check for missing :/ in image paths
+	grep -i "src=[^:%]" $(filter-out nls/qt_%.ts,$(VirtualPox_QT_TRANSLATIONS))
+
+updatenls:: makeallnls nls/VirtualPox_en.ts
+
+makeallnls:: \
+		$(foreach header,$(VPOX_GUI_INC_DIRS),$(wildcard $(header)/*.h)) \
+		$(filter-out %.qrc,$(VirtualPox_VPOX_ALL_NLS_SOURCES) $(VirtualPox_VPOX_EXTRA_NLS_SOURCES))
+	$(call MSG_L1,lupdate all languages (nls/*.ts))
+	$(QUIET)$(TOOL_QT5_LUPDATE) \
+		$^ \
+		-ts \
+		$(filter-out nls/VirtualPox_en.ts,$(filter-out nls/qt_%.ts,$(VirtualPox_QT_TRANSLATIONS))) \
+		nls/VirtualPox_xx_YY.ts
+
+# Create the English translation file. This is something special cause it will
+# contain the plural forms only.
+nls/VirtualPox_en.ts: \
+		$(foreach header,$(VPOX_GUI_INC_DIRS),$(wildcard $(header)/*.h)) \
+		$(filter-out %.qrc,$(VirtualPox_VPOX_ALL_NLS_SOURCES) $(VirtualPox_VPOX_EXTRA_NLS_SOURCES))
+	$(call MSG_L1,lupdate $@)
+	$(QUIET)$(TOOL_QT5_LUPDATE) \
+		$^ \
+		-ts \
+		$@
+	$(QUIET)$(SED) -n -i -e \
+		'/<context>/,/<\/context>/!p;/<context>/h;/<name>/H;/<message numerus="yes">/,/<\/message>/H;/<\/context>/{H;x;/<message/p}' \
+	$@
+

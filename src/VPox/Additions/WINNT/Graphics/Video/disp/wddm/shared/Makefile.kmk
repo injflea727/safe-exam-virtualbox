@@ -1,0 +1,68 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the VirtualPox WDDM user mode driver
+#
+
+#
+# Copyright (C) 2017-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# VPoxDispMpLogger - display backdoor logger library
+#
+LIBRARIES += VPoxDispMpLogger
+VPoxDispMpLogger_TEMPLATE    = VPoxGuestR3Lib
+VPoxDispMpLogger_SDKS        = ReorderCompilerIncs $(VPOX_WINDDK_GST_WLH)
+VPoxDispMpLogger_DEFS        = UNICODE _UNICODE VPOX_WITH_WDDM VPOX_WITH_HGCM
+VPoxDispMpLogger_INCS        = \
+	$(PATH_ROOT)/src/VPox/Additions/WINNT/Graphics/Video/disp/wddm/shared \
+	$(VPOX_GRAPHICS_INCS)
+VPoxDispMpLogger_SOURCES     = \
+	VPoxDispMpLogger.cpp
+
+#
+# 64-bit systems needs a 32-bit version of VPoxDispMpLogger.
+#
+LIBRARIES.amd64 += VPoxDispMpLogger-x86
+VPoxDispMpLogger-x86_TEMPLATE    = VPoxGuestR3Lib
+VPoxDispMpLogger-x86_EXTENDS = VPoxDispMpLogger
+VPoxDispMpLogger-x86_BLD_TRG_ARCH = x86
+VPoxDispMpLogger-x86_DEFS = $(VPoxDispMpLogger_DEFS) VPOX_WDDM_WOW64
+
+
+#
+# VPoxWddmUmKmt - User mode kernel mode thunk (KMT) interfaces
+#
+LIBRARIES += VPoxWddmUmKmt
+VPoxWddmUmKmt_TEMPLATE    = VPoxGuestR3Lib
+VPoxWddmUmKmt_SDKS        = ReorderCompilerIncs $(VPOX_WINDDK_GST_WLH)
+VPoxWddmUmKmt_DEFS        = UNICODE _UNICODE VPOX_WITH_WDDM VPOX_WITH_HGCM
+VPoxWddmUmKmt_INCS        = \
+	$(PATH_ROOT)/src/VPox/Additions/WINNT/Graphics/Video/disp/wddm/shared \
+	$(VPOX_GRAPHICS_INCS)
+VPoxWddmUmKmt_SOURCES     = \
+	VPoxDispKmt.cpp
+
+#
+# 64-bit systems needs a 32-bit version of VPoxWddmUmKmt.
+#
+LIBRARIES.amd64 += VPoxWddmUmKmt-x86
+VPoxWddmUmKmt-x86_TEMPLATE     = VPoxGuestR3Lib
+VPoxWddmUmKmt-x86_EXTENDS      = VPoxWddmUmKmt
+VPoxWddmUmKmt-x86_BLD_TRG_ARCH = x86
+VPoxWddmUmKmt-x86_DEFS         = $(VPoxWddmUmKmt_DEFS) VPOX_WDDM_WOW64
+
+
+include $(FILE_KBUILD_SUB_FOOTER)

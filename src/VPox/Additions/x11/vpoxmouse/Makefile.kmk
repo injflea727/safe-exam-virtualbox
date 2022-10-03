@@ -1,0 +1,286 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the VPox Additions XFree86 and X.org mouse drivers.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+vpoxmouse_xorg_INCS = \
+	$(VPOX_PATH_X11_ROOT)/inputproto-1.9.99.902 \
+	$(VPOX_PATH_X11_ROOT)/libpciaccess-0.10.8 \
+	$(VPOX_PATH_X11_ROOT)/pixman-0.16.0 \
+	$(VPOX_PATH_X11_ROOT)/xextproto-7.1.1 \
+	$(VPOX_PATH_X11_ROOT)/xproto-7.0.18
+
+#
+# vpoxmouse_drv
+#
+if1of ($(KBUILD_TARGET), linux)
+ SYSMODS += vpoxmouse_drv
+ vpoxmouse_drv_TEMPLATE = VPOXGUESTR3XF86MOD
+ vpoxmouse_drv_DEFS.linux = linux
+ vpoxmouse_drv_DEFS.x86 += __i386__
+ # This one has to be defined when building server code on systems where
+ # unsigned long is 64bits
+ vpoxmouse_drv_DEFS.amd64 += _XSERVER64
+ vpoxmouse_drv_DEFS += \
+        _POSIX_C_SOURCE=199309L _POSIX_SOURCE _XOPEN_SOURCE _DEFAULT_SOURCE \
+	_BSD_SOURCE _SVID_SOURCE _GNU_SOURCE SHAPE XINPUT XKB LBX XAPPGROUP \
+	XCSECURITY TOGCUP XF86BIGFONT DPMSExtension PIXPRIV PANORAMIX RENDER \
+	GCCUSESGAS AVOID_GLYPHBLT PIXPRIV SINGLEDEPTH XFreeXDGA XvExtension \
+	XFree86LOADER XFree86Server XF86VIDMODE XvMCExtension SMART_SCHEDULE \
+	BUILDDEBUG X_BYTE_ORDER=X_LITTLE_ENDIAN DNDEBUG FUNCPROTO=15 NARROWPROTO \
+	IN_MODULE XFree86Module PNP_MOUSE IN_XF86_MODULE
+ vpoxmouse_drv_INCS := \
+	$(VPOX_PATH_X11_ROOT)/XFree86-4.3 \
+	$(VPOX_PATH_X11_ROOT)/XFree86-4.3/X11 \
+	$(VPOX_PATH_X11_ROOT)/XFree86-4.3/X11/extensions \
+	$(VPOX_PATH_X11_ROOT)/XFree86-4.3/Xserver \
+	$(PATH_SUB_CURRENT)
+ vpoxmouse_drv_SOURCES = \
+	vpoxmouse.c
+ # Any global symbols in the driver object files will be added to XFree86's
+ # symbol table, which can cause problems if we e.g. define a symbol in two
+ # modules.
+ vpoxmouse_drv_POST_CMDS = \
+	objcopy --keep-global-symbol vpoxmouseModuleData $(out) $(out)-objcopy$$(NLTAB) \
+	$(MV) -f $(out)-objcopy $(out)
+endif
+
+
+#
+# vpoxmouse_drv_70
+#
+DLLS += vpoxmouse_drv_70
+vpoxmouse_drv_70_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_70_DEFS = \
+	XFree86Server IN_MODULE XFree86Module XFree86LOADER XINPUT XORG_7X IN_XF86_MODULE DONT_DEFINE_WRAPPERS NO_ANSIC
+vpoxmouse_drv_70_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.0.1 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_70_SOURCES = \
+	vpoxmouse.c
+
+
+#
+# vpoxmouse_drv_71
+#
+DLLS += vpoxmouse_drv_71
+vpoxmouse_drv_71_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_71_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_71_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.1.0 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_71_SOURCES = \
+	vpoxmouse.c
+
+
+#
+# vpoxmouse_drv_13
+#
+DLLS += vpoxmouse_drv_13
+vpoxmouse_drv_13_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_13_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_13_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.3.0.0 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_13_SOURCES = \
+	vpoxmouse.c
+
+
+#
+# vpoxmouse_drv_14
+#
+DLLS += vpoxmouse_drv_14
+vpoxmouse_drv_14_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_14_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_14_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.4.2 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_14_SOURCES = \
+	vpoxmouse.c
+
+
+#
+# vpoxmouse_drv_15
+#
+DLLS += vpoxmouse_drv_15
+vpoxmouse_drv_15_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_15_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_15_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.5.3 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_15_SOURCES = \
+	vpoxmouse.c
+
+
+#
+# vpoxmouse_drv_16
+#
+DLLS += vpoxmouse_drv_16
+vpoxmouse_drv_16_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_16_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_16_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.6.5 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_16_SOURCES = \
+	vpoxmouse.c
+
+
+ifneq ($(KBUILD_TARGET), linux)
+
+#
+# vpoxmouse_drv_17
+#
+DLLS += vpoxmouse_drv_17
+vpoxmouse_drv_17_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_17_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_17_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.7.7 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_17_SOURCES = \
+	vpoxmouse.c
+
+
+#
+# vpoxmouse_drv_18
+#
+DLLS += vpoxmouse_drv_18
+vpoxmouse_drv_18_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_18_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_18_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.8.0 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_18_SOURCES = \
+	vpoxmouse.c
+
+
+#
+# vpoxmouse_drv_19
+#
+DLLS += vpoxmouse_drv_19
+vpoxmouse_drv_19_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_19_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_19_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.9.0 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_19_SOURCES = \
+	vpoxmouse.c
+
+
+#
+# vpoxmouse_drv_110
+#
+DLLS += vpoxmouse_drv_110
+vpoxmouse_drv_110_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_110_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_110_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.10.0 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_110_SOURCES = \
+	vpoxmouse.c
+
+DLLS += vpoxmouse_drv_111
+vpoxmouse_drv_111_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_111_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_111_INCS := \
+	$(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.11.0 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_111_SOURCES = \
+	vpoxmouse.c
+
+DLLS += vpoxmouse_drv_112
+vpoxmouse_drv_112_TEMPLATE = VPOXGUESTR3XORGMOD
+vpoxmouse_drv_112_DEFS := $(vpoxmouse_drv_70_DEFS) NO_ANSIC
+vpoxmouse_drv_112_INCS := \
+    $(vpoxmouse_xorg_INCS) \
+	$(VPOX_PATH_X11_ROOT)/xorg-server-1.12.0 \
+	$(PATH_SUB_CURRENT)
+vpoxmouse_drv_112_SOURCES = \
+	vpoxmouse.c
+
+endif # neq ($(KBUILD_TARGET),linux)
+
+
+ifdef VPOX_USE_SYSTEM_XORG_HEADERS
+ # As vpoxmouse_drv is not needed at all for X.Org Server 1.7 and later do not
+ # build it in this case.
+ DLLS    := $(filter-out vpoxmouse_drv_%,$(DLLS))
+ SYSMODS := $(filter-out vpoxmouse_drv%,$(SYSMODS))
+endif
+
+
+# Check the undefined symbols in the X.Org modules against lists of allowed
+# symbols.  Not very elegant, but it will catch problems early.
+
+ifdef VPOX_WITH_TESTCASES
+# ifndef VPOX_ONLY_ADDITIONS
+ ifndef VPOX_USE_SYSTEM_XORG_HEADERS
+  ifeq ($(KBUILD_TARGET),linux)
+   ifeq ($(KBUILD_HOST_ARCH),$(KBUILD_TARGET_ARCH))
+    ifndef VPOX_ONLY_SDK
+     VPOXMOUSE_SRC_PATH := $(PATH_SUB_CURRENT)
+
+     ifeq ($(KBUILD_TARGET),linux)
+      TESTING += $(vpoxmouse_drv_0_OUTDIR)/tstvpoxmouse68.run
+      OTHERS += $(vpoxmouse_drv_0_OUTDIR)/tstvpoxmouse68.run
+$$(vpoxmouse_drv_0_OUTDIR)/tstvpoxmouse68.run: $$(vpoxmouse_drv_1_STAGE_TARGET)
+	$(QUIET)$(call MSG_L1,Checking for unresolved symbols in $<)
+	$(QUIET)/bin/sh $(PATH_ROOT)/src/bldprogs/checkUndefined.sh $(KBUILD_HOST) \
+	    "$(vpoxmouse_drv_1_STAGE_TARGET)" --static "$(VPOXMOUSE_SRC_PATH)/../undefined_xfree86" "$(VPOXMOUSE_SRC_PATH)/../undefined_xfree86_modules"
+	$(QUIET)$(APPEND) -t "$@" "done"
+     endif
+
+##
+# Using the extra expansion to replace $(ver) before eval, thus everything
+# else needs escaped dollars.
+     define def_vpoxmouse_test
+      TESTING += $$(vpoxmouse_drv$(ver)_0_OUTDIR)/tstvpoxmouse$(ver).run
+      OTHERS  += $$(vpoxmouse_drv$(ver)_0_OUTDIR)/tstvpoxmouse$(ver).run
+      $$$$(vpoxmouse_drv$(ver)_0_OUTDIR)/tstvpoxmouse$(ver).run: $$$$(vpoxmouse_drv$(ver)_1_STAGE_TARGET)
+	$$(QUIET)$$(call MSG_L1,Checking for unresolved symbols in $$<)
+	$$(QUIET)$$(ASH) $$(PATH_ROOT)/src/bldprogs/checkUndefined.sh $$(KBUILD_HOST)  \
+	        $$(vpoxmouse_drv$(ver)_1_STAGE_TARGET) $$(VPOXMOUSE_SRC_PATH)/../undefined_xfree86 $(VPOXMOUSE_SRC_PATH)/../undefined_xfree86_modules $$(VPOXMOUSE_SRC_PATH)/../undefined_xorg
+	$$(QUIET)$$(APPEND) -t "$$@" "done"
+    endef
+
+     $(foreach ver, _70 _71 _13 _14 _15 _16, $(eval $(def_vpoxmouse_test)))
+
+     ifneq ($(KBUILD_TARGET), linux)
+      $(foreach ver, _17 _18 _19 _110 _111 _112 _113, $(eval $(def_vpoxmouse_test)))
+
+     endif # neq ($(KBUILD_TARGET),linux)
+
+    endif # ! VPOX_ONLY_SDK
+   endif # eq ($(KBUILD_HOST_ARCH),$(KBUILD_TARGET_ARCH))
+  endif # eq ($(KBUILD_TARGET),linux)
+ endif # ! VPOX_USE_SYSTEM_XORG_HEADERS
+# endif # ! VPOX_ONLY_ADDITIONS
+endif # VPOX_WITH_TESTCASES
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

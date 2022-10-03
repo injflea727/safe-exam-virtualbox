@@ -1,0 +1,49 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Guest Control Host Service.
+#
+
+#
+# Copyright (C) 2011-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include sub-makefile(s).
+include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+
+#
+# The guest control service DLL.
+#
+DLLS += VPoxGuestControlSvc
+VPoxGuestControlSvc_TEMPLATE  = VPOXR3
+VPoxGuestControlSvc_NAME.os2  = VPoxGCTL
+VPoxGuestControlSvc_DEFS      = VPOX_WITH_HGCM
+VPoxGuestControlSvc_INCS      = $(PATH_ROOT)/src/VPox/Main/include
+VPoxGuestControlSvc_INCS.win  = \
+	$(VPOX_PATH_SDK)
+
+VPoxGuestControlSvc_SOURCES = \
+	VPoxGuestControlSvc.cpp
+
+VPoxGuestControlSvc_SOURCES.win = \
+	VPoxGuestControlSvc.rc
+
+VPoxGuestControlSvc_LIBS = \
+	$(LIB_VMM) \
+	$(LIB_RUNTIME) \
+	$(LIB_REM)
+
+VPoxGuestControlSvc_LDFLAGS.darwin = \
+	-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxGuestControlSvc.dylib
+
+include $(FILE_KBUILD_SUB_FOOTER)

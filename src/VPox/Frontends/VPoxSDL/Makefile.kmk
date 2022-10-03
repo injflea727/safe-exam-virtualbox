@@ -1,0 +1,163 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VPoxSDL (a simple frontend based on SDL).
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+if !defined(VPOX_WITH_HARDENING) || "$(KBUILD_TARGET)" != "darwin" # No hardened VPoxSDL on darwin.
+
+
+ifdef VPOX_WITH_HARDENING
+ #
+ # Hardened VPoxSDL
+ #
+ PROGRAMS += VPoxSDLHardened
+ VPoxSDLHardened_TEMPLATE = VPOXR3HARDENEDEXE
+ VPoxSDLHardened_SOURCES = VPoxSDLHardened.cpp
+ VPoxSDLHardened_NAME = VPoxSDL
+ $(call VPOX_SET_VER_INFO_EXE,VPoxSDLHardened,VirtualPox Pure SDL Frontend,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+endif
+
+
+#
+# VPoxSDL
+#
+ifdef VPOX_WITH_HARDENING
+ DLLS += VPoxSDL
+else
+ PROGRAMS += VPoxSDL
+endif
+VPoxSDL_TEMPLATE  := $(if $(VPOX_WITH_HARDENING),VPOXMAINCLIENTDLL,VPOXMAINCLIENTEXE)
+VPoxSDL_SDKS       = LIBSDL
+VPoxSDL_SOURCES    = \
+	VPoxSDL.cpp \
+	Framebuffer.cpp \
+	Helper.cpp \
+	../Common/PasswordInput.cpp
+VPoxSDL_SOURCES.darwin = \
+	VPoxSDLMain-darwin.m \
+	Framebuffer-darwin.m
+
+VPoxSDL_DEFS       =
+ifdef VPOX_WITH_SDL2
+ VPoxSDL_DEFS     += VPOX_WITH_SDL2
+endif
+if !defined(VPOX_WITH_SDL2)
+ ifdef VPOX_WITH_SECURELABEL
+  VPoxSDL_DEFS    += VPOX_SECURELABEL
+ endif
+endif
+VPoxSDL_DEFS.freebsd = VPOXSDL_WITH_X11
+VPoxSDL_DEFS.linux = _GNU_SOURCE VPOXSDL_WITH_X11
+VPoxSDL_DEFS.solaris = VPOXSDL_WITH_X11
+ifdef VPOX_OPENGL
+ #VPoxSDL_DEFS.linux += VPOX_OPENGL
+endif
+VPoxSDL_DEFS.win.x86 = _WIN32_WINNT=0x0500
+VPoxSDL_DEFS.win.amd64 = _WIN32_WINNT=0x0510
+
+VPoxSDL_INCS = \
+	$(VPoxSDL_0_OUTDIR) \
+	$(VPOX_GRAPHICS_INCS) \
+	../Common
+ifeq ($(filter-out freebsd linux netbsd openbsd solaris,$(KBUILD_TARGET)),) # X11
+VPoxSDL_INCS += \
+	$(VPOX_XCURSOR_INCS)
+endif
+ifneq ($(filter-out win solaris,$(KBUILD_TARGET)),)
+
+VPoxSDL_LIBS = \
+	$(LIB_SDK_LIBSDL_SDLMAIN)
+endif
+ifeq ($(filter-out freebsd linux netbsd openbsd solaris,$(KBUILD_TARGET)),) # X11
+VPoxSDL_LIBS += \
+	$(PATH_STAGE_DLL)/VPoxKeyboard$(VPOX_SUFF_DLL) \
+	$(VPOX_XCURSOR_LIBS) \
+	X11
+VPoxSDL_LIBPATH = \
+	$(VPOX_LIBPATH_X11)
+endif
+ifdef VPOX_OPENGL
+ #VPoxSDL_LIBS.linux += GL
+endif
+
+VPoxSDL_LDFLAGS.darwin = \
+	-framework Foundation -framework AppKit
+
+VPoxSDL_CLEAN = $(VPoxSDL_0_OUTDIR)/Ico64x01.h
+VPoxSDL_INTERMEDIATES = $(VPoxSDL_0_OUTDIR)/Ico64x01.h
+
+
+# Convert the pnm-file to a byte array.
+$$(VPoxSDL_0_OUTDIR)/Ico64x01.h: $(PATH_ROOT)/src/VPox/Frontends/VPoxSDL/ico64x01.pnm $(VPOX_BIN2C) | $$(dir $$@)
+	$(call MSG_TOOL,bin2c,VPoxSDL,$<,$@)
+	$(QUIET)$(VPOX_BIN2C) Ico64x01 $< $@
+
+ifdef VPOX_WITH_HARDENING
+$(call VPOX_SET_VER_INFO_DLL,VPoxSDL,VirtualPox Pure SDL Frontend,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+else
+$(call VPOX_SET_VER_INFO_EXE,VPoxSDL,VirtualPox Pure SDL Frontend,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+endif
+
+
+#
+# tstSDL
+#
+PROGRAMS += tstSDL
+tstSDL_TEMPLATE = VPOXR3NPEXE
+tstSDL_SDKS = LIBSDL
+tstSDL_INST = $(INST_TESTCASE)
+tstSDL_SOURCES = \
+	VPoxSDLTest.cpp
+tstSDL_SOURCES.darwin = \
+	VPoxSDLMain-darwin.m
+tstSDL_DEFS = IN_RING3 IN_RT_R3 _GNU_SOURCE
+tstSDL_DEFS.win.x86 = _WIN32_WINNT=0x0500
+ifdef VPOX_OPENGL
+tstSDL_DEFS.linux = VPOX_OPENGL
+endif
+
+tstSDL_LIBS = \
+	$(LIB_RUNTIME)
+ifneq ($(filter-out win solaris,$(KBUILD_TARGET)),)
+tstSDL_LIBS += \
+	$(LIB_SDK_LIBSDL_SDLMAIN)
+endif
+
+ifdef VPOX_OPENGL
+tstSDL_LIBS.linux += GL
+endif
+ifeq ($(filter-out freebsd linux netbsd openbsd solaris,$(KBUILD_TARGET)),) # X11
+tstSDL_LIBPATH = \
+	$(VPOX_LIBPATH_X11)
+endif
+
+tstSDL_LDFLAGS.darwin = \
+	-framework Foundation -framework AppKit
+
+## @todo What was this stuff doing here? The exception config is saying two different things, and why just -O for release builds?
+#tstSDL_CXXFLAGS.win = \
+#	-EHsc
+#tstSDL_CXXFLAGS.linux = \
+#	-DNDEBUG -DTRIMMED -O -Wall -fno-rtti -fno-exceptions \
+#	-Wno-non-virtual-dtor -Wno-long-long -fshort-wchar -pthread -pipe
+# Is this what's intended? Why -fshort-wchar?
+tstSDL_DEFS.linux = NDEBUG TRIMMED
+tstSDL_CXXFLAGS.linux = -O -Wall -Wno-non-virtual-dtor -Wno-long-long -fshort-wchar
+
+
+endif # !VPOX_WITH_HARDENING || "$(KBUILD_TARGET)" != "darwin"
+include $(FILE_KBUILD_SUB_FOOTER)

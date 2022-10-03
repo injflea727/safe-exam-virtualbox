@@ -1,0 +1,201 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Cross Platform Guest Addition Services.
+#
+
+#
+# Copyright (C) 2007-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Incldue testcases.
+#
+include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+
+#
+# Target lists.
+#
+PROGRAMS += VPoxService
+
+# Enable the timesync service within VPoxService.
+VPOX_WITH_VPOXSERVICE_TIMESYNC      := 1
+
+# Busybox-like toolbox, embedded into VPoxService.
+VPOX_WITH_VPOXSERVICE_TOOLBOX       := 1
+
+# VM-management functions, like memory ballooning and statistics.
+VPOX_WITH_VPOXSERVICE_MANAGEMENT    := 1
+
+if1of ($(KBUILD_TARGET), linux)
+ # CPU hotplugging.
+VPOX_WITH_VPOXSERVICE_CPUHOTPLUG    := 1
+endif
+
+# Page Sharing (Page Fusion).
+if1of ($(KBUILD_TARGET), win)
+VPOX_WITH_VPOXSERVICE_PAGE_SHARING  := 1
+endif
+
+ifdef VPOX_WITH_GUEST_PROPS
+VPOX_WITH_VPOXSERVICE_VMINFO        := 1
+endif
+
+# Guest Control.
+ifdef VPOX_WITH_GUEST_CONTROL
+VPOX_WITH_VPOXSERVICE_CONTROL       := 1
+endif
+
+# Shared Clipboard.
+ifdef VPOX_WITH_SHARED_CLIPBOARD
+VPOX_WITH_VPOXSERVICE_CLIPBOARD     := 1
+endif
+
+#
+# VPoxService
+#
+if "$(KBUILD_TARGET)" == "win" || defined(VPOX_WITH_MASOCHISTIC_WARNINGS) ## @todo use VPoxGuestR3Exe everywhere
+VPoxService_TEMPLATE      = VPoxGuestR3Exe
+else
+VPoxService_TEMPLATE      = NewVPoxGuestR3Exe
+endif
+
+# Define features to be activate.
+VPoxService_DEFS         += \
+	$(if $(VPOX_WITH_VPOXSERVICE_CONTROL),VPOX_WITH_VPOXSERVICE_CONTROL,) \
+	$(if $(VPOX_WITH_VPOXSERVICE_CPUHOTPLUG),VPOX_WITH_VPOXSERVICE_CPUHOTPLUG,) \
+	$(if $(VPOX_WITH_VPOXSERVICE_MANAGEMENT),VPOX_WITH_VPOXSERVICE_MANAGEMENT,) \
+	$(if $(VPOX_WITH_VPOXSERVICE_PAGE_SHARING),VPOX_WITH_VPOXSERVICE_PAGE_SHARING,) \
+	$(if $(VPOX_WITH_VPOXSERVICE_TIMESYNC),VPOX_WITH_VPOXSERVICE_TIMESYNC,) \
+	$(if $(VPOX_WITH_VPOXSERVICE_TOOLBOX),VPOX_WITH_VPOXSERVICE_TOOLBOX,) \
+	$(if $(VPOX_WITH_VPOXSERVICE_VMINFO),VPOX_WITH_VPOXSERVICE_VMINFO,)
+
+# Import global defines.
+VPoxService_DEFS         += \
+	$(if $(VPOX_WITH_DBUS),VPOX_WITH_DBUS,) \
+	$(if $(VPOX_WITH_GUEST_CONTROL),VPOX_WITH_GUEST_CONTROL,) \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS,) \
+	$(if $(VPOX_WITH_HGCM),VPOX_WITH_HGCM,)
+
+VPoxService_DEFS         += \
+	VPOX_BUILD_TARGET=\"$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)\"
+VPoxService_DEFS.win     += _WIN32_WINNT=0x0501
+VPoxService_DEFS.os2      = VPOX_WITH_HGCM
+
+VPoxService_SOURCES       = \
+	VPoxService.cpp \
+	VPoxServiceUtils.cpp \
+	VPoxServiceStats.cpp
+
+ifdef VPOX_WITH_VPOXSERVICE_TIMESYNC
+VPoxService_SOURCES      += \
+	VPoxServiceTimeSync.cpp
+endif
+
+ifdef VPOX_WITH_VPOXSERVICE_CLIPBOARD
+ VPoxService_DEFS.os2    += VPOX_WITH_VPOXSERVICE_CLIPBOARD VPOX_WITH_SHARED_CLIPBOARD
+ VPoxService_SOURCES.os2 += \
+	VPoxServiceClipboard-os2.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-common.cpp
+endif
+
+ifdef VPOX_WITH_VPOXSERVICE_TOOLBOX
+VPoxService_SOURCES      += \
+	VPoxServiceToolBox.cpp
+endif
+
+ifdef VPOX_WITH_VPOXSERVICE_CONTROL
+VPoxService_SOURCES      += \
+	VPoxServiceControl.cpp  \
+	VPoxServiceControlProcess.cpp \
+	VPoxServiceControlSession.cpp
+endif
+
+ifdef VPOX_WITH_VPOXSERVICE_MANAGEMENT
+VPoxService_SOURCES      += \
+	VPoxServiceBalloon.cpp
+ ifdef VPOX_WITH_MEMBALLOON
+VPoxService_DEFS         += VPOX_WITH_MEMBALLOON
+ endif
+endif
+
+if1of ($(KBUILD_TARGET), win)
+VPoxService_SOURCES      += \
+ 	VPoxServicePageSharing.cpp
+endif
+
+ifdef VPOX_WITH_VPOXSERVICE_VMINFO
+VPoxService_SOURCES.win  += \
+ 	VPoxServiceVMInfo-win.cpp
+VPoxService_SOURCES      += \
+	VPoxServiceVMInfo.cpp \
+	VPoxServicePropCache.cpp
+endif
+
+ifdef VPOX_WITH_VPOXSERVICE_CPUHOTPLUG
+VPoxService_SOURCES      += \
+	VPoxServiceCpuHotPlug.cpp
+endif
+
+ifdef VPOX_WITH_SHARED_FOLDERS
+ if1of ($(KBUILD_TARGET), linux os2 solaris win)
+VPoxService_DEFS         += VPOX_WITH_SHARED_FOLDERS
+VPoxService_SOURCES      += \
+	VPoxServiceAutoMount.cpp
+VPoxService_SOURCES.linux += \
+	../../linux/sharedfolders/vbsfmount.c
+VPoxService_LIBS.win     += \
+	Mpr.Lib
+ endif
+endif
+
+VPoxService_SOURCES.win  += \
+	VPoxService-win.cpp
+
+VPoxService_SOURCES.os2  += \
+	VPoxService-os2.def
+
+VPoxService_LDFLAGS.darwin = -framework IOKit
+
+VPoxService_LIBS         += \
+	$(VPOX_LIB_IPRT_GUEST_R3) \
+	$(VPOX_LIB_VBGL_R3) \
+	$(VPOX_LIB_IPRT_GUEST_R3)       # (The joy of unix linkers.)
+ifdef VPOX_WITH_DBUS
+ if1of ($(KBUILD_TARGET), linux solaris) # FreeBSD?
+VPoxService_LIBS         += \
+	dl
+ endif
+endif
+VPoxService_LIBS.netbsd  += crypt
+ifdef VPOX_WITH_GUEST_PROPS
+VPoxService_LIBS.win     += \
+	Secur32.lib \
+	WtsApi32.lib \
+	Psapi.lib
+VPoxService_LIBS.solaris += \
+	nsl \
+	kstat \
+	contract
+endif
+
+VPoxServiceVMInfo.cpp_DEFS = VPOX_SVN_REV=$(VPOX_SVN_REV)
+VPoxServiceVMInfo.cpp_DEPS = $(VPOX_SVN_REV_KMK)
+
+VPoxService_USES.win += vpoximportchecker
+VPoxService_VPOX_IMPORT_CHECKER.win.x86 = nt31
+VPoxService_VPOX_IMPORT_CHECKER.win.amd64 = xp64
+
+$(call VPOX_SET_VER_INFO_EXE,VPoxService,VirtualPox Guest Additions Service,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+
+include $(FILE_KBUILD_SUB_FOOTER)

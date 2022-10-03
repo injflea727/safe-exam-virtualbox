@@ -1,0 +1,215 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VPoxManage (the cli frontend).
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+include $(PATH_ROOT)/doc/manual/Config.kmk
+
+
+VPOX_COMMON_VPOXMANAGE_DEFS = \
+ 	$(if $(VPOX_WITH_AHCI), VPOX_WITH_AHCI) \
+ 	$(if $(VPOX_WITH_COPYTOGUEST),VPOX_WITH_COPYTOGUEST) \
+ 	$(if $(VPOX_WITH_E1000),VPOX_WITH_E1000) \
+ 	$(if $(VPOX_WITH_GUEST_CONTROL),VPOX_WITH_GUEST_CONTROL) \
+ 	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS) \
+ 	$(if $(VPOX_WITH_HEADLESS), VPOX_WITH_HEADLESS) \
+ 	$(if $(VPOX_WITH_HGCM), VPOX_WITH_HGCM) \
+ 	$(if $(VPOX_WITH_HOSTNETIF_API), VPOX_WITH_HOSTNETIF_API) \
+ 	$(if $(VPOX_WITH_NETFLT), VPOX_WITH_NETFLT) \
+ 	$(if $(VPOX_WITH_CLOUD_NET), VPOX_WITH_CLOUD_NET) \
+ 	$(if $(VPOX_WITH_LIBCURL), VPOX_WITH_PROXY_INFO) \
+	$(if $(VPOX_WITH_AUDIO_OSS), VPOX_WITH_AUDIO_OSS) \
+	$(if $(VPOX_WITH_AUDIO_ALSA), VPOX_WITH_AUDIO_ALSA) \
+ 	$(if $(VPOX_WITH_AUDIO_PULSE),VPOX_WITH_AUDIO_PULSE) \
+ 	$(if $(VPOX_WITH_SCSI), VPOX_WITH_SCSI) \
+ 	$(if $(VPOX_WITH_VPOXSDL), VPOX_WITH_VPOXSDL) \
+ 	$(if $(VPOX_WITH_VIDEOHWACCEL), VPOX_WITH_VIDEOHWACCEL) \
+ 	$(if $(VPOX_WITH_VIRTIO),VPOX_WITH_VIRTIO) \
+ 	$(if $(VPOX_WITH_USB_CARDREADER),VPOX_WITH_USB_CARDREADER) \
+ 	$(if $(VPOX_WITH_PCI_PASSTHROUGH),VPOX_WITH_PCI_PASSTHROUGH) \
+ 	$(if $(VPOX_WITH_RECORDING),VPOX_WITH_RECORDING) \
+	$(if $(VPOX_WITH_AUDIO_RECORDING),VPOX_WITH_AUDIO_RECORDING) \
+ 	$(if $(VPOX_WITH_NAT_SERVICE),VPOX_WITH_NAT_SERVICE) \
+ 	$(if $(VPOX_WITH_SHARED_CLIPBOARD),VPOX_WITH_SHARED_CLIPBOARD) \
+ 	$(if $(VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS),VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS) \
+ 	$(if $(VPOX_WITH_VMSVGA),VPOX_WITH_VMSVGA)
+
+
+ifdef VPOX_WITH_DOCS
+ PROGRAMS += VPoxManageHelp
+endif
+VPoxManageHelp_TEMPLATE   = VPoxAdvBldProg
+VPoxManageHelp_DEFS      += \
+	VPOX_ONLY_DOCS \
+       $(VPOX_COMMON_VPOXMANAGE_DEFS)
+VPoxManageHelp_SOURCES    = \
+	VPoxManage.cpp \
+	VPoxManageHelp.cpp \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPoxManageGuestProp.cpp) \
+	$(if $(VPOX_WITH_GUEST_CONTROL),VPoxManageGuestCtrl.cpp)
+
+ifndef VPOX_ONLY_DOCS
+ PROGRAMS += VPoxManage
+ VPoxManage_TEMPLATE   = VPOXMAINCLIENTEXE
+ VPoxManage_DEFS      += $(VPOX_COMMON_VPOXMANAGE_DEFS)
+ VPoxManage_DEFS.win   = _WIN32_WINNT=0x0500
+ VPoxManage_INCS = \
+ 	$(VPoxManage_0_OUTDIR) \
+ 	../Common
+ VPoxManage_INTERMEDIATES = \
+ 	$(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.h
+ VPoxManage_SOURCES    = \
+ 	VPoxManage.cpp \
+ 	VPoxInternalManage.cpp \
+ 	VPoxManageAppliance.cpp \
+ 	VPoxManageBandwidthControl.cpp \
+ 	VPoxManageControlVM.cpp \
+ 	VPoxManageDebugVM.cpp \
+ 	VPoxManageDHCPServer.cpp \
+ 	VPoxManageDisk.cpp \
+ 	$(if $(VPOX_WITH_GUEST_CONTROL),VPoxManageGuestCtrl.cpp) \
+ 	$(if $(VPOX_WITH_GUEST_CONTROL),VPoxManageGuestCtrlListener.cpp) \
+ 	$(if $(VPOX_WITH_GUEST_PROPS),VPoxManageGuestProp.cpp) \
+ 	VPoxManageHelp.cpp \
+	$(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.cpp \
+ 	VPoxManageHostonly.cpp \
+ 	VPoxManageInfo.cpp \
+ 	VPoxManageList.cpp \
+ 	VPoxManageMetrics.cpp \
+ 	VPoxManageMisc.cpp \
+ 	VPoxManageModifyVM.cpp \
+ 	VPoxManageSnapshot.cpp \
+ 	VPoxManageStorageController.cpp \
+ 	VPoxManageUSB.cpp \
+ 	$(if $(VPOX_WITH_NAT_SERVICE),VPoxManageNATNetwork.cpp,) \
+ 	$(if $(VPOX_WITH_NAT_SERVICE),../../NetworkServices/NetLib/VPoxNetPortForwardString.cpp,) \
+ 	VPoxManageCloud.cpp \
+ 	../Common/PasswordInput.cpp
+ VPoxManage_SOURCES.win = \
+ 	VPoxManage.rc
+ VPoxManage_LIBS      += $(LIB_DDU)
+
+ # VPoxNetPortForwardString.h
+ VPoxManageNATNetwork.cpp_INCS += ../../NetworkServices/NetLib/
+
+endif # VPOX_ONLY_DOCS
+
+ifneq ($(KBUILD_TARGET),win)
+ # Workaround for buggy gcc-4.3 compilers, see
+ #
+ #   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=36474
+ #
+ # Some later revisions of version 4.3.1 are known to work so we assume
+ # that version 4.3.2 or later has this bug definitely fixed.
+ VPoxManage_CXXFLAGS.release += \
+	$(if $(VPOX_GCC_VERSION_CXX),$(if-expr $(VPOX_GCC_VERSION_CXX) < 40300 || $(VPOX_GCC_VERSION_CXX) > 40301,,--param max-fields-for-field-sensitive=0),)
+ VPoxManageHelp_CXXFLAGS.release = $(VPoxManage_CXXFLAGS.release)
+endif
+
+
+#
+# VPoxManage built-in help from XML refentry in doc/manual/en_US/.
+#
+$(call KB_FN_DO_PASS0_ON_TARGET,VPoxManage)
+
+VPoxManage_CLEAN += \
+	$(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.cpp \
+	$(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.cpp.ts \
+	$(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.h \
+	$(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.h.ts \
+       $(addprefix $(VPoxManage_0_OUTDIR)/,$(filter man_VPoxManage-%,$(VPOX_MANUAL_XML_REFENTRY_FILES)))
+
+
+
+# Preprocess the xml files, applying remarks.
+$(foreach file,$(filter man_VPoxManage-%,$(VPOX_MANUAL_XML_REFENTRY_FILES)) \
+, $(evalcall2 def_vpox_refentry_preprocess_for_manpage,$(VPoxManage_0_OUTDIR),$(file),$(VPOX_PATH_MANUAL_SRC)/en_US/$(file),replace-xrefs))
+
+
+# Generate the .cpp file.
+$(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.cpp.ts \
++| $(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.cpp: \
+		$(VPOX_DOCBOOK_REFENTRY_TO_C_HELP) \
+		$(addprefix $(VPoxManage_0_OUTDIR)/,$(filter man_VPoxManage-%,$(VPOX_MANUAL_XML_REFENTRY_FILES))) \
+		$(VPOX_XML_CATALOG) $(VPOX_XML_CATALOG_DOCBOOK) $(MAKEFILE) | $$(dir $$@)
+	$(call MSG_TOOL,xsltproc $(notdir $(firstword $(filter %.xsl,$^))),,$(filter %.xml,$^),$(patsubst %.ts,%,$@))
+	$(QUIET)$(APPEND) -tn "$@" \
+		'/* Autogenerated by $<, do not edit! */' \
+		'' \
+		'#include "VPoxManageBuiltInHelp.h"' \
+		''
+	$(foreach refentry,$(filter %.xml,$^) \
+	,$(NLTAB)$(QUIET)$(call VPOX_XSLTPROC_WITH_CAT, -a+to "$@") $< $(refentry))
+	$(QUIET)$(APPEND) -n "$@" \
+       	'' \
+		'PCRTMSGREFENTRY     g_apHelpEntries[] = ' \
+		'{'
+	$(foreach refentry,$(filter %.xml,$^) \
+		,$(NLTAB)$(QUIET)$(APPEND) -n "$@" \
+		'    &g_$(subst -,_,$(tolower $(patsubst man_%,%,$(notdir $(basename $(refentry)))))), ')
+	$(QUIET)$(APPEND) -n "$@" \
+		'};' \
+		'const uint32_t g_cHelpEntries = RT_ELEMENTS(g_apHelpEntries);' \
+               ''
+	$(QUIET)$(CP) --changed -- "$@" "$(patsubst %.ts,%,$@)"
+# The above APPEND stuff trigger some kind of problem on some boxes when not split up...
+# update: Fixed in SVN (strcpy -> memmove in new_job(), job.c - r2591). Just need to rebuild all platforms.
+
+
+$(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.h.ts \
++| $(VPoxManage_0_OUTDIR)/VPoxManageBuiltInHelp.h: \
+		$(VPOX_DOCBOOK_REFENTRY_TO_H_HELP) \
+		$(addprefix $(VPoxManage_0_OUTDIR)/,$(filter man_VPoxManage-%,$(VPOX_MANUAL_XML_REFENTRY_FILES))) \
+		$(VPOX_XML_CATALOG) $(VPOX_XML_CATALOG_DOCBOOK) $(MAKEFILE) | $$(dir $$@)
+	$(call MSG_TOOL,xsltproc $(notdir $(firstword $(filter %.xsl,$^))),,$(filter %.xml,$^),$(patsubst %.ts,%,$@))
+	$(QUIET)$(APPEND) -tn "$@" \
+		'/* Autogenerated by $<, do not edit! */' \
+               '' \
+               '#ifndef ___VPoxManageBuiltInHelp_h___' \
+               '#define ___VPoxManageBuiltInHelp_h___' \
+               '' \
+               '#include <iprt/message.h>' \
+               '' \
+               'RT_C_DECLS_BEGIN' \
+               '' \
+               'typedef enum HELP_CMD_VPOXMANAGE' \
+               '{' \
+               '    HELP_CMD_VPOXMANAGE_INVALID = 0,'
+	$(foreach refentry,$(filter %.xml,$^) \
+	,$(NLTAB)$(QUIET)$(call VPOX_XSLTPROC_WITH_CAT, -a+to "$@") \
+		--stringparam 'g_sMode' 'cmd' $< $(refentry))
+	$(QUIET)$(APPEND) -n "$@" \
+		'    HELP_CMD_VPOXMANAGE_END' \
+		'} HELP_CMD_VPOXMANAGE;'
+	$(foreach refentry,$(filter %.xml,$^) \
+	,$(NLTAB)$(QUIET)$(call VPOX_XSLTPROC_WITH_CAT, -a+to "$@") \
+		--stringparam 'g_sMode' 'subcmd' $< $(refentry))
+	$(QUIET)$(APPEND) -n "$@" \
+		'' \
+		'extern PCRTMSGREFENTRY g_apHelpEntries[];' \
+		'extern const uint32_t  g_cHelpEntries;' \
+		'' \
+               'RT_C_DECLS_END' \
+		'' \
+		'#endif' \
+               ''
+	$(QUIET)$(CP) --changed -- "$@" "$(patsubst %.ts,%,$@)"
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

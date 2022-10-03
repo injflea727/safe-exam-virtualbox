@@ -1,0 +1,41 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Host Channel Service.
+#
+
+#
+# Copyright (C) 2012-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# The service DLL.
+#
+DLLS += VPoxHostChannel
+VPoxHostChannel_TEMPLATE  = VPOXR3
+VPoxHostChannel_DEFS      = VPOX_WITH_HGCM
+VPoxHostChannel_INCS.win  = \
+	$(VPOX_PATH_SDK)
+
+VPoxHostChannel_SOURCES = \
+	VPoxHostChannelSvc.cpp \
+	HostChannel.cpp
+
+VPoxHostChannel_SOURCES.win = \
+	VPoxHostChannelSvc.rc
+
+VPoxHostChannel_LIBS = \
+	$(LIB_VMM) \
+	$(LIB_RUNTIME)
+
+include $(FILE_KBUILD_SUB_FOOTER)

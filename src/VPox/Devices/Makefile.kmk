@@ -1,0 +1,1587 @@
+# $Id: Makefile.kmk $
+## @file
+# Top-level sub-makefile for the devices, drivers and services.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Make sure our Config.kmk is included.
+ifndef VPOX_DEVICES_CONFIG_KMK_INCLUDED
+ include $(PATH_SUB_CURRENT)/Config.kmk
+endif
+
+# Include sub-makefiles.
+if1of ($(KBUILD_TARGET_ARCH), $(VPOX_SUPPORTED_HOST_ARCHS))
+ include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/Audio/testcase/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/Input/testcase/Makefile.kmk
+ ifdef VPOX_WITH_TESTCASES
+  include $(PATH_SUB_CURRENT)/Samples/Makefile.kmk
+ endif
+ if defined(VPOX_WITH_INTEL_PXE) || defined(VPOX_ONLY_EXTPACKS)
+  include $(PATH_SUB_CURRENT)/PC/PXE/Makefile.kmk
+ else if defined(VPOX_WITH_PXE_ROM)
+  if !defined(VPOX_WITHOUT_IPXE)
+   include $(PATH_SUB_CURRENT)/PC/ipxe/Makefile.kmk
+  endif
+ endif
+endif
+if !defined(VPOX_ONLY_EXTPACKS)
+ if1of ($(KBUILD_TARGET_ARCH), $(VPOX_SUPPORTED_HOST_ARCHS))
+  include $(PATH_SUB_CURRENT)/BiosCommonCode/Makefile.kmk
+  include $(PATH_SUB_CURRENT)/PC/BIOS/Makefile.kmk
+  include $(PATH_SUB_CURRENT)/Graphics/BIOS/Makefile.kmk
+ endif
+
+ #
+ # Main targets.
+ #
+ if1of ($(KBUILD_TARGET_ARCH), $(VPOX_SUPPORTED_HOST_ARCHS))
+  LIBRARIES += ServicesR0
+  DLLS      += VPoxDDU VPoxDD VPoxDD2
+  $(if-expr defined(VPOX_WITH_VPOXR0_AS_DLL),DLLS,SYSMODS) += VPoxDDR0
+  ifdef VPOX_WITH_RAW_MODE
+   SYSMODS   += VPoxDDRC
+  endif
+ else
+  DLLS      += VPoxDDU
+ endif
+
+
+ #
+ # VPoxDDU (shared object)
+ #
+ VPoxDDU_TEMPLATE         = VPoxR3DllWarnNoPic
+ VPoxDDU_NAME             = $(basename $(notdir $(LIB_DDU)))
+ VPoxDDU_INST.darwin      = $(INST_DLL) $(INST_TESTCASE)
+ VPoxDDU_DEFS             = IN_VPOXDDU
+ if defined(VPOX_WITH_VUSB) && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+  VPoxDDU_DEFS           += VPOX_WITH_VUSB
+ endif
+ if defined(VPOX_WITH_USB) && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+  VPoxDDU_DEFS           += VPOX_WITH_USB IN_USBLIB
+  VPoxDDU_SDKS.win        = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK)
+  if defined(VPOX_WITH_EHCI_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+   VPoxDDU_DEFS          += VPOX_WITH_EHCI_IMPL
+  endif
+  if defined(VPOX_WITH_XHCI_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+   VPoxDDU_DEFS          += VPOX_WITH_XHCI_IMPL
+  endif
+ else
+  VPoxDDU_SDKS.win        = ReorderCompilerIncs $(VPOX_WINPSDK)
+ endif
+ VPoxDDU_SOURCES          = \
+ 	Storage/VSCSI/VSCSIDevice.cpp \
+ 	Storage/VSCSI/VSCSILun.cpp \
+ 	Storage/VSCSI/VSCSILunSbc.cpp \
+ 	Storage/VSCSI/VSCSILunMmc.cpp \
+ 	Storage/VSCSI/VSCSISense.cpp \
+ 	Storage/VSCSI/VSCSIIoReq.cpp \
+ 	Storage/VSCSI/VSCSIVpdPagePool.cpp \
+ 	build/VPoxDDUDeps.cpp
+
+ ifdef VPOX_WITH_VSCSI_SSC
+  VPoxDDU_SOURCES        += Storage/VSCSI/VSCSILunSsc.cpp
+  VPoxDDU_DEFS		 += VPOX_WITH_VSCSI_SSC
+ endif
+ VPoxDDU_LIBS             = \
+ 	$(LIB_RUNTIME) \
+ 	$(PATH_STAGE_LIB)/StorageLib$(VPOX_SUFF_LIB)
+ if defined(VPOX_WITH_USB) && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+  VPoxDDU_LIBS           += \
+ 	$(PATH_STAGE_LIB)/USBLib$(VPOX_SUFF_LIB)
+  VPoxDDU_LIBS.win       += \
+ 	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib
+ endif
+ VPoxDDU_LDFLAGS.darwin   = -install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxDDU.dylib
+ if defined(VPOX_WITH_USB) && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+  VPoxDDU_LDFLAGS.darwin += -framework IOKit
+ endif
+
+ VPoxDDU_LDFLAGS.linux    = $(VPOX_GCC_NO_UNDEFINED)
+ $(call VPOX_SET_VER_INFO_DLL,VPoxDDU,VirtualPox VMM Devices and Drivers Utilities)
+
+
+endif # VPOX_ONLY_EXTPACKS
+if !defined(VPOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""  # Goes on almost to the end of the file.
+
+
+ #
+ # VPoxDD (shared object)
+ #
+ VPoxDD_TEMPLATE         = VPoxR3DllWarnNoPic
+ VPoxDD_SDKS.win         = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ Storage/DrvHostDVD.cpp_SDKS.win = ReorderCompilerIncs $(VPOX_WINDDK)
+ VPoxDD_INCS             = \
+ 	build \
+ 	Network/slirp \
+ 	$(VPOX_GRAPHICS_INCS)
+ VPoxDD_DEFS             = \
+ 	VPOX_HGCM_HOST_CODE \
+ 	$(if $(VPOX_WITH_HGCM),VPOX_WITH_HGCM,) \
+ 	$(if $(VPOX_BIOS_DMI_FALLBACK),VPOX_BIOS_DMI_FALLBACK,) \
+ 	VPOX_WITH_DMI_CHASSIS \
+ 	VPOX_WITH_DMI_OEMSTRINGS \
+	$(if $(VPOX_WITH_NEW_LPC_DEVICE),VPOX_WITH_NEW_LPC_DEVICE,)
+ VPoxDD_DEFS.win         = _WIN32_WINNT=0x0510
+ ifeq ($(KBUILD_TARGET_ARCH),x86)
+  VPoxDD_DEFS.darwin     = VPOX_WITH_2X_4GB_ADDR_SPACE
+ endif
+ VPoxDD_SOURCES          = \
+ 	build/VPoxDD.cpp \
+	\
+ 	Input/DevPS2.cpp \
+ 	Input/DevPS2K.cpp \
+ 	Input/DevPS2M.cpp \
+ 	Input/UsbKbd.cpp \
+ 	Input/UsbMouse.cpp \
+ 	Bus/DevPCI.cpp \
+ 	Bus/DevPciIch9.cpp \
+ 	Bus/MsiCommon.cpp \
+ 	Bus/MsixCommon.cpp \
+	EFI/DevSmc.cpp \
+	EFI/DevFlash.cpp \
+	EFI/FlashCore.cpp \
+ 	Graphics/DevVGA.cpp \
+ 	Storage/DevATA.cpp \
+ 	PC/DevPit-i8254.cpp \
+ 	PC/DevPIC.cpp \
+ 	PC/DevACPI.cpp \
+ 	PC/ACPI/VPoxAcpi.cpp \
+ 	PC/DevRTC.cpp \
+ 	PC/DevPcBios.cpp \
+ 	PC/DevFwCommon.cpp \
+ 	PC/DevPcArch.cpp \
+	$(if $(VPOX_WITH_NEW_LPC_DEVICE),PC/DevLpc-new.cpp,) \
+	GIMDev/GIMDev.cpp \
+	GIMDev/DrvUDP.cpp \
+ 	VMMDev/VMMDev.cpp \
+ 	$(if $(VPOX_WITH_HGCM),VMMDev/VMMDevHGCM.cpp,) \
+ 	VMMDev/VMMDevTesting.cpp \
+ 	Network/DevPCNet.cpp \
+ 	PC/DevDMA.cpp \
+ 	PC/DevHPET.cpp \
+ 	PC/DevIoApic.cpp \
+ 	Storage/DevFdc.cpp \
+ 	Parallel/DevParallel.cpp \
+	\
+ 	Input/DrvKeyboardQueue.cpp \
+ 	Input/DrvMouseQueue.cpp \
+ 	Network/DrvIntNet.cpp \
+ 	Network/DrvDedicatedNic.cpp \
+ 	PC/DrvACPI.cpp \
+ 	PC/DrvAcpiCpu.cpp \
+ 	Serial/DevSerial.cpp \
+ 	Serial/DevOxPcie958.cpp \
+ 	Serial/UartCore.cpp \
+ 	Serial/DrvChar.cpp \
+ 	Serial/DrvHostSerial.cpp \
+ 	Serial/DrvNamedPipe.cpp \
+ 	Serial/DrvTCP.cpp \
+ 	Serial/DrvRawFile.cpp \
+ 	Storage/Debug.cpp \
+ 	Storage/DrvVD.cpp \
+ 	Storage/ATAPIPassthrough.cpp \
+ 	Storage/IOBufMgmt.cpp \
+ 	Network/DrvNetSniffer.cpp \
+ 	Network/Pcap.cpp \
+ 	Trace/DrvIfsTrace.cpp \
+ 	Trace/DrvIfsTrace-serial.cpp
+ ifn1of ($(KBUILD_TARGET), os2)
+  VPoxDD_SOURCES += Storage/DrvHostBase.cpp
+ endif
+ ifn1of ($(KBUILD_TARGET), os2)
+  VPoxDD_SOURCES += Storage/DrvHostDVD.cpp
+ endif
+ ifn1of ($(KBUILD_TARGET), darwin freebsd os2 solaris)
+  VPoxDD_SOURCES += Storage/DrvHostFloppy.cpp
+ endif
+
+
+ ifn1of ($(KBUILD_TARGET), darwin)
+  VPoxDD_SOURCES += Storage/HBDMgmt-generic.cpp
+ endif
+
+ VPoxDD_SOURCES.darwin += \
+ 	Storage/HBDMgmt-darwin.cpp \
+ 	Storage/DrvHostBase-darwin.cpp
+
+ VPoxDD_SOURCES.freebsd += \
+ 	Storage/DrvHostBase-freebsd.cpp
+
+ VPoxDD_SOURCES.linux += \
+ 	Storage/DrvHostBase-linux.cpp
+
+ VPoxDD_SOURCES.solaris += \
+ 	Storage/DrvHostBase-solaris.cpp
+
+ VPoxDD_SOURCES.win += \
+ 	Storage/DrvHostBase-win.cpp
+
+ #VPoxDD_SOURCES.win += Storage/HBDMgmt-win.cpp #Disabled until remaining issues are sorted out
+
+ VPoxDD_LIBS             = # more later.
+ VPoxDD_LDFLAGS.darwin   = -install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxDD.dylib \
+ 	-framework CoreAudio \
+ 	-framework AudioUnit \
+ 	-framework AudioToolbox \
+ 	-framework IOKit \
+ 	-framework Carbon \
+ 	-framework DiskArbitration \
+ 	-framework SystemConfiguration \
+ 	-framework AVFoundation \
+ 	-framework Foundation
+ VPoxDD_LDFLAGS.linux    = $(VPOX_GCC_NO_UNDEFINED)
+
+ # --- Tracing bits. ---
+
+ ifdef VPOX_WITH_DTRACE_R3
+  VPoxDD_DEFS           += VPOX_WITH_DTRACE
+  VPoxDD_USES           += dtrace
+  VPoxDD_SOURCES        += build/VPoxDD.d
+ endif
+
+ # --- Graphics bits. ---
+
+ ifdef VPOXWDDM_TEST_UHGSMI
+  VPoxDD_DEFS           += VPOXWDDM_TEST_UHGSMI
+ endif
+ ifdef VPOXWDDM_WITH_VBVA
+  VPoxDD_DEFS           += VPOXWDDM_WITH_VBVA
+ endif
+ ifdef VPOX_WITH_VIDEOHWACCEL
+  VPoxDD_DEFS           += VPOX_WITH_VIDEOHWACCEL
+ endif
+
+ ifdef VPOX_WITH_HGSMI
+  VPoxDD_DEFS           += VPOX_WITH_HGSMI
+  VPoxDD_SOURCES        += \
+ 	Graphics/DevVGA_VBVA.cpp \
+ 	Graphics/HGSMI/HGSMIHost.cpp
+  VPoxDD_LIBS           += \
+ 	$(PATH_STAGE_LIB)/HGSMIHostR3Lib$(VPOX_SUFF_LIB)
+ endif
+
+ ifdef VPOX_WITH_WDDM
+  VPoxDD_DEFS           += VPOX_WITH_WDDM
+  VPoxDD_SOURCES        += \
+ 	Graphics/HGSMI/SHGSMIHost.cpp
+ endif
+
+ ifdef VPOX_WITH_VMSVGA
+  VPoxDD_DEFS           += VPOX_WITH_VMSVGA
+  VPoxDD_SOURCES        += Graphics/DevVGA-SVGA.cpp
+ endif
+ ifdef VPOX_WITH_VMSVGA3D
+  if1of ($(KBUILD_TARGET), linux win)
+# Dynamically load 3D library (opengl32, libGL).
+# This is a temporary solution. In future the 3D backend will be in a separate library.
+VPOX_WITH_VMSVGA3D_DYNAMIC_LOAD = 1
+  endif
+  VPoxDD_DEFS           += VPOX_WITH_VMSVGA3D
+  VPoxDD_SOURCES        += \
+  	Graphics/DevVGA-SVGA3d.cpp \
+  	Graphics/DevVGA-SVGA3d-hlp.cpp \
+  	Graphics/DevVGA-SVGA3d-info.cpp \
+  	Graphics/DevVGA-SVGA3d-shared.cpp \
+  	Graphics/DevVGA-SVGA3d-savedstate.cpp
+  if  "$(KBUILD_TARGET)" == "win" && !defined(VPOX_WITH_VMSVGA3D_USE_OPENGL)
+   VPoxDD_DEFS          += VMSVGA3D_DIRECT3D
+   VPoxDD_SOURCES       += \
+       Graphics/DevVGA-SVGA3d-win.cpp \
+       Graphics/DevVGA-SVGA3d-win-d3d9.cpp
+   VPoxDD_LIBS.win      += d3d9.lib $(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/delayimp.lib
+   VPoxDD_LDFLAGS.win   += /DELAYLOAD:d3d9.dll
+  else
+   VPoxDD_DEFS          += VMSVGA3D_OPENGL
+   VPoxDD_SOURCES       += \
+   	Graphics/DevVGA-SVGA3d-ogl.cpp \
+   	Graphics/DevVGA-SVGA3d-glHlp.cpp \
+   	$(VPoxDD_0_OUTDIR)/VPoxSVGA3DLazyLoad.asm
+   VPoxDD_SOURCES.darwin += \
+   	$(VPoxDD_0_OUTDIR)/VPoxSVGA3DObjCLazyLoad.asm
+   VPoxDD_CLEAN         += $(VPoxDD_0_OUTDIR)/VPoxSVGA3DLazyLoad.asm
+   $$(VPoxDD_0_OUTDIR)/VPoxSVGA3DLazyLoad.asm: $(PATH_SUB_CURRENT)/Graphics/VPoxSVGA3D.def $(VPOX_DEF_2_LAZY_LOAD) | $$(dir $$@)
+	$(call MSG_TOOL,VPoxDef2LazyLoad,VPoxDD,$(filter %.def, $^),$@)
+	$(QUIET)$(RM) -f -- "$@"
+	$(VPOX_DEF_2_LAZY_LOAD) --explicit-load-function --library VPoxSVGA3D --output "$@" $(filter %.def, $^)
+   $$(VPoxDD_0_OUTDIR)/VPoxSVGA3DObjCLazyLoad.asm: $(PATH_SUB_CURRENT)/Graphics/VPoxSVGA3DObjC.def $(VPOX_DEF_2_LAZY_LOAD) | $$(dir $$@)
+	$(call MSG_TOOL,VPoxDef2LazyLoad,VPoxDD,$(filter %.def, $^),$@)
+	$(QUIET)$(RM) -f -- "$@"
+	$(VPOX_DEF_2_LAZY_LOAD) --explicit-load-function --library VPoxSVGA3DObjC --output "$@" $(filter %.def, $^)
+
+   ifdef VPOX_WITH_VMSVGA3D_DYNAMIC_LOAD
+   VPoxDD_DEFS          += VMSVGA3D_DYNAMIC_LOAD
+   VPoxDD_SOURCES       += \
+   	Graphics/DevVGA-SVGA3d-glLdr.cpp
+   else
+   VPoxDD_LIBS.linux    += X11 GL
+   VPoxDD_LIBS.win      += $(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Opengl32.lib
+   endif
+   VPoxDD_LDFLAGS.darwin += -framework OpenGL
+   VPoxDD_DEFS.darwin    += VPOX_VMSVGA3D_DUAL_OPENGL_PROFILE
+   if 0 # Use the OpenGL 3.2 Core profile (see also VPoxSVGA3D_DEFS.darwin and VPoxSVGA3DObjC_DEFS.darwin).
+    VPoxDD_DEFS.darwin   += VPOX_VMSVGA3D_DEFAULT_OGL_PROFILE=3.2 VPOX_VMSVGA3D_OTHER_OGL_PROFILE=2.1
+   else
+    VPoxDD_DEFS.darwin   += VPOX_VMSVGA3D_DEFAULT_OGL_PROFILE=2.1 VPOX_VMSVGA3D_OTHER_OGL_PROFILE=3.2
+   endif
+  endif
+  if1of ($(VPOX_DEF_MACOSX_VERSION_MIN), 10.6 10.5 10.4)
+   Graphics/DevVGA-SVGA3d.cpp_CXXFLAGS.darwin            = -F$(VPOX_PATH_MACOSX_SDK_10_7)/System/Library/Frameworks/
+   Graphics/DevVGA-SVGA3d-info.cpp_CXXFLAGS.darwin       = -F$(VPOX_PATH_MACOSX_SDK_10_7)/System/Library/Frameworks/
+   Graphics/DevVGA-SVGA3d-shared.cpp_CXXFLAGS.darwin     = -F$(VPOX_PATH_MACOSX_SDK_10_7)/System/Library/Frameworks/
+   Graphics/DevVGA-SVGA3d-savedstate.cpp_CXXFLAGS.darwin = -F$(VPOX_PATH_MACOSX_SDK_10_7)/System/Library/Frameworks/
+   Graphics/DevVGA-SVGA3d-ogl.cpp_CXXFLAGS.darwin        = -F$(VPOX_PATH_MACOSX_SDK_10_7)/System/Library/Frameworks/
+  endif
+ endif
+
+ ifdef VPOX_WITH_VDMA
+  VPoxDD_DEFS           += VPOX_WITH_VDMA
+  VPoxDD_SOURCES        += \
+ 	Graphics/DevVGA_VDMA.cpp
+ endif
+
+ ifdef VPOX_WITH_PXE_ROM
+  VPoxDD_DEFS           += VPOX_WITH_PXE_ROM
+ endif
+
+ # --- USB bits. ---
+
+ ifdef VPOX_WITH_USB
+  VPoxDD_DEFS           += VPOX_WITH_USB
+  VPoxDD_SOURCES        += \
+  	USB/vrdp/USBProxyDevice-vrdp.cpp \
+  	USB/usbip/USBProxyDevice-usbip.cpp
+
+  VPoxDD_DEFS.darwin    += VUSB_HAVE_USBPROXY_DEVICE
+  VPoxDD_SOURCES.darwin += \
+ 	USB/USBProxyDevice.cpp \
+ 	USB/darwin/USBProxyDevice-darwin.cpp
+
+  VPoxDD_DEFS.linux     += \
+ 	VUSB_HAVE_USBPROXY_DEVICE \
+ 	$(if $(VPOX_WITH_LINUX_COMPILER_H),VPOX_WITH_LINUX_COMPILER_H,) \
+ 	$(if $(VPOX_USB_WITH_SYSFS),VPOX_USB_WITH_SYSFS,)
+  VPoxDD_SOURCES.linux  += \
+ 	USB/USBProxyDevice.cpp \
+ 	USB/linux/USBProxyDevice-linux.cpp
+
+  VPoxDD_DEFS.os2       += VUSB_HAVE_USBPROXY_DEVICE
+  VPoxDD_INCS.os2       += $(PATH_ROOT)/src/VPox/HostDrivers/VPoxUSB/os2
+  VPoxDD_SOURCES.os2    += \
+ 	USB/USBProxyDevice.cpp \
+ 	USB/os2/USBProxyDevice-os2.cpp
+
+  VPoxDD_DEFS.win       += VUSB_HAVE_USBPROXY_DEVICE
+  VPoxDD_SOURCES.win    += \
+ 	USB/USBProxyDevice.cpp \
+ 	USB/win/USBProxyDevice-win.cpp
+
+  VPoxDD_DEFS.solaris   += VUSB_HAVE_USBPROXY_DEVICE
+  VPoxDD_SOURCES.solaris+= \
+ 	USB/USBProxyDevice.cpp \
+ 	USB/solaris/USBProxyDevice-solaris.cpp
+
+  VPoxDD_DEFS.freebsd   += VUSB_HAVE_USBPROXY_DEVICE
+  VPoxDD_SOURCES.freebsd+= \
+ 	USB/USBProxyDevice.cpp \
+ 	USB/freebsd/USBProxyDevice-freebsd.cpp
+
+  ifdef VPOX_WITH_SCSI
+   VPoxDD_SOURCES       += \
+   	Storage/UsbMsd.cpp
+  endif
+
+  if defined(VPOX_WITH_EHCI_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+   VPoxDD_DEFS          += VPOX_WITH_EHCI_IMPL
+   VPoxDD_SOURCES       += \
+ 	USB/DevEHCI.cpp
+  endif
+
+  if defined(VPOX_WITH_XHCI_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+   VPoxDD_DEFS          += VPOX_WITH_XHCI_IMPL
+   VPoxDD_SOURCES       += \
+ 	USB/DevXHCI.cpp
+  endif
+
+  if defined(VPOX_WITH_USB_VIDEO_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+   if1of ($(KBUILD_TARGET), linux)
+    VPoxDD_DEFS          += VPOX_WITH_USB_VIDEO_IMPL
+    VPoxDD_SOURCES       += \
+	$(PATH_ROOT)/src/VPox/ExtPacks/Puel/UsbWebcam/UsbWebcam.cpp \
+	$(PATH_ROOT)/src/VPox/ExtPacks/Puel/UsbWebcam/UsbWebcamDesc.cpp \
+	$(PATH_ROOT)/src/VPox/ExtPacks/Puel/UsbWebcam/jpggen.cpp \
+	$(PATH_ROOT)/src/VPox/ExtPacks/Puel/UsbWebcam/DrvHostWebcam/DrvHostWebcam.cpp \
+	$(PATH_ROOT)/src/VPox/ExtPacks/Puel/UsbWebcam/DrvHostWebcam/JPEGEnc.cpp
+    $(PATH_ROOT)/src/VPox/ExtPacks/Puel/UsbWebcam/DrvHostWebcam/JPEGEnc.cpp_INCS = \
+	$(VPOX_JPEG_INCS)
+    VPoxDD_SOURCES.linux += \
+	$(PATH_ROOT)/src/VPox/ExtPacks/Puel/UsbWebcam/DrvHostWebcam/HostWebcam-v4l2.cpp
+    VPoxDD_LIBS += \
+	$(PATH_STAGE_LIB)/VPox-libjpeg$(VPOX_SUFF_LIB)
+   endif
+  endif
+
+ endif # VPOX_WITH_USB
+
+ ifdef VPOX_WITH_VUSB
+  VPoxDD_DEFS           += VPOX_WITH_VUSB
+  VPoxDD_SOURCES        += \
+ 	USB/DevOHCI.cpp \
+ 	USB/DrvVUSBRootHub.cpp \
+ 	USB/VUSBDevice.cpp \
+ 	USB/VUSBSniffer.cpp \
+ 	USB/VUSBSnifferPcapNg.cpp \
+ 	USB/VUSBSnifferUsbMon.cpp \
+ 	USB/VUSBSnifferVmx.cpp \
+ 	USB/VUSBUrb.cpp \
+ 	USB/VUSBUrbPool.cpp \
+ 	USB/VUSBUrbTrace.cpp
+ endif
+
+ # --- Networking bits. ---
+
+ ifdef VPOX_WITH_INIP
+  ifndef LWIP_SOURCES
+   include $(PATH_SUB_CURRENT)/Network/lwip-new/Config.kmk
+  endif
+  VPoxDD_DEFS           += VPOX_WITH_INIP
+  VPoxDD_SOURCES        += \
+  	Network/DevINIP.cpp \
+  	$(addprefix Network/lwip-new/,$(LWIP_SOURCES))
+  VPoxDD_INCS           += \
+  	Network \
+  	$(addprefix Network/lwip-new/,$(LWIP_INCS))
+ endif # VPOX_WITH_INIP
+
+ ifdef VPOX_WITH_E1000
+  VPoxDD_DEFS           += VPOX_WITH_E1000
+  VPoxDD_SOURCES        += \
+ 	Network/DevE1000.cpp \
+ 	Network/DevE1000Phy.cpp \
+ 	Network/DevEEPROM.cpp
+ endif
+
+ ifdef VPOX_WITH_VIRTIO
+  VPoxDD_DEFS           += VPOX_WITH_VIRTIO
+  VPoxDD_SOURCES        += \
+ 	VirtIO/Virtio.cpp \
+  	VirtIO/VirtioCore.cpp \
+ 	Network/DevVirtioNet.cpp
+ endif
+
+ if defined(VPOX_WITH_VIRTIO) && defined(VPOX_WITH_VIRTIO_NET_1_0)
+  VPoxDD_DEFS         += VPOX_WITH_VIRTIO_NET_1_0
+  VPoxDD_SOURCES      += \
+  	Network/DevVirtioNet_1_0.cpp
+endif
+
+ ifdef VPOX_WITH_UDPTUNNEL
+  VPoxDD_DEFS           += VPOX_WITH_UDPTUNNEL
+  VPoxDD_SOURCES        += \
+  	Network/DrvUDPTunnel.cpp
+ endif
+
+ ifdef VPOX_WITH_VDE
+  VPoxDD_DEFS           += VPOX_WITH_VDE
+  VPoxDD_SOURCES        += \
+  	Network/DrvVDE.cpp \
+  	Network/VDEPlug.cpp
+ endif
+
+ ifdef VPOX_WITH_NETSHAPER
+  VPoxDD_DEFS           += VPOX_WITH_NETSHAPER
+  VPoxDD_SOURCES        += \
+ 	Network/DrvNetShaper.cpp
+ endif
+
+ # --- Storage bits. ---
+
+ ifdef VPOX_WITH_AHCI
+  VPoxDD_DEFS           += VPOX_WITH_AHCI IN_AHCI_R3
+  VPoxDD_SOURCES        += \
+ 	Storage/DevAHCI.cpp
+ endif
+
+ ifdef VPOX_WITH_BUSLOGIC
+  VPoxDD_DEFS           += VPOX_WITH_BUSLOGIC
+  VPoxDD_SOURCES        += \
+ 	Storage/DevBusLogic.cpp \
+ 	Storage/VPoxSCSI.cpp
+ endif
+
+ ifdef VPOX_WITH_LSILOGIC
+  VPoxDD_DEFS           += VPOX_WITH_LSILOGIC
+  VPoxDD_SOURCES        += \
+ 	Storage/DevLsiLogicSCSI.cpp
+ endif
+
+ if defined(VPOX_WITH_NVME_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+  VPoxDD_DEFS          += VPOX_WITH_NVME_IMPL
+  VPoxDD_SOURCES       += \
+ 	Storage/DevNVMe.cpp
+ endif
+
+ if defined(VPOX_WITH_VIRTIO) && defined(VPOX_WITH_VIRTIO_SCSI)
+  VPoxDD_DEFS           += VPOX_WITH_VIRTIO_SCSI
+  VPoxDD_SOURCES        += \
+  	Storage/DevVirtioSCSI.cpp
+ endif
+
+ ifdef VPOX_WITH_PDM_ASYNC_COMPLETION
+  VPoxDD_DEFS           += VPOX_WITH_PDM_ASYNC_COMPLETION
+ endif
+
+ ifdef VPOX_WITH_SCSI
+  VPoxDD_DEFS           += VPOX_WITH_SCSI
+  VPoxDD_SOURCES        += \
+  	Storage/DrvSCSI.cpp
+ endif
+
+ ifdef VPOX_WITH_ISCSI
+  $(eval $(call def_vpox_lwip_flags, \
+                    VPoxDD, Storage/DrvVD.cpp, Network/lwip-new))
+ endif
+
+ ifdef VPOX_WITH_DRV_DISK_INTEGRITY
+  VPoxDD_DEFS           += VPOX_WITH_DRV_DISK_INTEGRITY
+  VPoxDD_SOURCES        += \
+  	Storage/DrvDiskIntegrity.cpp \
+  	Storage/DrvRamDisk.cpp
+ endif
+
+ ifdef VPOX_WITH_EFI
+  VPoxDD_DEFS           += VPOX_WITH_EFI
+  VPoxDD_SOURCES        += EFI/DevEFI.cpp
+  EFI/DevEFI.cpp_INCS       += EFI/Firmware/BaseTools/Source/C/Include
+  EFI/DevEFI.cpp_INCS.x86   += EFI/Firmware/BaseTools/Source/C/Include/Ia32
+  EFI/DevEFI.cpp_INCS.amd64 += EFI/Firmware/BaseTools/Source/C/Include/X64
+ endif
+
+ if defined(VPOX_WITH_PCI_PASSTHROUGH_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+  VPoxDD_DEFS           += VPOX_WITH_PCI_PASSTHROUGH_IMPL
+  VPoxDD_SOURCES        += \
+	Bus/DevPciRaw.cpp \
+	Bus/DrvPciRaw.cpp
+ endif
+
+ ifdef VPOX_WITH_MSI_DEVICES
+  VPoxDD_DEFS           += VPOX_WITH_MSI_DEVICES
+ endif
+
+ ifdef VPOX_WITH_DYNAMIC_DSDT
+  VPoxDD_DEFS           += VPOX_WITH_DYNAMIC_DSDT
+ endif
+
+ # --- Audio bits (see also VPOX_AUDIO_DEFS in ./Config.kmk). ---
+
+ VPoxDD_DEFS += $(VPOX_AUDIO_DEFS)
+ VPoxDD_SOURCES         += \
+	Audio/DevIchAc97.cpp \
+	Audio/DevSB16.cpp \
+	Audio/DevHda.cpp \
+	Audio/DevHdaCodec.cpp \
+	Audio/DevHdaStream.cpp \
+	Audio/AudioHlp.cpp \
+	Audio/AudioMixBuffer.cpp \
+	Audio/AudioMixer.cpp \
+	Audio/DrvAudio.cpp \
+	Audio/DrvHostAudioNull.cpp
+
+ ifdef VPOX_WITH_AUDIO_DEBUG
+  VPoxDD_DEFS    += VPOX_WITH_AUDIO_DEBUG
+  VPoxDD_SOURCES += \
+	Audio/DrvHostAudioDebug.cpp
+ endif
+
+ ifdef VPOX_WITH_AUDIO_VALIDATIONKIT
+  VPoxDD_DEFS    += VPOX_WITH_AUDIO_VALIDATIONKIT
+  VPoxDD_SOURCES += \
+	Audio/DrvHostAudioValidationKit.cpp
+ endif
+
+ ifeq ($(KBUILD_TARGET),darwin)
+  VPoxDD_SOURCES += \
+	Audio/DrvHostAudioCoreAudio.cpp \
+	Audio/DrvHostAudioCoreAudioAuth.mm
+ endif
+
+ ifeq ($(KBUILD_TARGET),win)
+  VPoxDD_SOURCES += \
+	Audio/DrvHostAudioDSound.cpp \
+	Audio/DrvHostAudioWasApi.cpp
+  ifdef VPOX_WITH_AUDIO_MMNOTIFICATION_CLIENT
+   VPoxDD_DEFS    += VPOX_WITH_AUDIO_MMNOTIFICATION_CLIENT
+   VPoxDD_SOURCES += \
+	Audio/DrvHostAudioDSoundMMNotifClient.cpp
+  endif
+ endif
+
+ ifdef VPOX_WITH_AUDIO_OSS
+  VPoxDD_DEFS    += VPOX_WITH_AUDIO_OSS
+  VPoxDD_SOURCES += \
+	Audio/DrvHostAudioOss.cpp
+ endif
+
+ ifdef VPOX_WITH_AUDIO_ALSA
+  VPoxDD_DEFS    += VPOX_WITH_AUDIO_ALSA
+  VPoxDD_SOURCES += \
+	Audio/DrvHostAudioAlsa.cpp \
+	Audio/DrvHostAudioAlsaStubs.cpp
+ endif
+
+ ifdef VPOX_WITH_AUDIO_PULSE
+  VPoxDD_DEFS    += VPOX_WITH_AUDIO_PULSE
+  VPoxDD_SOURCES += \
+	Audio/DrvHostAudioPulseAudio.cpp \
+	Audio/DrvHostAudioPulseAudioStubs.cpp
+ endif
+
+ # --- WARNING! SLIRP MESS AHEAD! ;-) ---
+ VPOX_SLIRP_SOURCES = \
+ 	Network/DrvNAT.cpp \
+ 	Network/slirp/bootp.c \
+  	Network/slirp/debug.c \
+ 	Network/slirp/ip_icmp.c \
+ 	Network/slirp/ip_input.c \
+ 	Network/slirp/ip_output.c \
+ 	Network/slirp/misc.c \
+ 	Network/slirp/sbuf.c \
+ 	Network/slirp/slirp.c \
+ 	Network/slirp/slirp_dns.c \
+ 	Network/slirp/socket.c \
+ 	Network/slirp/tcp_input.c \
+ 	Network/slirp/tcp_output.c \
+ 	Network/slirp/tcp_subr.c \
+ 	Network/slirp/tcp_timer.c \
+ 	Network/slirp/udp.c \
+	Network/slirp/hostres.c \
+ 	Network/slirp/dnsproxy/hash.c \
+ 	Network/slirp/tftp.c \
+ 	Network/slirp/dnsproxy/dnsproxy.c
+
+ ifeq ($(KBUILD_TARGET), win)
+  VPOX_SLIRP_SOURCES += Network/slirp/ip_icmpwin.c
+ else ifneq ($(KBUILD_TARGET),darwin)
+  # helper for debugging unprivileged
+#  Network/slirp/ip_icmp.c_DEFS += VPOX_RAWSOCK_DEBUG_HELPER
+#  VPOX_SLIRP_SOURCES += ../NetworkServices/NAT/getrawsock.c
+ endif
+
+ ifneq ($(KBUILD_TARGET), win)
+  VPOX_SLIRP_SOURCES +=  	Network/slirp/resolv_conf_parser.c
+ endif
+
+ VPOX_SLIRP_BSD_ARCH = $(subst x86,i386,$(KBUILD_TARGET_ARCH))
+ VPOX_SLIRP_BSD_SOURCES += \
+ 	Network/slirp/bsd/kern/kern_mbuf.c \
+ 	Network/slirp/bsd/kern/uipc_mbuf.c \
+ 	Network/slirp/bsd/kern/uipc_mbuf2.c \
+ 	Network/slirp/bsd/$(VPOX_SLIRP_BSD_ARCH)/in_cksum.c
+ VPOX_SLIRP_ALIAS_SOURCES = \
+ 	Network/slirp/libalias/alias.c \
+ 	Network/slirp/libalias/alias_db.c \
+ 	Network/slirp/libalias/alias_mod.c \
+ 	Network/slirp/libalias/alias_proxy.c \
+ 	Network/slirp/libalias/alias_ftp.c \
+ 	Network/slirp/libalias/alias_nbt.c \
+ 	Network/slirp/libalias/alias_util.c
+
+ # Enable VPOX_WITH_DNSMAPPING_IN_HOSTRESOLVER here for a while, then move to
+ # $(file)_DEFS or clean the code disabled with this definition.
+ VPOX_WITH_DNSMAPPING_IN_HOSTRESOLVER=1
+
+ # dump memory related operations.
+ Network/slirp/misc.c_DEFS += $(if $(VPOX_NAT_MEM_DEBUG),VPOX_NAT_MEM_DEBUG,)
+
+ VPoxDD_SOURCES += $(VPOX_SLIRP_SOURCES)
+ define def_vpox_slirp_cflags
+   $(file)_DEFS += \
+       $(if $(VPOX_WITH_SLIRP_MEMORY_CHECK),RTMEM_WRAP_TO_EF_APIS,) \
+       $(if $(VPOX_WITH_DEBUG_NAT_SOCKETS),VPOX_WITH_DEBUG_NAT_SOCKETS,)	\
+       $(if $(VPOX_WITH_DNSMAPPING_IN_HOSTRESOLVER),VPOX_WITH_DNSMAPPING_IN_HOSTRESOLVER,)	\
+       $(if $(VPOX_WITH_NAT_SEND2HOME),VPOX_WITH_NAT_SEND2HOME,)	\
+       $(if $(VPOX_WITH_HIDDEN_TCPTEMPLATE),VPOX_WITH_HIDDEN_TCPTEMPLATE,)	\
+       $(if $(VPOX_WITH_SLIRP_MT),VPOX_WITH_SLIRP_MT,)
+  $(file)_INCS += \
+	$(1)/slirp/bsd/sys \
+	$(1)/slirp/bsd/sys/sys \
+	$(1)/slirp/bsd/$(VPOX_SLIRP_BSD_ARCH)/include \
+	$(1)/slirp/bsd/netinet \
+	$(1)/slirp \
+	$(1)/slirp/libalias
+  ifeq ($(KBUILD_TARGET),win)
+   $(file)_CFLAGS = -wd4018
+  else
+   $(file)_CFLAGS += -Wno-sign-compare -Wno-format -Wno-bad-function-cast
+  endif
+ endef
+
+ $(foreach file,$(VPOX_SLIRP_SOURCES),$(eval $(call def_vpox_slirp_cflags, Network)))
+
+ VPoxDD_SOURCES += $(VPOX_SLIRP_ALIAS_SOURCES)
+ define def_vpox_slirp_alias_cflags
+   $(file)_DEFS += VPOX_SLIRP_ALIAS \
+       $(if $(VPOX_WITH_DEBUG_LIBALIAS),VPOX_WITH_DEBUG_LIBALIAS,)
+   $(file)_INCS += \
+	$(1)/slirp/libalias \
+	$(1)/slirp \
+	$(1)/slirp/dnsproxy
+   ifneq ($(KBUILD_TARGET),win)
+    $(file)_CFLAGS += -Wno-shadow
+   endif
+ endef
+ $(foreach file,$(VPOX_SLIRP_ALIAS_SOURCES),$(eval $(call def_vpox_slirp_cflags, Network)))
+ $(foreach file,$(VPOX_SLIRP_ALIAS_SOURCES),$(eval $(call def_vpox_slirp_alias_cflags, Network)))
+
+ VPOX_SLIRP_BSD_SOURCES += $(VPOX_SLIRP_BSD_SOURCES.${KBUILD_TARGET_ARCH})
+ VPoxDD_SOURCES += $(VPOX_SLIRP_BSD_SOURCES)
+ define def_vpox_slirp_bsd_cflags
+  $(file)_DEFS += VPOX_SLIRP_BSD
+  $(file)_INCS += $(1)/slirp/dnsproxy
+ endef
+ $(foreach file,$(VPOX_SLIRP_BSD_SOURCES),$(eval $(call def_vpox_slirp_cflags, Network)))
+ $(foreach file,$(VPOX_SLIRP_BSD_SOURCES),$(eval $(call def_vpox_slirp_bsd_cflags, Network)))
+
+
+ # --- OS specific driver hacks. ---
+
+ ifeq ($(KBUILD_TARGET),freebsd)
+  VPoxDD_SOURCES.freebsd += Network/DrvTAP.cpp
+ endif # freebsd
+
+ VPoxDD_SOURCES.linux += \
+ 	Network/DrvTAP.cpp \
+ 	Parallel/DrvHostParallel.cpp
+
+ ifeq ($(KBUILD_TARGET),solaris)
+  ifdef VPOX_WITH_SUID_WRAPPER
+   VPoxDD_DEFS += VPOX_WITH_SUID_WRAPPER
+  endif
+ endif
+
+ VPoxDD_DEFS.win += VPOX_WITH_WIN_PARPORT_SUP
+ VPoxDD_SOURCES.win += \
+	Parallel/DrvHostParallel.cpp
+
+ ifdef VPOX_WITH_VIRTUALKD
+  VPoxDD_DEFS.win     += VPOX_WITH_VIRTUALKD
+  VPoxDD_SOURCES.win  += \
+	Misc/DevVirtualKD.cpp
+ endif
+
+ if defined(VPOX_WITH_NETFLT)
+  VPoxDD_DEFS += VPOX_WITH_NETFLT
+  if defined(VPOX_NETFLT_ONDEMAND_BIND)
+   VPoxDD_DEFS.win += VPOX_NETFLT_ONDEMAND_BIND
+  endif
+ endif
+
+ # --- Final bits, mostly libraries for order dependant linkers. ---
+
+ VPoxDD_LIBS            += \
+ 	$(PATH_STAGE_LIB)/VgaDefBiosLogo$(VPOX_SUFF_LIB) \
+ 	$(LIB_VMM) \
+ 	$(LIB_RUNTIME)
+ ifeq ($(KBUILD_TARGET),win)
+  VPoxDD_LIBS           += \
+ 	$(LIB_DDU) \
+ 	$(PATH_STAGE_LIB)/VPoxDD2.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/dxguid.lib
+ else
+  VPoxDD_LIBS           += \
+ 	$(VPoxDDU_1_STAGE_TARGET) \
+ 	$(VPoxDD2_1_STAGE_TARGET)
+ endif
+
+ ifdef VPOX_WITH_NETFLT
+  VPoxDD_LIBS.win       += $(PATH_STAGE_LIB)/WinNetConfig.lib
+ endif
+
+ ifeq ($(KBUILD_TARGET),solaris)
+  VPoxDD_LIBS           += adm
+  ifdef VPOX_WITH_SUID_WRAPPER
+   VPoxDD_LIBS          += secdb
+  endif
+  ifdef VPOX_WITH_USB
+   VPoxDD_LIBS          += aio
+  endif
+ endif
+
+ VPoxDD_LIBS.darwin     += \
+ 	$(LIB_REM)
+
+
+ ifdef VPOX_WITH_DYNAMIC_DSDT
+  VPoxDD_CLEAN          += $(VPoxDD_0_OUTDIR)/vpoxdsl.hex
+  PC/ACPI/VPoxAcpi.cpp_DEPS = $(VPoxDD_0_OUTDIR)/vpoxdsl.hex
+
+  $$(VPoxDD_0_OUTDIR)/vpoxdsl.hex: $(PATH_SUB_CURRENT)/PC/vpox.dsl | $$(dir $$@)
+	$(call MSG_TOOL,bin2c,VPoxDD,$<,$@)
+	$(QUIET)$(VPOX_BIN2C) -export VpoxDslSource $< $@
+
+  vpoxdsl.hex:: $$(VPoxDD_0_OUTDIR)/vpoxdsl.hex
+
+ else  # !VPOX_WITH_DYNAMIC_DSDT
+  # VPoxAcpi.cpp needs vpoxaml.hex which we generate from PC/vpox.dsl
+  VPoxDD_CLEAN       += \
+ 	$(VPoxDD_0_OUTDIR)/vpoxaml.hex \
+ 	$(VPoxDD_0_OUTDIR)/vpoxaml.aml \
+ 	$(VPoxDD_0_OUTDIR)/vpoxaml.aml.tmp \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_standard.hex \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_standard.aml \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_standard.aml.tmp \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_cpuhotplug.hex \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_cpuhotplug.aml \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_cpuhotplug.aml.tmp \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_cpuhotplug.aml.pre
+  PC/ACPI/VPoxAcpi.cpp_DEPS = \
+ 	$(VPoxDD_0_OUTDIR)/vpoxaml.hex \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_standard.hex \
+ 	$(VPoxDD_0_OUTDIR)/vpoxssdt_cpuhotplug.hex
+
+  $$(VPoxDD_0_OUTDIR)/vpoxaml.hex: $(PATH_SUB_CURRENT)/PC/vpox.dsl | $$(dir $$@)
+	$(call MSG_TOOL,iasl,VPoxDD,$<,$@)
+	$(QUIET)$(VPOX_IASLCMD) -tc -vs -p $@ $<
+	$(QUIET)$(MV) -f $@ $@.tmp
+	$(QUIET)$(SED) -e "s/vpoxaml_aml_code/AmlCode/g" \
+		--output $@ $@.tmp
+	$(QUIET)$(RM) -f $@.tmp
+
+  vpoxaml.hex:: $$(VPoxDD_0_OUTDIR)/vpoxaml.hex
+
+  $$(VPoxDD_0_OUTDIR)/vpoxssdt_standard.hex: $(PATH_SUB_CURRENT)/PC/vpox-standard.dsl | $$(dir $$@)
+	$(call MSG_TOOL,iasl,VPoxDD,$<,$@)
+	$(QUIET)$(RM) -f $@ $@.tmp
+	$(QUIET)$(VPOX_IASLCMD) -tc -vs -p $@ $<
+	$(QUIET)$(MV) -f $@ $@.tmp
+	$(QUIET)$(SED) -e "s/AmlCode\|vpoxssdt_standard_aml_code/AmlCodeSsdtStandard/g" \
+		--output $@ $@.tmp
+	$(QUIET)$(RM) -f $@.tmp
+
+
+  vpoxssdt_standard.hex:: $$(VPoxDD_0_OUTDIR)/vpoxssdt_standard.hex
+
+  $$(VPoxDD_0_OUTDIR)/vpoxssdt_cpuhotplug.hex: $(PATH_SUB_CURRENT)/PC/vpox-cpuhotplug.dsl | $$(dir $$@)
+	$(call MSG_TOOL,iasl,VPoxDD,$<,$@)
+	$(QUIET)$(RM) -f $@ $@.tmp $@.pre
+	$(QUIET)$(TOOL_$(VPOX_GCC_TOOL)_CC) -E -P -x c -o $@.pre $<
+	$(QUIET)$(SED) -e "s/<NL>/\n/g" \
+		--output $@.pre1 $@.pre
+	$(QUIET)$(VPOX_IASLCMD) -tc -vs -p $@ $@.pre1
+	$(QUIET)$(MV) -f $@ $@.tmp
+	$(QUIET)$(SED) -e "s/AmlCode\|vpoxssdt_cpuhotplug_aml_code/AmlCodeSsdtCpuHotPlug/g" \
+		--output $@ $@.tmp
+	$(QUIET)$(RM) -f $@.tmp $@.pre $@.pre1
+
+
+  vpoxssdt_cpuhotplug.hex:: $$(VPoxDD_0_OUTDIR)/vpoxssdt_cpuhotplug.hex
+
+ endif # !VPOX_WITH_DYNAMIC_DSDT
+ PC/ACPI/VPoxAcpi.cpp_INCS = $(VPoxDD_0_OUTDIR)
+
+ # For finding PCIInternal.h from VPox/pci.h.
+ Bus/DevPCI.cpp_INCS      = Bus
+ Bus/DevPciIch9.cpp_INCS  = Bus
+ Bus/MsiCommon.cpp_INCS   = Bus
+ Bus/MsixCommon.cpp_INCS  = Bus
+ Bus/DevPciRaw.cpp_INCS   = Bus
+
+ # For finding and generating vbetables.h (see Graphics/BIOS/Makefile.kmk).
+ Graphics/DevVGA.cpp_INCS = $(VgaBiosBin_0_OUTDIR) $(VPOX_GRAPHICS_INCS)
+ Graphics/DevVGA.cpp_DEPS = $(VgaBiosBin_0_OUTDIR)/vbetables.h
+
+ $(call VPOX_SET_VER_INFO_DLL,VPoxDD,VirtualPox VMM Devices and Drivers) # (last!)
+
+
+ ifdef VPOX_WITH_RAW_MODE
+  #
+  # VPoxDDRC (sysmod)
+  #
+  VPoxDDRC_TEMPLATE       = VPoxRc
+  ifeq ($(KBUILD_TARGET_ARCH),x86)
+   VPoxDDRC_DEFS.darwin   = VPOX_WITH_2X_4GB_ADDR_SPACE
+  endif
+  VPoxDDRC_DEFS           = $(if $(VPOX_WITH_HGCM),VPOX_WITH_HGCM,)
+  VPoxDDRC_INCS           = build $(VPOX_GRAPHICS_INCS)
+  VPoxDDRC_SOURCES        = \
+  	Bus/DevPCI.cpp \
+  	Bus/DevPciIch9.cpp \
+  	Bus/MsiCommon.cpp \
+  	Bus/MsixCommon.cpp \
+  	EFI/DevSmc.cpp \
+  	Graphics/DevVGA.cpp \
+  	Input/DevPS2.cpp \
+  	Input/DevPS2K.cpp \
+  	Input/DevPS2M.cpp \
+  	PC/DevACPI.cpp \
+  	PC/DevIoApic.cpp \
+  	PC/DevPit-i8254.cpp \
+  	PC/DevPIC.cpp \
+  	PC/DevRTC.cpp \
+  	PC/DevDMA.cpp \
+  	PC/DevHPET.cpp \
+  	Storage/DevATA.cpp \
+  	Network/DevPCNet.cpp \
+  	Serial/DevSerial.cpp \
+  	Serial/DevOxPcie958.cpp \
+  	Serial/UartCore.cpp \
+  	Parallel/DevParallel.cpp \
+  	VMMDev/VMMDev.cpp \
+  	VMMDev/VMMDevTesting.cpp
+
+  VPoxDDRC_DEFS         += $(VPOX_AUDIO_DEFS)
+  VPoxDDRC_SOURCES      += \
+ 	Audio/DevHda.cpp \
+	Audio/DevIchAc97.cpp
+
+  VPoxDDRC_DEFS         += \
+	$(if $(VPOX_WITH_HP_HDA),VPOX_WITH_HP_HDA,) \
+	$(if $(VPOX_WITH_INTEL_HDA),VPOX_WITH_INTEL_HDA,) \
+	$(if $(VPOX_WITH_NVIDIA_HDA),VPOX_WITH_NVIDIA_HDA,)
+
+  ifdef VPOX_WITH_E1000
+   VPoxDDRC_DEFS        += VPOX_WITH_E1000
+   VPoxDDRC_SOURCES     += \
+  	Network/DevE1000.cpp \
+  	Network/DevE1000Phy.cpp
+  endif
+
+  ifdef VPOX_WITH_VIRTIO
+   VPoxDDRC_DEFS        += VPOX_WITH_VIRTIO
+   VPoxDDRC_SOURCES     += \
+  	VirtIO/Virtio.cpp \
+  	VirtIO/VirtioCore.cpp \
+  	Network/DevVirtioNet.cpp
+  endif
+
+  ifdef defined(VPOX_WITH_VIRTIO) && defined(VPOX_WITH_VIRTIO_NET_1_0)
+   VPoxDDRC_DEFS         += VPOX_WITH_VIRTIO_NET_1_0
+   VPoxDDRC_SOURCES      += \
+  	 Network/DevVirtioNet_1_0.cpp
+  endif
+
+  ifdef VPOX_WITH_HGSMI
+   VPoxDDRC_DEFS        += VPOX_WITH_HGSMI
+  endif
+  ifdef VPOX_WITH_WDDM
+   VPoxDDRC_DEFS        += VPOX_WITH_WDDM
+  endif
+  ifdef VPOX_WITH_VDMA
+   VPoxDDRC_DEFS        += VPOX_WITH_VDMA
+  endif
+  ifdef VPOXWDDM_WITH_VBVA
+   VPoxDDRC_DEFS        += VPOXWDDM_WITH_VBVA
+  endif
+  ifdef VPOX_WITH_VMSVGA
+   VPoxDDRC_DEFS         += VPOX_WITH_VMSVGA
+   VPoxDDRC_SOURCES      += \
+ 	Graphics/DevVGA-SVGA.cpp
+  endif
+  ifdef VPOX_WITH_VMSVGA3D
+   VPoxDDRC_DEFS         += VPOX_WITH_VMSVGA3D
+  endif
+
+  ifdef VPOX_WITH_VUSB
+   VPoxDDRC_DEFS        += VPOX_WITH_VUSB
+   VPoxDDRC_SOURCES     += \
+ 	USB/DevOHCI.cpp
+  endif
+
+  ifdef VPOX_WITH_USB
+   VPoxDDRC_DEFS        += VPOX_WITH_USB
+   if defined(VPOX_WITH_EHCI_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+    VPoxDDRC_DEFS       += VPOX_WITH_EHCI_IMPL
+    VPoxDDRC_SOURCES    += \
+  	USB/DevEHCI.cpp
+   endif
+   if defined(VPOX_WITH_XHCI_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+    VPoxDDRC_DEFS       += VPOX_WITH_XHCI_IMPL
+    VPoxDDRC_SOURCES    += \
+  	USB/DevXHCI.cpp
+   endif
+  endif
+
+  ifdef VPOX_WITH_VIDEOHWACCEL
+   VPoxDDRC_DEFS        += VPOX_WITH_VIDEOHWACCEL
+  endif
+
+  ifdef VPOX_WITH_AHCI
+  VPoxDDRC_DEFS         += VPOX_WITH_AHCI IN_AHCI_GC
+  VPoxDDRC_SOURCES      += \
+  	Storage/DevAHCI.cpp
+  endif
+
+  ifdef VPOX_WITH_BUSLOGIC
+  VPoxDDRC_DEFS         += VPOX_WITH_BUSLOGIC
+  VPoxDDRC_SOURCES      += \
+  	Storage/DevBusLogic.cpp
+  endif
+
+  ifdef VPOX_WITH_LSILOGIC
+  VPoxDDRC_DEFS         += VPOX_WITH_LSILOGIC
+  VPoxDDRC_SOURCES      += \
+  	Storage/DevLsiLogicSCSI.cpp
+  endif
+
+  if defined(VPOX_WITH_NVME_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+   VPoxDDGC_DEFS       += VPOX_WITH_NVME_IMPL
+   VPoxDDGC_SOURCES    += \
+   	Storage/DevNVMe.cpp
+  endif
+
+  if1of ($(VPOX_LDR_FMT32), pe lx)
+  VPoxDDRC_LIBS           = \
+  	$(PATH_STAGE_LIB)/VMMRCBuiltin$(VPOX_SUFF_LIB) \
+  	$(PATH_STAGE_LIB)/VMMRCImp$(VPOX_SUFF_LIB)
+  endif
+  $(call VPOX_SET_VER_INFO_RC,VPoxDDRC,VirtualPox VMM Devices and Drivers$(COMMA) raw-mode) # last!
+ endif # VPOX_WITH_RAW_MODE
+
+
+ #
+ # VPoxDD2 (shared object)
+ #
+ VPoxDD2_TEMPLATE        = VPoxR3DllWarnNoPic
+ VPoxDD2_DEFS            = \
+	IN_VPOXDD2 \
+	$(if $(VPOX_WITH_PXE_ROM),VPOX_WITH_PXE_ROM,) \
+       $(if $(VPOX_WITH_NEW_LPC_DEVICE),VPOX_WITH_NEW_LPC_DEVICE,)
+ VPoxDD2_INCS           := \
+	build \
+ 	$(PATH_SUB_CURRENT)
+ VPoxDD2_SOURCES         = \
+ 	build/VPoxDD2.cpp \
+ 	$(if $(VPOX_WITH_NEW_LPC_DEVICE),,PC/DevLPC.cpp)
+ VPoxDD2_LIBS            = \
+ 	$(PATH_STAGE_LIB)/PcBiosBin$(VPOX_SUFF_LIB) \
+ 	$(PATH_STAGE_LIB)/VgaBiosBin$(VPOX_SUFF_LIB) \
+ 	$(if $(VPOX_WITH_PXE_ROM),\
+	  $(if $(VPOX_WITH_INTEL_PXE),\
+	    $(PATH_STAGE_LIB)/NetBiosBin$(VPOX_SUFF_LIB),\
+	    $(PATH_STAGE_LIB)/iPxeBiosBin$(VPOX_SUFF_LIB)),) \
+ 	$(LIB_VMM) \
+ 	$(LIB_RUNTIME)
+ VPoxDD2_LIBS.darwin    += $(LIB_REM)
+ VPoxDD2_LDFLAGS.darwin  = -install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxDD2.dylib
+ VPoxDD2_LDFLAGS.linux   = $(VPOX_GCC_NO_UNDEFINED)
+ if defined(VPOX_WITH_EFI) && !defined(VPOX_WITH_EFIFW_PACKING)
+  VPoxDD_DEFS           += VPOX_WITH_EFI_IN_DD2
+  VPoxDD2_DEFS          += VPOX_WITH_EFI
+  VPoxDD2_SOURCES       += \
+  	EFI/DevEFI-binaries.asm
+  EFI/DevEFI-binaries.asm_ASINCS = $(PATH_STAGE)/$(INST_BIN)
+  EFI/DevEFI-binaries.asm_DEPS   = \
+  	$(PATH_STAGE)/$(INST_BIN)VPoxEFI32.fd \
+  	$(PATH_STAGE)/$(INST_BIN)VPoxEFI64.fd
+ endif
+
+ $(call VPOX_SET_VER_INFO_DLL,VPoxDD2,VirtualPox VMM Devices and Drivers 2) # (last!)
+
+ #
+ # VPoxDDR0 (sysmod)
+ #
+ VPoxDDR0_TEMPLATE       = VPoxR0
+ VPoxDDR0_DEFS           = IN_RT_R0 $(if $(VPOX_WITH_HGCM),VPOX_WITH_HGCM,) # - WTF is IN_RT_R0 doing here?
+ VPoxDDR0_DEFS.win      += VPOX_WITH_WIN_PARPORT_SUP
+ VPoxDDR0_INCS           = build $(VPOX_GRAPHICS_INCS)
+ VPoxDDR0_SDKS.win 	  = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK)
+ VPoxDDR0_SOURCES        = \
+ 	build/VPoxDDR0.cpp \
+ 	Bus/DevPCI.cpp \
+ 	Bus/DevPciIch9.cpp \
+ 	Bus/MsiCommon.cpp \
+ 	Bus/MsixCommon.cpp \
+ 	EFI/DevSmc.cpp \
+ 	EFI/DevFlash.cpp \
+	EFI/FlashCore.cpp \
+ 	Graphics/DevVGA.cpp \
+ 	Input/DevPS2.cpp \
+ 	Input/DevPS2K.cpp \
+ 	Input/DevPS2M.cpp \
+ 	PC/DevACPI.cpp \
+ 	PC/DevIoApic.cpp \
+ 	PC/DevPit-i8254.cpp \
+ 	PC/DevPIC.cpp \
+ 	PC/DevRTC.cpp \
+ 	PC/DevDMA.cpp \
+ 	PC/DevHPET.cpp \
+ 	Storage/DevATA.cpp \
+ 	Network/DevPCNet.cpp \
+ 	Serial/DevSerial.cpp \
+ 	Serial/DevOxPcie958.cpp \
+ 	Serial/UartCore.cpp \
+ 	Parallel/DevParallel.cpp \
+ 	GIMDev/GIMDev.cpp \
+ 	VMMDev/VMMDev.cpp \
+ 	VMMDev/VMMDevTesting.cpp \
+ 	Network/DrvIntNet.cpp \
+ 	Network/DrvDedicatedNic.cpp
+
+ ifdef VPOX_WITH_DTRACE_R0
+  VPoxDDR0_USES         += dtrace
+  VPoxDDR0_SOURCES      += build/VPoxDD.d
+ endif
+
+ VPoxDDR0_SOURCES.win += Parallel/DrvHostParallel.cpp
+
+ VPoxDDR0_DEFS          += \
+	$(if $(VPOX_WITH_HGSMI),VPOX_WITH_HGSMI,) \
+	$(if $(VPOX_WITH_WDDM),VPOX_WITH_WDDM,) \
+	$(if $(VPOX_WITH_VDMA),VPOX_WITH_VDMA,) \
+	$(if $(VPOXWDDM_WITH_VBVA),VPOXWDDM_WITH_VBVA,) \
+	$(if $(VPOX_WITH_HP_HDA),VPOX_WITH_HP_HDA,) \
+	$(if $(VPOX_WITH_INTEL_HDA),VPOX_WITH_INTEL_HDA,) \
+	$(if $(VPOX_WITH_NVIDIA_HDA),VPOX_WITH_NVIDIA_HDA,)
+
+ VPoxDDR0_DEFS += $(VPOX_AUDIO_DEFS)
+ VPoxDDR0_SOURCES += \
+ 	Audio/DevHda.cpp \
+ 	Audio/DevHdaStream.cpp \
+ 	Audio/DevIchAc97.cpp
+
+ ifdef VPOX_WITH_E1000
+  VPoxDDR0_DEFS         += VPOX_WITH_E1000
+  VPoxDDR0_SOURCES      += \
+ 	Network/DevE1000.cpp \
+ 	Network/DevE1000Phy.cpp
+ endif
+
+ ifdef VPOX_WITH_VIRTIO
+  VPoxDDR0_DEFS         += VPOX_WITH_VIRTIO
+  VPoxDDR0_SOURCES      += \
+	VirtIO/Virtio.cpp \
+  	VirtIO/VirtioCore.cpp \
+  	Network/DevVirtioNet.cpp
+ endif
+
+ if defined(VPOX_WITH_VIRTIO) && defined(VPOX_WITH_VIRTIO_NET_1_0)
+  VPoxDDR0_DEFS         += VPOX_WITH_VIRTIO_NET_1_0
+  VPoxDDR0_SOURCES      += \
+  	Network/DevVirtioNet_1_0.cpp
+ endif
+
+ ifdef VPOX_WITH_NETSHAPER
+  VPoxDDR0_DEFS         += VPOX_WITH_NETSHAPER
+  VPoxDDR0_SOURCES      += \
+ 	Network/DrvNetShaper.cpp
+ endif
+
+ ifdef VPOX_WITH_VMSVGA
+  VPoxDDR0_DEFS         += VPOX_WITH_VMSVGA
+  VPoxDDR0_SOURCES      += \
+	Graphics/DevVGA-SVGA.cpp
+ endif
+ ifdef VPOX_WITH_VMSVGA3D
+  VPoxDDR0_DEFS         += VPOX_WITH_VMSVGA3D
+ endif
+
+ ifdef VPOX_WITH_VUSB
+  VPoxDDR0_DEFS         += VPOX_WITH_VUSB
+  VPoxDDR0_SOURCES      += \
+ 	USB/DevOHCI.cpp
+ endif
+ ifdef VPOX_WITH_USB
+ VPoxDDR0_DEFS          += VPOX_WITH_USB
+  if defined(VPOX_WITH_EHCI_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+   VPoxDDR0_DEFS        += VPOX_WITH_EHCI_IMPL
+   VPoxDDR0_SOURCES     += \
+ 	USB/DevEHCI.cpp
+  endif
+  if defined(VPOX_WITH_XHCI_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+   VPoxDDR0_DEFS        += VPOX_WITH_XHCI_IMPL
+   VPoxDDR0_SOURCES     += \
+ 	USB/DevXHCI.cpp
+  endif
+ endif
+
+ ifdef VPOX_WITH_EFI
+  VPoxDDR0_DEFS         += VPOX_WITH_EFI
+  VPoxDDR0_SOURCES      += EFI/DevEFI.cpp
+ endif
+
+ if defined(VPOX_WITH_PCI_PASSTHROUGH_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+  VPoxDDR0_SOURCES      += \
+	Bus/DevPciRaw.cpp
+ endif
+
+ ifdef VPOX_WITH_AHCI
+ VPoxDDR0_DEFS          += VPOX_WITH_AHCI IN_AHCI_R0
+ VPoxDDR0_SOURCES       += \
+ 	Storage/DevAHCI.cpp
+ endif
+
+ ifdef VPOX_WITH_BUSLOGIC
+ VPoxDDR0_DEFS          += VPOX_WITH_BUSLOGIC
+ VPoxDDR0_SOURCES       += \
+ 	Storage/DevBusLogic.cpp
+ endif
+
+ ifdef VPOX_WITH_LSILOGIC
+ VPoxDDR0_DEFS          += VPOX_WITH_LSILOGIC
+ VPoxDDR0_SOURCES       += \
+ 	Storage/DevLsiLogicSCSI.cpp
+ endif
+
+ if defined(VPOX_WITH_NVME_IMPL) && !defined(VPOX_WITH_EXTPACK_PUEL)
+  VPoxDDR0_DEFS       += VPOX_WITH_NVME_IMPL
+  VPoxDDR0_SOURCES    += \
+  	Storage/DevNVMe.cpp
+ endif
+
+ if defined (VPOX_WITH_VIRTIO) && defined(VPOX_WITH_VIRTIO_SCSI)
+  VPoxDDR0_DEFS         += VPOX_WITH_VIRTIO_SCSI
+  VPoxDDR0_SOURCES      += \
+  	Storage/DevVirtioSCSI.cpp
+ endif
+
+ ifdef VPOX_WITH_HGSMI
+  VPoxDDR0_DEFS         += VPOX_WITH_HGSMI
+ endif
+ ifdef VPOX_WITH_VIDEOHWACCEL
+  VPoxDDR0_DEFS         += VPOX_WITH_VIDEOHWACCEL
+ endif
+
+ if1of ($(VPOX_LDR_FMT), pe lx)
+ VPoxDDR0_LIBS           = \
+ 	$(PATH_STAGE_LIB)/VMMR0Imp$(VPOX_SUFF_LIB)
+ endif
+ VPoxDDR0_LIBS          += \
+ 	$(VPOX_LIB_SUPR0)
+
+ $(call VPOX_SET_VER_INFO_R0,VPoxDDR0,VirtualPox VMM Devices and Drivers$(COMMA) ring-0) # (last!)
+
+
+ #
+ # Ring-0 Services (library, linked into VMMR0.r0)
+ #
+ ServicesR0_TEMPLATE  = VPoxR0
+ ServicesR0_DEFS      = VPOX_IN_VMM IN_INTNET_R0 IN_RT_R0 $(VMM_COMMON_DEFS) \
+	$(if $(VPOX_WITH_PCI_PASSTHROUGH),IN_PCIRAW_R0,) \
+	$(if $(VPOX_WITH_NAT_SERVICE),VPOX_WITH_NAT_SERVICE,)
+ ServicesR0_SOURCES   = \
+ 	Network/SrvIntNetR0.cpp \
+#        $(if $(VPOX_WITH_PCI_PASSTHROUGH),Bus/SrvPciRawR0.cpp,)
+ Network/SrvIntNetR0.cpp_CXXFLAGS := $(if-expr $(KBUILD_TARGET) == "win",,$(VPOX_GCC_Wno-array_bounds))
+
+
+ #
+ # Internal Networking - Ring-3 Testcase for the Ring-0 code (a bit hackish).
+ #
+ ifdef VPOX_WITH_TESTCASES
+  PROGRAMS += tstIntNetR0
+  tstIntNetR0_TEMPLATE    = VPOXR3TSTEXE
+  tstIntNetR0_DEFS        = IN_INTNET_R0
+  tstIntNetR0_SOURCES     = \
+ 	Network/testcase/tstIntNetR0.cpp
+  ifneq ($(KBUILD_TARGET),win)
+   Network/testcase/tstIntNetR0.cpp_CXXFLAGS = $(VPOX_GCC_Wno-array_bounds)
+  endif
+ endif
+
+
+ #
+ # Internal Networking - Ring-3 Testcase for the Ring-0 code (a bit hackish).
+ #
+ ifdef VPOX_WITH_TESTCASES
+  if defined(VPOX_WITH_HARDENING) && "$(KBUILD_TARGET)" == "win"
+   PROGRAMS += tstIntNetHardened-1
+   tstIntNetHardened-1_TEMPLATE = VPoxR3HardenedTstExe
+   tstIntNetHardened-1_NAME     = tstIntNet-1
+   tstIntNetHardened-1_DEFS     = PROGRAM_NAME_STR=\"tstIntNet-1\"
+   tstIntNetHardened-1_SOURCES  = ../HostDrivers/Support/SUPR3HardenedMainTemplateTestcase.cpp
+
+   DLLS += tstIntNet-1
+   tstIntNet-1_TEMPLATE   = VPoxR3HardenedTstDll
+  else
+   PROGRAMS += tstIntNet-1
+   tstIntNet-1_TEMPLATE   = VPOXR3TSTEXE
+  endif
+  tstIntNet-1_SOURCES     = \
+ 	Network/testcase/tstIntNet-1.cpp \
+ 	Network/Pcap.cpp
+ endif
+
+
+ #
+ # EEPROM device unit test requires cppunit
+ #
+ ifdef VPOX_WITH_CPPUNIT_TESTCASES
+  ifdef VPOX_WITH_E1000
+   PROGRAMS += tstDevEEPROM
+   tstDevEEPROM_TEMPLATE    = VPOXCPPUNITEXE
+   tstDevEEPROM_SOURCES     = \
+  	Network/testcase/tstDevEEPROM.cpp
+   tstDevEEPROM_LIBS        = \
+  	$(TARGET_VPoxDD)
+   PROGRAMS += tstDevPhy
+   tstDevPhy_TEMPLATE    = VPOXCPPUNITEXE
+   tstDevPhy_SOURCES     = \
+  	Network/testcase/tstDevPhy.cpp \
+  	Network/DevE1000Phy.cpp
+   tstDevPhy_DEFS        = PHY_UNIT_TEST
+  endif
+ endif
+
+ #
+ # Apple SMC Utility.
+ #
+ ifdef VPOX_WITH_TESTCASES
+  PROGRAMS.darwin += VPoxSmcUtil-darwin
+  VPoxSmcUtil-darwin_TEMPLATE = VPOXR3TSTEXE
+  VPoxSmcUtil-darwin_SOURCES = EFI/VPoxSmcUtil-darwin.cpp
+  VPoxSmcUtil-darwin_LDFLAGS = -framework IOKit
+ endif
+
+ #
+ # PDM device testcase framework.
+ #
+ ifdef VPOX_WITH_TESTCASES_TSTDEV
+  PROGRAMS += tstDevice
+  tstDevice_TEMPLATE    = VPOXR3TSTEXE
+  tstDevice_DEFS        += IN_SUP_R3
+  tstDevice_SOURCES     = \
+ 	testcase/tstDevice.cpp \
+ 	testcase/tstDeviceCfg.cpp \
+ 	testcase/tstDevicePdmDevHlp.cpp
+ endif
+
+endif # !VPOX_ONLY_EXTPACKS && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+
+
+if defined(VPOX_WITH_EXTPACK) && defined(VPOX_WITH_EXTPACK_PUEL) && defined(VPOX_WITH_EXTPACK_PUEL_BUILD) && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+ #
+ # The EHCI (USB 2.0) Extension Pack Modules.
+ #
+ if defined(VPOX_WITH_USB)
+  DLLS += VPoxEhciR3
+  VPoxEhciR3_TEMPLATE = VPoxR3ExtPackPuel
+  VPoxEhciR3_SOURCES  = \
+	USB/DevEHCI.cpp \
+	USB/DevXHCI.cpp
+  $(call VPOX_SET_VER_INFO_DLL,VPoxEhciR3,PUEL Extension Pack - EHCI Device)
+
+  $(if-expr defined(VPOX_WITH_VPOXR0_AS_DLL),DLLS,SYSMODS) += VPoxEhciR0
+  VPoxEhciR0_TEMPLATE = VPoxR0ExtPackPuel
+  VPoxEhciR0_SOURCES  = \
+	USB/DevEHCI.cpp \
+	USB/DevXHCI.cpp
+  $(call VPOX_SET_VER_INFO_R0,VPoxEhciR0,PUEL Extension Pack - EHCI Device$(COMMA) ring-0)
+
+  ifdef VPOX_WITH_RAW_MODE
+   SYSMODS += VPoxEhciRC
+   VPoxEhciRC_TEMPLATE = VPoxRcExtPackPuel
+   VPoxEhciRC_SOURCES  = \
+   	USB/DevEHCI.cpp \
+   	USB/DevXHCI.cpp
+   $(call VPOX_SET_VER_INFO_RC,VPoxEhciRC,PUEL Extension Pack - EHCI Device$(COMMA) raw-mode)
+  endif
+
+  # Hacky but MSI support *must* be enabled
+  ifdef VPOX_WITH_MSI_DEVICES
+   VPoxEhciR3_DEFS += VPOX_WITH_MSI_DEVICES
+   VPoxEhciR0_DEFS += VPOX_WITH_MSI_DEVICES
+   VPoxEhciRC_DEFS += VPOX_WITH_MSI_DEVICES
+  endif
+
+ endif
+
+ if defined(VPOX_WITH_PCI_PASSTHROUGH_IMPL)
+  DLLS += VPoxPciRawR3
+  VPoxPciRawR3_TEMPLATE     = VPoxR3ExtPackPuel
+  VPoxPciRawR3_SOURCES      = Bus/DevPciRaw.cpp
+  $(call VPOX_SET_VER_INFO_DLL,VPoxPciRawR3,PUEL Extension Pack - PCI Passthrough Device)
+
+  DLLS += VPoxPciRawDrv
+  VPoxPciRawDrv_TEMPLATE    = VPoxR3ExtPackPuel
+  VPoxPciRawDrv_SOURCES     = Bus/DrvPciRaw.cpp
+  $(call VPOX_SET_VER_INFO_DLL,VPoxPciRawDrv,PUEL Extension Pack - PCI Passthrough Driver)
+
+  $(if-expr defined(VPOX_WITH_VPOXR0_AS_DLL),DLLS,SYSMODS) += VPoxPciRawR0
+  VPoxPciRawR0_TEMPLATE     = VPoxR0ExtPackPuel
+  VPoxPciRawR0_SOURCES      = Bus/DevPciRaw.cpp
+  $(call VPOX_SET_VER_INFO_R0,VPoxPciRawR0,PUEL Extension Pack - PCI Passthrough Driver$(COMMA) ring-0)
+
+  Bus/DevPciRaw.cpp_INCS    = Bus
+ endif
+
+ #
+ # The NVMe Extension Pack Modules.
+ #
+ if defined(VPOX_WITH_NVME_IMPL)
+  DLLS += VPoxNvmeR3
+  VPoxNvmeR3_TEMPLATE = VPoxR3ExtPackPuel
+  VPoxNvmeR3_SOURCES  = \
+  	Storage/DevNVMe.cpp
+  $(call VPOX_SET_VER_INFO_DLL,VPoxNvmeR3,PUEL Extension Pack - NVMe Device)
+
+  $(if-expr defined(VPOX_WITH_VPOXR0_AS_DLL),DLLS,SYSMODS) += VPoxNvmeR0
+  VPoxNvmeR0_TEMPLATE = VPoxR0ExtPackPuel
+  VPoxNvmeR0_SOURCES  = \
+  	Storage/DevNVMe.cpp
+  $(call VPOX_SET_VER_INFO_R0,VPoxNvmeR0,PUEL Extension Pack - NVMe Device$(COMMA) ring-0)
+
+  ifdef VPOX_WITH_RAW_MODE
+   SYSMODS += VPoxNvmeRC
+   VPoxNvmeRC_TEMPLATE = VPoxRcExtPackPuel
+   VPoxNvmeRC_SOURCES  = \
+   	Storage/DevNVMe.cpp
+   $(call VPOX_SET_VER_INFO_RC,VPoxNvmeRC,PUEL Extension Pack - NVMe Device$(COMMA) raw-mode)
+  endif
+
+  # Hacky but MSI support *must* be enabled
+  ifdef VPOX_WITH_MSI_DEVICES
+   VPoxNvmeR3_DEFS += VPOX_WITH_MSI_DEVICES
+   VPoxNvmeR0_DEFS += VPOX_WITH_MSI_DEVICES
+   VPoxNvmeRC_DEFS += VPOX_WITH_MSI_DEVICES
+  endif
+
+ endif
+
+
+ #
+ # The Intel PXE ROM.
+ #
+ INSTALLS += VPoxExtPackPuelInsRoms
+ VPoxExtPackPuelInsRoms_TEMPLATE = VPoxInsExtPackPuel
+ ifdef PXE_EXPERIMENTAL_BUILD_SETUP
+  VPoxExtPackPuelInsRoms_SOURCES = $(PATH_OUT)/obj/NetBiosBin/NetBiosBin.rom=>PXE-Intel.rom
+ else
+  VPoxExtPackPuelInsRoms_SOURCES = PC/PXE/PXE-Intel.rom=>PXE-Intel.rom
+ endif
+endif # VPOX_WITH_EXTPACK_PUEL && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+
+
+if defined(VPOX_WITH_VMSVGA3D) && !defined(VPOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+ #
+ # Template used for VPoxSVGA3D.  (Strips away compiler options.)
+ #
+ TEMPLATE_VPoxSVGA3D         := VPoxSVGA3D
+ TEMPLATE_VPoxSVGA3D_EXTENDS := $(if-expr "$(KBUILD_TARGET)" == "darwin" && !defined(VPOX_WITH_NEW_XCODE),VPoxR3DllOsX107,VPOXR3)
+ TEMPLATE_VPoxSVGA3D_CFLAGS      = $(filter-out -pedantic -Wstrict-prototypes,$(TEMPLATE_$(TEMPLATE_VPoxSVGA3D_EXTENDS)_CFLAGS))
+ TEMPLATE_VPoxSVGA3D_CXXFLAGS    = $(filter-out -pedantic,$(TEMPLATE_$(TEMPLATE_VPoxSVGA3D_EXTENDS)_CXXFLAGS))
+ TEMPLATE_VPoxSVGA3D_OBJCFLAGS   = $(filter-out -pedantic,$(TEMPLATE_$(TEMPLATE_VPoxSVGA3D_EXTENDS)_OBJCFLAGS))
+ TEMPLATE_VPoxSVGA3D_OBJCXXFLAGS = $(filter-out -pedantic,$(TEMPLATE_$(TEMPLATE_VPoxSVGA3D_EXTENDS)_OBJCXXFLAGS))
+ TEMPLATE_VPoxSVGA3D_LDFLAGS.darwin  = $(TEMPLATE_$(TEMPLATE_VPoxSVGA3D_EXTENDS)_LDFLAGS.darwin) \
+  	-framework AppKit -framework OpenGL -framework IOKit
+
+ #
+ # The shader library used by the SVGA3D implementation.
+ #
+ DLLS += VPoxSVGA3D
+ VPoxSVGA3D_TEMPLATE = VPoxSVGA3D
+ VPoxSVGA3D_SDKS         = ReorderCompilerIncs
+ VPoxSVGA3D_DEFS         = \
+ 	__WINESRC__ \
+ 	WINE_UNICODE_API="" \
+ 	_REENTRANT \
+ 	WINE_NOWINSOCK \
+ 	VPOX_WITH_VMSVGA \
+ 	VPOX_WITH_VMSVGA3D \
+ 	DLLDIR=\"\" \
+ 	BINDIR=\"\" \
+ 	LIB_TO_BINDIR=\"\" \
+ 	LIB_TO_DLLDIR=\"\" \
+ 	BIN_TO_DLLDIR=\"\" \
+ 	LIB_TO_DATADIR=\"\" \
+ 	BIN_TO_DATADIR=\"\" \
+ 	_USE_MATH_DEFINES \
+ 	VPOX_USING_WINDDK_W7_OR_LATER \
+ 	VPOX_WINE_WITH_SINGLE_SWAPCHAIN_CONTEXT \
+ 	IN_vmsvgashader_STATIC \
+ 	IN_VMSVGA3D \
+ 	VPOX_WINE_WITH_IPRT
+ if "$(KBUILD_TYPE)" != "debug" || defined(VPOX_WINE_NO_DEBUG_MSGS)
+  VPoxSVGA3D_DEFS       += WINE_NO_DEBUG_MSGS
+ endif
+ VPoxSVGA3D_DEFS.x86    += __i386__
+ VPoxSVGA3D_DEFS.amd64  += __x86_64__
+ VPoxSVGA3D_DEFS.win    += \
+ 	USE_WIN32_OPENGL \
+ 	VPOX_WINE_WITHOUT_LIBWINE
+ VPoxSVGA3D_DEFS.darwin  += VPOX_VMSVGA3D_DUAL_OPENGL_PROFILE
+ if 0 # Use the OpenGL 3.2 Core profile (VPoxSVGA3D_DEFS.darwin).
+  VPoxSVGA3D_DEFS.darwin += VPOX_VMSVGA3D_DEFAULT_OGL_PROFILE=3.2 VPOX_VMSVGA3D_OTHER_OGL_PROFILE=2.1
+ else
+  VPoxSVGA3D_DEFS.darwin += VPOX_VMSVGA3D_DEFAULT_OGL_PROFILE=2.1 VPOX_VMSVGA3D_OTHER_OGL_PROFILE=3.2
+ endif
+
+ # WINE relies on a gcc 4.4 feature but we have 4.2 on Darwin
+ VPoxSVGA3D_DEFS.darwin += \
+ 	__builtin_ms_va_list=va_list \
+ 	__stdcall= \
+ 	ms_abi=
+ VPoxSVGA3D_INCS = $(VPOX_GRAPHICS_INCS)
+ VPoxSVGA3D_INCS.win    := \
+ 	Graphics/shaderlib/libWineStub/include
+ VPoxSVGA3D_INCS.linux  := \
+ 	Graphics/shaderlib/wine/include
+ VPoxSVGA3D_INCS.darwin := \
+ 	Graphics/ \
+ 	Graphics/shaderlib/wine/include
+ VPoxSVGA3D_SOURCES     := \
+ 	Graphics/shaderlib/glsl_shader.c \
+ 	Graphics/shaderlib/shader.c \
+ 	Graphics/shaderlib/shader_sm1.c \
+ 	Graphics/shaderlib/shader_sm4.c \
+ 	Graphics/shaderlib/shaderapi.c \
+ 	Graphics/shaderlib/utils.c \
+ 	Graphics/shaderlib/stateblock.c \
+ 	Graphics/shaderlib/directx.c \
+ 	Graphics/shaderlib/libWineStub/debug.c
+ VPoxSVGA3D_LIBS        = $(LIB_RUNTIME)
+ VPoxSVGA3D_LIBS.win   += $(PATH_SDK_$(VPOX_WINPSDK)_LIB)/Opengl32.lib
+ if1of ($(KBUILD_TARGET), solaris linux freebsd)
+  VPoxSVGA3D_LIBS      += GL
+ endif
+ VPoxSVGA3D_LDFLAGS.darwin += \
+ 	-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxSVGA3D.dylib
+ $(call VPOX_SET_VER_INFO_DLL,VPoxSVGA3D,VirtualPox VMSVGA 3D)
+ #  -wd4100: unreferenced format parameter
+ #  -wd4204: nonstandard extension used : non-constant initializer
+ #  -wd4245: '=' : conversion from 'int' to 'DWORD', signed/unsigned mismatch
+ #  -wd4305: 'function' : truncation from 'double' to 'GLclampf'
+ VPoxSVGA3D_CFLAGS.win = -wd4100  -wd4204 -wd4245 -wd4305
+ ifneq ($(KBUILD_TARGET),win)
+  VPoxSVGA3D_CFLAGS   += -Wno-unused-parameter -Wno-unused-function
+ endif
+
+ #
+ # The Objective C code needs to be separate since the shaderlib redefines most
+ # GL functions as pointers, making it impossible to mix with code calling OpenGL
+ # functions directly.  This module must be compiled for 10.7 or later, thus it
+ # needs to be separate from VPoxDD.dylib, or at least that's our belief...
+ #
+ DLLS.darwin += VPoxSVGA3DObjC
+ VPoxSVGA3DObjC_TEMPLATE    = VPoxSVGA3D
+ VPoxSVGA3DObjC_DEFS        = $(VPoxSVGA3D_DEFS) IN_VMSVGA3DCOCOA
+ VPoxSVGA3DObjC_DEFS.x86    = __i386__
+ VPoxSVGA3DObjC_DEFS.amd64  = __x86_64__
+ VPoxSVGA3DObjC_DEFS.darwin = $(VPoxSVGA3D_DEFS.darwin)
+ VPoxSVGA3DObjC_INCS        = $(VPoxSVGA3D_INCS)
+ VPoxSVGA3DObjC_INCS.darwin = $(VPoxSVGA3D_INCS.darwin)
+ VPoxSVGA3DObjC_LIBS        = $(LIB_RUNTIME)
+ VPoxSVGA3DObjC_LDFLAGS.darwin = \
+ 	-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxSVGA3DObjC.dylib \
+ 	-framework OpenGL
+ VPoxSVGA3DObjC_SOURCES.darwin += \
+ 	Graphics/DevVGA-SVGA3d-cocoa.m
+
+
+endif # defined(VPOX_WITH_VMSVGA3D) && !defined(VPOX_ONLY_EXTPACKS) && "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" != ""
+
+include $(FILE_KBUILD_SUB_FOOTER)

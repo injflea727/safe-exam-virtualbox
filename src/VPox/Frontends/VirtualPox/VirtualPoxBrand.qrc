@@ -1,0 +1,19 @@
+<!DOCTYPE RCC><RCC version="1.0">
+ <qresource prefix="/">
+    <file alias="about.png">@VPOX_ABOUT_PNG@</file>
+    <file alias="about_x2.png">@VPOX_ABOUT_X2_PNG@</file>
+    <file alias="about_x3.png">@VPOX_ABOUT_X3_PNG@</file>
+    <file alias="about_x4.png">@VPOX_ABOUT_X4_PNG@</file>
+    <file alias="about_16px.png">@VPOX_ABOUT_16PX_PNG@</file>
+    <file alias="about_16px_x2.png">@VPOX_ABOUT_16PX_X2_PNG@</file>
+    <file alias="about_16px_x3.png">@VPOX_ABOUT_16PX_X3_PNG@</file>
+    <file alias="about_16px_x4.png">@VPOX_ABOUT_16PX_X4_PNG@</file>
+    <file alias="VirtualPox_16px.png">@VPOX_VPOX_16PX_PNG@</file>
+    <file alias="VirtualPox_20px.png">@VPOX_VPOX_20PX_PNG@</file>
+    <file alias="VirtualPox_32px.png">@VPOX_VPOX_32PX_PNG@</file>
+    <file alias="VirtualPox_40px.png">@VPOX_VPOX_40PX_PNG@</file>
+    <file alias="VirtualPox_48px.png">@VPOX_VPOX_48PX_PNG@</file>
+    <file alias="VirtualPox_64px.png">@VPOX_VPOX_64PX_PNG@</file>
+    <file alias="VirtualPox.svg">@VPOX_CUBE_SVG@</file>
+ </qresource>
+ </RCC>

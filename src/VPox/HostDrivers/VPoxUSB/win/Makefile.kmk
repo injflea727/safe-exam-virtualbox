@@ -1,0 +1,203 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Windows USB drivers.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES.win += usbd
+SYSMODS.win   += VPoxUSB VPoxUSBMon
+PROGRAMS.win  += USBInstall USBUninstall USBTest
+INSTALLS.win  += install-infs
+
+#
+# usbd
+#
+usbd_TEMPLATE       = VPOXR0DRV
+usbd_SOURCES        = usbd/usbd.def
+
+#
+# VPoxUSB
+#
+VPoxUSB_TEMPLATE    = VPOXR0DRV
+ifdef VPOX_SIGNING_MODE
+ VPoxUSB_INSTTYPE   = none
+ VPoxUSB_DEBUG_INSTTYPE = both
+endif
+VPoxUSB_SDKS        = ReorderCompilerIncs $(VPOX_WINDDK) $(VPOX_WINPSDK)INCS
+VPoxUSB_DEFS        = IN_RT_R0 IN_SUP_R0 VPOX_DBG_LOG_NAME=\"USBDev\"
+VPoxUSB_LDFLAGS.x86 = -Entry:DriverEntry@8
+VPoxUSB_LDFLAGS.amd64 = -Entry:DriverEntry
+VPoxUSB_SOURCES     = \
+	dev/VPoxUsbDev.cpp \
+	dev/VPoxUsbRt.cpp \
+	dev/VPoxUsbPnP.cpp \
+	dev/VPoxUsbPwr.cpp \
+	cmn/VPoxUsbTool.cpp \
+	cmn/VPoxDrvTool.cpp \
+	dev/VPoxUsbDev.rc
+VPoxUSB_LIBS        = \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/ntoskrnl.lib \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/hal.lib \
+	$(PATH_STAGE_LIB)/RuntimeR0Drv$(VPOX_SUFF_LIB) \
+	$(usbd_1_TARGET)
+
+#
+# VPoxUSBMon
+#
+VPoxUSBMon_TEMPLATE    = VPOXR0DRV
+ifdef VPOX_SIGNING_MODE
+ VPoxUSBMon_INSTTYPE = none
+ VPoxUSBMon_DEBUG_INSTTYPE = both
+endif
+VPoxUSBMon_INCS       := $(PATH_SUB_CURRENT)/..
+VPoxUSBMon_SDKS        = ReorderCompilerIncs $(VPOX_WINDDK) $(VPOX_WINPSDK)INCS
+VPoxUSBMon_DEFS        = IN_RT_R0 IN_SUP_R0 NTDDI_WINNT=_NTDDI_VISTA \
+	VPOXUSBFILTERMGR_USB_SPINLOCK VPOX_DBG_LOG_NAME=\"USBMon\"
+VPoxUSBMon_LDFLAGS.x86 = -Entry:DriverEntry@8
+VPoxUSBMon_LDFLAGS.amd64 = -Entry:DriverEntry
+ifdef VPOX_USBMON_WITH_FILTER_AUTOAPPLY
+ VPoxUSBMon_DEFS      += VPOX_USBMON_WITH_FILTER_AUTOAPPLY
+endif
+VPoxUSBMon_SOURCES     = \
+	mon/VPoxUsbMon.cpp  \
+	mon/VPoxUsbFlt.cpp  \
+	mon/VPoxUsbHook.cpp \
+	cmn/VPoxUsbTool.cpp \
+	cmn/VPoxDrvTool.cpp \
+	../USBFilter.cpp \
+	../VPoxUSBFilterMgr.cpp \
+	mon/VPoxUsbMon.rc
+VPoxUSBMon_LIBS        = \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/ntoskrnl.lib \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/hal.lib \
+	$(PATH_STAGE_LIB)/RuntimeR0Drv$(VPOX_SUFF_LIB) \
+	$(usbd_1_TARGET)
+if1of ($(KBUILD_TYPE), debug)
+VPoxUSBMon_DEFS      += LOG_ENABLED VPOX_USB_WITH_VERBOSE_LOGGING
+endif
+
+#
+# USBInstall
+#
+USBInstall_TEMPLATE = VPOXR3EXE
+USBInstall_DEFS     = IN_RT_R3
+USBInstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+USBInstall_CXXFLAGS = -Gz
+USBInstall_CFLAGS   = -Gz
+USBInstall_SOURCES  = \
+	Install/USBInstall.cpp
+USBInstall_LIBS = \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/newdev.lib \
+	$(LIB_RUNTIME) \
+	$(PATH_STAGE_LIB)/SUPR3$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB)
+
+
+#
+# USBUninstall
+#
+USBUninstall_TEMPLATE = VPOXR3EXE
+USBUninstall_DEFS     = IN_RT_R3
+USBUninstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+USBUninstall_CXXFLAGS = -Gz
+USBUninstall_CFLAGS   = -Gz
+USBUninstall_SOURCES  = \
+	Install/USBUninstall.cpp
+USBUninstall_LIBS = \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/newdev.lib \
+	$(LIB_RUNTIME) \
+	$(PATH_STAGE_LIB)/SUPR3$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB)
+
+#
+# USBTest
+#
+USBTest_TEMPLATE = VPOXR3EXE
+USBTest_DEFS     = IN_RT_R3 IN_USBLIB
+USBTest_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+USBTest_CXXFLAGS = -Gz
+USBTest_CFLAGS   = -Gz
+USBTest_SOURCES  = \
+	testcase/USBTest.cpp \
+	../USBFilter.cpp
+USBTest_LIBS = \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/newdev.lib \
+	$(LIB_RUNTIME) \
+	$(PATH_STAGE_LIB)/SUPR3$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB)
+
+#
+# Install the INF files.
+#
+install-infs_TEMPLATE = VPoxR0DrvInfCat
+install-infs_SOURCES = \
+	$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.inf \
+	$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.inf
+install-infs_CLEAN = $(install-infs_SOURCES)
+install-infs_BLDDIRS = \
+	$(PATH_TARGET)/VPoxUSBCat.dir \
+	$(PATH_TARGET)/VPoxUSBMonCat.dir
+
+$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.inf: $(PATH_SUB_CURRENT)/dev/VPoxUSB.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,install-infs,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.inf: $(PATH_SUB_CURRENT)/mon/VPoxUSBMon.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,install-infs,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+ifdef VPOX_SIGNING_MODE
+install-infs_SOURCES += \
+	$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.cat \
+	$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.cat=>VPoxUSB-PreW10.cat \
+	$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.sys \
+	$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.cat \
+	$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.cat=>VPoxUSBMon-PreW10.cat \
+	$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.sys
+
+$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.sys: $$(VPoxUSB_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.cat: \
+		$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.inf \
+		$(PATH_TARGET)/VPoxUSBCat.dir/VPoxUSB.sys
+	$(call MSG_TOOL,Inf2Cat,VPoxUSB-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+
+$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.sys: $$(VPoxUSBMon_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.cat: \
+		$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.inf \
+		$(PATH_TARGET)/VPoxUSBMonCat.dir/VPoxUSBMon.sys
+	$(call MSG_TOOL,Inf2Cat,VPoxUSBMon-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+
+endif # signing
+
+# generate rules
+include $(FILE_KBUILD_SUB_FOOTER)
+

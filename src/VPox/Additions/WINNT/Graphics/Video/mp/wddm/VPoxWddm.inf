@@ -1,0 +1,124 @@
+; $Id: VPoxWddm.inf $
+;; @file
+; VirtualPox Video Wddm driver
+;
+
+;
+; Copyright (C) 2011-2020 Oracle Corporation
+;
+; This file is part of VirtualPox Open Source Edition (OSE), as
+; available from http://www.virtualpox.org. This file is free software;
+; you can redistribute it and/or modify it under the terms of the GNU
+; General Public License (GPL) as published by the Free Software
+; Foundation, in version 2 as it comes in the "COPYING" file of the
+; VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+; hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Provider=%ORACLE%
+ClassGUID={4D36E968-E325-11CE-BFC1-08002BE10318}
+Class=Display
+DriverPackageType=PlugAndPlay
+;edit-DriverVer=02/26/2010,1.00.0000
+;cat CatalogFile = VPoxWddm.cat
+
+[DestinationDirs]
+DefaultDestDir=11
+VPoxVideo.Miniport = 12 ; drivers
+VPoxVideo.Display  = 11 ; system32
+;amd64 VPoxVideo.Display_wow64  = 10,SysWow64 ; SysWow64
+
+[Manufacturer]
+;x86   %ORACLE%=Model, NTx86.6.0
+;amd64 %ORACLE%=Model, NTamd64.6.0
+
+;amd64 [Model.NTamd64.6.0]
+;x86   [Model.NTx86.6.0]
+%VPoxVideo.SvcDesc% = VPoxVideo, PCI\VEN_80EE&DEV_BEEF
+
+[VPoxVideo]
+FeatureScore = F8
+Include = msdv.inf
+;x86   CopyFiles = VPoxVideo.Miniport, VPoxVideo.Display
+;amd64 CopyFiles = VPoxVideo.Miniport, VPoxVideo.Display, VPoxVideo.Display_wow64
+AddReg = VPoxVideo_SoftwareDeviceSettings
+;todo: clear XPDM driver settings: DelReg = VPoxVideo_RemoveDeviceSettings
+RegisterDlls = VPoxVideo_RegisterDlls
+
+[VPoxVideo.Miniport]
+VPoxWddm.sys
+
+[VPoxVideo.Display]
+;dispd3d VPoxDispD3D.dll,,,0x00004000  ; COPYFLG_IN_USE_TRY_RENAME
+;mesa3d VPoxNine.dll,,,0x00004000     ; COPYFLG_IN_USE_TRY_RENAME
+;mesa3d VPoxSVGA.dll,,,0x00004000     ; COPYFLG_IN_USE_TRY_RENAME
+;mesa3d VPoxICD.dll,,,0x00004000      ; COPYFLG_IN_USE_TRY_RENAME
+;mesa3d VPoxGL.dll,,,0x00004000       ; COPYFLG_IN_USE_TRY_RENAME
+
+;amd64 [VPoxVideo.Display_wow64]
+;amd64 ;dispd3d VPoxDispD3D-x86.dll,,,0x00004000  ; COPYFLG_IN_USE_TRY_RENAME
+;amd64 ;mesa3d VPoxNine-x86.dll,,,0x00004000     ; COPYFLG_IN_USE_TRY_RENAME
+;amd64 ;mesa3d VPoxSVGA-x86.dll,,,0x00004000     ; COPYFLG_IN_USE_TRY_RENAME
+;amd64 ;mesa3d VPoxICD-x86.dll,,,0x00004000      ; COPYFLG_IN_USE_TRY_RENAME
+;amd64 ;mesa3d VPoxGL-x86.dll,,,0x00004000       ; COPYFLG_IN_USE_TRY_RENAME
+
+[VPoxVideo_SoftwareDeviceSettings]
+;dispd3d        HKR,, InstalledDisplayDrivers, %REG_MULTI_SZ%, VPoxDispD3D
+;dispd3d        HKR,, UserModeDriverName,      %REG_MULTI_SZ%, VPoxDispD3D.dll
+;amd64 ;dispd3d HKR,, UserModeDriverNameWow,   %REG_MULTI_SZ%, VPoxDispD3D-x86.dll
+;mesa3d         HKR,, OpenGLDriverName,    %REG_MULTI_SZ%, VPoxICD
+;amd64 ;mesa3d  HKR,, OpenGLDriverNameWoW, %REG_MULTI_SZ%, VPoxICD-x86
+;mesa3d         HKR,, OpenGLFlags,         %REG_DWORD%,    0x00000001
+;amd64 ;mesa3d  HKR,, OpenGLFlagsWoW,      %REG_DWORD%,    0x00000001
+;mesa3d         HKR,, OpenGLVersion,       %REG_DWORD%,    0x00000001
+;amd64 ;mesa3d  HKR,, OpenGLVersionWoW,    %REG_DWORD%,    0x00000001
+HKR,, VgaCompatible, %REG_DWORD%, 0
+
+[VPoxVideo_RegisterDlls]
+
+
+[VPoxVideo.Services]
+AddService=VPoxWddm, 0x00000002, VPoxVideo_Service_Inst, VPoxVideo_EventLog_Inst
+
+[VPoxVideo_Service_Inst]
+ServiceType=1                   ; SERVICE_KERNEL_DRIVER
+StartType=3                     ; SERVICE_DEMAND_START
+ErrorControl=0                  ; SERVICE_ERROR_IGNORE
+LoadOrderGroup=Video
+ServiceBinary=%12%\VPoxWddm.sys
+
+[VPoxVideo_EventLog_Inst]
+AddReg = VPoxVideo_EventLog_AddReg
+
+[VPoxVideo_EventLog_AddReg]
+HKR,,EventMessageFile,0x00020000,"%%SystemRoot%%\System32\IoLogMsg.dll;%%SystemRoot%%\System32\drivers\VPoxWddm.sys"
+HKR,,TypesSupported,0x00010001,7
+
+[SourceDisksNames]
+1 = %VPoxVideo.Disk%,,,""
+
+[SourceDisksFiles]
+VPoxWddm.sys = 1
+;amd64 ;dispd3d VPoxDispD3D-x86.dll = 1
+;amd64 ;mesa3d VPoxNine-x86.dll = 1
+;amd64 ;mesa3d VPoxSVGA-x86.dll = 1
+;amd64 ;mesa3d VPoxICD-x86.dll = 1
+;amd64 ;mesa3d VPoxGL-x86.dll = 1
+;dispd3d VPoxDispD3D.dll = 1
+;mesa3d VPoxNine.dll = 1
+;mesa3d VPoxSVGA.dll = 1
+;mesa3d VPoxICD.dll = 1
+;mesa3d VPoxGL.dll = 1
+
+[Strings]
+REG_SZ = 0x00000000
+REG_MULTI_SZ = 0x00010000
+REG_EXPAND_SZ = 0x00020000
+REG_BINARY = 0x00000001
+REG_DWORD = 0x00010001
+
+ORACLE = "Oracle Corporation"
+VPoxVideo.Disk = "VirtualPox Video Driver Disk"
+VPoxVideo.SvcDesc = "VirtualPox Graphics Adapter (WDDM)"

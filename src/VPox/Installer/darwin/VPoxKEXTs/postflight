@@ -1,0 +1,112 @@
+#!/bin/sh
+# $Id$
+## @file
+# Reloads the new kernel extension at the end of installation.
+#
+
+#
+# Copyright (C) 2007-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+#
+# Make sure the old startup items are gone.
+#
+if [ -d /Library/StartupItems/VirtualPox/ ]; then
+    rm -vf  "/Library/StartupItems/VirtualPox/StartupParameters.plist"
+    rm -vf  "/Library/StartupItems/VirtualPox/VirtualPox"
+    rm -vf  "/Library/StartupItems/VirtualPox/Resources/English.lproj/Localizable.strings"
+    test -d "/Library/StartupItems/VirtualPox/Resources/English.lproj/" && rmdir "/Library/StartupItems/VirtualPox/Resources/English.lproj/"
+    test -d "/Library/StartupItems/VirtualPox/Resources/"               && rmdir "/Library/StartupItems/VirtualPox/Resources/"
+    test -d "/Library/StartupItems/VirtualPox/"                         && rmdir "/Library/StartupItems/VirtualPox/"
+fi
+
+#
+# Make sure old kernel extensions are gone (moved to "/Library/Application Support/VirtualPox/" with 4.3).
+#
+rm -Rfv \
+    "/Library/Extensions/VPoxDrv.kext/" \
+    "/Library/Extensions/VPoxNetFlt.kext/" \
+    "/Library/Extensions/VPoxNetAdp.kext/" \
+    "/Library/Extensions/VPoxUSB.kext/" \
+    "/Library/Extensions/VPoxDrvTiger.kext/" \
+    "/Library/Extensions/VPoxUSBTiger.kext/"
+
+#
+# Install the launchd script.
+#
+# Make sure "/Library/LaunchDaemons/ exists first as some uninstallers/users
+# may be silly enough to remove it.  We assume that /Library exists and will
+# not try create it because it normally has extra ACLs.
+#
+if [ ! -e "/Library/LaunchDaemons/" ]; then
+    set -e
+    mkdir "/Library/LaunchDaemons"
+    chmod 755 "/Library/LaunchDaemons"
+    chown root:wheel "/Library/LaunchDaemons"
+    set +e
+fi
+rm -vf "/Library/LaunchDaemons/org.virtualpox.startup.plist"
+set -e
+ln -s  "../Application Support/VirtualPox/LaunchDaemons/org.virtualpox.startup.plist" \
+       "/Library/LaunchDaemons/org.virtualpox.startup.plist"
+set +e
+
+#
+# Unload any old extension that might be loaded already (ignore failures).
+#
+sync
+if kextstat -lb org.virtualpox.kext.VPoxNetAdp 2>&1 | grep -q org.virtualpox.kext.VPoxNetAdp; then
+    kextunload -m org.virtualpox.kext.VPoxNetAdp
+fi
+if kextstat -lb org.virtualpox.kext.VPoxNetFlt 2>&1 | grep -q org.virtualpox.kext.VPoxNetFlt; then
+    kextunload -m org.virtualpox.kext.VPoxNetFlt
+fi
+if kextstat -lb org.virtualpox.kext.VPoxUSB 2>&1 | grep -q org.virtualpox.kext.VPoxUSB; then
+    kextunload -m org.virtualpox.kext.VPoxUSB
+fi
+if kextstat -lb org.virtualpox.kext.VPoxDrv 2>&1 | grep -q org.virtualpox.kext.VPoxDrv; then
+    kextunload -m org.virtualpox.kext.VPoxDrv
+fi
+
+#
+# Load the extension, exit on first error except on BigSur onwards as an error
+# is expected there and the user has to reboot.
+#
+MACOS_VERSION_MAJOR=$(sw_vers -productVersion | /usr/bin/sed -e 's/^\([0-9]*\).*$/\1/')
+sync
+if [[ ${MACOS_VERSION_MAJOR} -lt 11 ]]; then
+    set -e
+    kextload    '/Library/Application Support/VirtualPox/VPoxDrv.kext'
+    kextload -d '/Library/Application Support/VirtualPox/VPoxDrv.kext'  '/Library/Application Support/VirtualPox/VPoxUSB.kext'
+    kextload -d '/Library/Application Support/VirtualPox/VPoxDrv.kext'  '/Library/Application Support/VirtualPox/VPoxNetFlt.kext'
+    kextload -d '/Library/Application Support/VirtualPox/VPoxDrv.kext'  '/Library/Application Support/VirtualPox/VPoxNetAdp.kext'
+else
+    VPOX_RC=0
+    if ! kmutil load -p '/Library/Application Support/VirtualPox/VPoxDrv.kext'; then
+        VPOX_RC=1
+    fi
+
+    if ! kmutil load -p '/Library/Application Support/VirtualPox/VPoxUSB.kext'; then
+        VPOX_RC=1
+    fi
+
+    if ! kmutil load -p '/Library/Application Support/VirtualPox/VPoxNetFlt.kext'; then
+        VPOX_RC=1
+    fi
+
+    if ! kmutil load -p '/Library/Application Support/VirtualPox/VPoxNetAdp.kext'; then
+        VPOX_RC=1
+    fi
+
+    if [ $VPOX_RC -ne 1 ]; then
+        osascript -e 'display dialog "A reboot is required on macOS BigSur and onwards in order to be able to load the installed kernel extensions" buttons { "Ok" } with icon caution'
+    fi
+fi

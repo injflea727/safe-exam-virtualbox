@@ -1,0 +1,682 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for Python bindings
+#
+
+#
+# Copyright (C) 2009-2021 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifdef VPOX_WITH_MULTIVERSION_PYTHON
+ VPOX_MULTIPYTHON = 1
+else
+ VPOX_MULTIPYTHON = 0
+endif
+
+#
+# List of supported Python versions, defining a number of
+# VPOX_PYTHON[26|27|31|32|32M|33|33M|34|34M|35|35M|36|36M|37|37M|38|38M|39|39M|310|310M|DEF]_[INC|LIB] variables
+# which get picked up below.
+#
+ifeq ($(KBUILD_TARGET),darwin) # Relatively predictable, don't script.
+ ifndef VPOX_WITHOUT_VPOXPYTHON_FOR_OSX_10_6
+  if1of ($(VPOX_DEF_MACOSX_VERSION_MIN), 10.5 10.4)
+   VPOX_PYTHON26_INC = $(VPOX_PATH_MACOSX_SDK_10_6)/usr/include/python2.6
+   VPOX_PYTHON26_LIB = $(VPOX_PATH_MACOSX_SDK_10_6)/usr/lib/libpython2.6.dylib
+  else if "$(VPOX_DEF_MACOSX_VERSION_MIN)" == "10.9" && "$(VPOX_XCODE_VERSION)" == "6.2" # 'effing 10.9 SDK in Xcode 6.2 is missing python. Stupid, stupid Apple!!
+   VPOX_PYTHON26_INC = $(VPOX_PATH_MACOSX_SDK)/../MacOSX10.10.sdk/System/Library/Frameworks/Python.framework/Versions/2.6/Headers
+   VPOX_PYTHON26_LIB = $(VPOX_PATH_MACOSX_SDK)/../MacOSX10.10.sdk/System/Library/Frameworks/Python.framework/Versions/2.6/Python
+  else
+   VPOX_PYTHON26_INC = $(VPOX_PATH_MACOSX_SDK)/System/Library/Frameworks/Python.framework/Versions/2.6/Headers
+   VPOX_PYTHON26_LIB = $(VPOX_PATH_MACOSX_SDK)/System/Library/Frameworks/Python.framework/Versions/2.6/Python
+  endif
+  if !defined(VPOX_OSE) || "$(wildcard $(VPOX_PYTHON26_LIB))" != ""
+   VPOX_PYTHON26_LIB_X86 = $(VPOX_PYTHON26_LIB)
+  else
+   VPOX_PYTHON26_INC =
+   VPOX_PYTHON26_LIB =
+  endif
+ endif
+ ifndef VPOX_WITHOUT_VPOXPYTHON_FOR_OSX_10_7
+  if1of ($(VPOX_DEF_MACOSX_VERSION_MIN), 10.6 10.5 10.4)
+   VPOX_PYTHON27_INC = $(VPOX_PATH_MACOSX_SDK_10_7)/usr/include/python2.7
+   VPOX_PYTHON27_LIB = $(VPOX_PATH_MACOSX_SDK_10_7)/usr/lib/libpython2.7.dylib
+  else if "$(VPOX_DEF_MACOSX_VERSION_MIN)" == "10.9" && "$(VPOX_XCODE_VERSION)" == "6.2" # 'effing 10.9 SDK in Xcode 6.2 is missing python. Stupid, stupid Apple!!
+   VPOX_PYTHON27_INC = $(VPOX_PATH_MACOSX_SDK)/../MacOSX10.10.sdk/System/Library/Frameworks/Python.framework/Versions/2.7/Headers
+   VPOX_PYTHON27_LIB = $(VPOX_PATH_MACOSX_SDK)/../MacOSX10.10.sdk/System/Library/Frameworks/Python.framework/Versions/2.7/Python
+  else
+   VPOX_PYTHON27_INC = $(VPOX_PATH_MACOSX_SDK)/System/Library/Frameworks/Python.framework/Versions/2.7/Headers
+   VPOX_PYTHON27_LIB = $(VPOX_PATH_MACOSX_SDK)/System/Library/Frameworks/Python.framework/Versions/2.7/Python
+  endif
+  if !defined(VPOX_OSE) || "$(wildcard $(VPOX_PYTHON27_LIB))" != ""
+   VPOX_PYTHON27_LIB_X86 = $(VPOX_PYTHON27_LIB)
+  else
+   VPOX_PYTHON27_INC =
+   VPOX_PYTHON27_LIB =
+  endif
+ endif
+ # No Python 3.x yet as part of OSX versions including El Capitan, 10.11.
+
+else
+ # Use the script.
+ $(eval $(subst |,$(NL),$(shell $(VPOX_BLD_PYTHON) \
+	$(PATH_SUB_CURRENT)/gen_python_deps.py \
+	    $(KBUILD_TARGET) \
+	    $(KBUILD_TARGET_ARCH) \
+	    $(VPOX_MULTIPYTHON) )))
+endif
+
+ifndef VPOX_ONLY_SDK
+
+#
+# Base Python Client Module - the C++/XPCOM bits (not actually built).
+#
+VPoxPythonBase_TEMPLATE = XPCOM
+VPoxPythonBase_CXXFLAGS = -Wno-write-strings
+VPoxPythonBase_DLLSUFF.darwin = .so
+VPoxPythonBase_DEFS     = \
+	_IMPL_NS_COM \
+	_IMPL_NS_BASE \
+	EXPORT_XPTI_API \
+        EXPORT_XPT_API \
+	VPOX_PYXPCOM \
+	VPOX_WITH_XPCOM \
+	VPOX_PYXPCOM_VERSIONED
+#VPoxPythonBase_DEFS.debug = \
+#	VPOX_DEBUG_LIFETIMES
+VPoxPythonBase_INCS     = \
+	src
+VPoxPythonBase_SOURCES  = \
+	src/module/_xpcom.cpp \
+	src/dllmain.cpp \
+	src/ErrorUtils.cpp \
+	src/PyGBase.cpp \
+	src/PyGInputStream.cpp \
+	src/PyGModule.cpp \
+	src/PyGStub.cpp \
+	src/PyGWeakReference.cpp \
+	src/PyIClassInfo.cpp \
+	src/PyIComponentManager.cpp \
+	src/PyIComponentManagerObsolete.cpp \
+	src/PyIEnumerator.cpp \
+	src/PyIID.cpp \
+	src/PyIInputStream.cpp \
+	src/PyIInterfaceInfo.cpp \
+	src/PyIInterfaceInfoManager.cpp \
+	src/PyISimpleEnumerator.cpp \
+	src/PyISupports.cpp \
+	src/PyIVariant.cpp \
+	src/Pyxpt_info.cpp \
+	src/TypeObject.cpp \
+	src/VariantUtils.cpp
+VPoxPythonBase_LIBS     = \
+	$(PATH_STAGE_LIB)/VPoxCOM$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_BIN)/VPoxXPCOM$(VPOX_SUFF_DLL)
+
+# pymalloc abi variant.
+VPoxPythonBase_m_EXTENDS    = VPoxPythonBase
+VPoxPythonBase_m_DEFS       = MODULE_NAME_SUFFIX=m $(VPoxPythonBase_DEFS)
+
+# 32-bit base.
+VPoxPythonBase_x86_TEMPLATE = XPCOM-x86
+VPoxPythonBase_x86_EXTENDS  = VPoxPythonBase
+VPoxPythonBase_x86_DEFS     = MODULE_NAME_SUFFIX=_x86 $(VPoxPythonBase_DEFS)
+VPoxPythonBase_x86_LIBS     = \
+	$(PATH_STAGE_LIB)/VPoxCOM-x86$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_BIN)/VPoxXPCOM-x86$(VPOX_SUFF_DLL)
+
+# 32-bit pymalloc abi variant.
+VPoxPythonBase_x86_m_EXTENDS    = VPoxPythonBase_x86
+VPoxPythonBase_x86_m_DEFS       = MODULE_NAME_SUFFIX=_x86m $(VPoxPythonBase_DEFS)
+
+
+ifdef VPOX_PYTHON26_INC
+#
+# Python 2.6 version
+#
+DLLS += VPoxPython2_6
+VPoxPython2_6_EXTENDS    = VPoxPythonBase
+VPoxPython2_6_EXTENDS_BY = appending
+VPoxPython2_6_TEMPLATE   = XPCOM$(if-expr "$(KBUILD_TARGET)" == "darwin" && "$(VPOX_DEF_MACOSX_VERSION_MIN)" <= "10.6",OSX106,)
+VPoxPython2_6_INCS       = $(VPOX_PYTHON26_INC)
+VPoxPython2_6_LIBS       = $(VPOX_PYTHON26_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON26_LIB_X86
+DLLS += VPoxPython2_6_x86
+VPoxPython2_6_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython2_6_x86_EXTENDS_BY = appending
+VPoxPython2_6_x86_TEMPLATE   = XPCOM$(if-expr "$(KBUILD_TARGET)" == "darwin" && "$(VPOX_DEF_MACOSX_VERSION_MIN)" <= "10.6",OSX106,-x86)
+VPoxPython2_6_x86_INCS       = $(VPOX_PYTHON26_INC)
+VPoxPython2_6_x86_LIBS       = $(VPOX_PYTHON26_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON27_INC
+#
+# Python 2.7 version
+#
+DLLS += VPoxPython2_7
+VPoxPython2_7_EXTENDS    = VPoxPythonBase
+VPoxPython2_7_EXTENDS_BY = appending
+VPoxPython2_7_TEMPLATE   = XPCOM$(if-expr "$(KBUILD_TARGET)" == "darwin" && "$(VPOX_DEF_MACOSX_VERSION_MIN)" <= "10.7",OSX107,)
+VPoxPython2_7_INCS       = $(VPOX_PYTHON27_INC)
+VPoxPython2_7_LIBS       = $(VPOX_PYTHON27_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON27_LIB_X86
+DLLS += VPoxPython2_7_x86
+VPoxPython2_7_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython2_7_x86_EXTENDS_BY = appending
+VPoxPython2_7_x86_TEMPLATE   = XPCOM$(if-expr "$(KBUILD_TARGET)" == "darwin" && "$(VPOX_DEF_MACOSX_VERSION_MIN)" <= "10.7",OSX107,-x86)
+VPoxPython2_7_x86_INCS       = $(VPOX_PYTHON27_INC)
+VPoxPython2_7_x86_LIBS       = $(VPOX_PYTHON27_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON31_INC
+#
+# Python 3.1 version
+#
+DLLS += VPoxPython3_1
+VPoxPython3_1_EXTENDS    = VPoxPythonBase
+VPoxPython3_1_EXTENDS_BY = appending
+VPoxPython3_1_TEMPLATE   = XPCOM
+VPoxPython3_1_INCS       = $(VPOX_PYTHON31_INC)
+VPoxPython3_1_LIBS       = $(VPOX_PYTHON31_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON31_LIB_X86
+DLLS += VPoxPython3_1_x86
+VPoxPython3_1_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_1_x86_EXTENDS_BY = appending
+VPoxPython3_1_x86_TEMPLATE   = XPCOM
+VPoxPython3_1_x86_INCS       = $(VPOX_PYTHON31_INC)
+VPoxPython3_1_x86_LIBS       = $(VPOX_PYTHON31_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON32_INC
+#
+# Python 3.2 version
+#
+DLLS += VPoxPython3_2
+VPoxPython3_2_EXTENDS    = VPoxPythonBase
+VPoxPython3_2_EXTENDS_BY = appending
+VPoxPython3_2_TEMPLATE   = XPCOM
+VPoxPython3_2_INCS       = $(VPOX_PYTHON32_INC)
+VPoxPython3_2_LIBS       = $(VPOX_PYTHON32_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON32_LIB_X86
+DLLS += VPoxPython3_2_x86
+VPoxPython3_2_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_2_x86_EXTENDS_BY = appending
+VPoxPython3_2_x86_TEMPLATE   = XPCOM
+VPoxPython3_2_x86_INCS       = $(VPOX_PYTHON32_INC)
+VPoxPython3_2_x86_LIBS       = $(VPOX_PYTHON32_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON32M_INC
+#
+# Python 3.2 version with pymalloc
+#
+DLLS += VPoxPython3_2m
+VPoxPython3_2m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_2m_EXTENDS_BY = appending
+VPoxPython3_2m_TEMPLATE   = XPCOM
+VPoxPython3_2m_INCS       = $(VPOX_PYTHON32M_INC)
+VPoxPython3_2m_LIBS       = $(VPOX_PYTHON32M_LIB)
+VPoxPython3_2m_DEFS       = MODULE_NAME_SUFFIX
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON32M_LIB_X86
+DLLS += VPoxPython3_2m_x86
+VPoxPython3_2m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_2m_x86_EXTENDS_BY = appending
+VPoxPython3_2m_x86_TEMPLATE   = XPCOM
+VPoxPython3_2m_x86_INCS       = $(VPOX_PYTHON32M_INC)
+VPoxPython3_2m_x86_LIBS       = $(VPOX_PYTHON32M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON33_INC
+#
+# Python 3.3 version
+#
+DLLS += VPoxPython3_3
+VPoxPython3_3_EXTENDS    = VPoxPythonBase
+VPoxPython3_3_EXTENDS_BY = appending
+VPoxPython3_3_TEMPLATE   = XPCOM
+VPoxPython3_3_INCS       = $(VPOX_PYTHON33_INC)
+VPoxPython3_3_LIBS       = $(VPOX_PYTHON33_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON33_LIB_X86
+DLLS += VPoxPython3_3_x86
+VPoxPython3_3_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_3_x86_EXTENDS_BY = appending
+VPoxPython3_3_x86_TEMPLATE   = XPCOM
+VPoxPython3_3_x86_INCS       = $(VPOX_PYTHON33_INC)
+VPoxPython3_3_x86_LIBS       = $(VPOX_PYTHON33_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON33M_INC
+#
+# Python 3.3 version with pymalloc
+#
+DLLS += VPoxPython3_3m
+VPoxPython3_3m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_3m_EXTENDS_BY = appending
+VPoxPython3_3m_TEMPLATE   = XPCOM
+VPoxPython3_3m_INCS       = $(VPOX_PYTHON33M_INC)
+VPoxPython3_3m_LIBS       = $(VPOX_PYTHON33M_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON33M_LIB_X86
+DLLS += VPoxPython3_3m_x86
+VPoxPython3_3m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_3m_x86_EXTENDS_BY = appending
+VPoxPython3_3m_x86_TEMPLATE   = XPCOM
+VPoxPython3_3m_x86_INCS       = $(VPOX_PYTHON33M_INC)
+VPoxPython3_3m_x86_LIBS       = $(VPOX_PYTHON33M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON34_INC
+#
+# Python 3.4 version
+#
+DLLS += VPoxPython3_4
+VPoxPython3_4_EXTENDS    = VPoxPythonBase
+VPoxPython3_4_EXTENDS_BY = appending
+VPoxPython3_4_TEMPLATE   = XPCOM
+VPoxPython3_4_INCS       = $(VPOX_PYTHON34_INC)
+VPoxPython3_4_LIBS       = $(VPOX_PYTHON34_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON34_LIB_X86
+DLLS += VPoxPython3_4_x86
+VPoxPython3_4_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_4_x86_EXTENDS_BY = appending
+VPoxPython3_4_x86_TEMPLATE   = XPCOM
+VPoxPython3_4_x86_INCS       = $(VPOX_PYTHON34_INC)
+VPoxPython3_4_x86_LIBS       = $(VPOX_PYTHON34_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON34M_INC
+#
+# Python 3.4 version with pymalloc
+#
+DLLS += VPoxPython3_4m
+VPoxPython3_4m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_4m_EXTENDS_BY = appending
+VPoxPython3_4m_TEMPLATE   = XPCOM
+VPoxPython3_4m_INCS       = $(VPOX_PYTHON34M_INC)
+VPoxPython3_4m_LIBS       = $(VPOX_PYTHON34M_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON34M_LIB_X86
+DLLS += VPoxPython3_4m_x86
+VPoxPython3_4m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_4m_x86_EXTENDS_BY = appending
+VPoxPython3_4m_x86_TEMPLATE   = XPCOM
+VPoxPython3_4m_x86_INCS       = $(VPOX_PYTHON34M_INC)
+VPoxPython3_4m_x86_LIBS       = $(VPOX_PYTHON34M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON35_INC
+#
+# Python 3.5 version
+#
+DLLS += VPoxPython3_5
+VPoxPython3_5_EXTENDS    = VPoxPythonBase
+VPoxPython3_5_EXTENDS_BY = appending
+VPoxPython3_5_TEMPLATE   = XPCOM
+VPoxPython3_5_INCS       = $(VPOX_PYTHON35_INC)
+VPoxPython3_5_LIBS       = $(VPOX_PYTHON35_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON35_LIB_X86
+DLLS += VPoxPython3_5_x86
+VPoxPython3_5_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_5_x86_EXTENDS_BY = appending
+VPoxPython3_5_x86_TEMPLATE   = XPCOM
+VPoxPython3_5_x86_INCS       = $(VPOX_PYTHON35_INC)
+VPoxPython3_5_x86_LIBS       = $(VPOX_PYTHON35_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON35M_INC
+#
+# Python 3.5 version with pymalloc
+#
+DLLS += VPoxPython3_5m
+VPoxPython3_5m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_5m_EXTENDS_BY = appending
+VPoxPython3_5m_TEMPLATE   = XPCOM
+VPoxPython3_5m_INCS       = $(VPOX_PYTHON35M_INC)
+VPoxPython3_5m_LIBS       = $(VPOX_PYTHON35M_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON35M_LIB_X86
+DLLS += VPoxPython3_5m_x86
+VPoxPython3_5m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_5m_x86_EXTENDS_BY = appending
+VPoxPython3_5m_x86_TEMPLATE   = XPCOM
+VPoxPython3_5m_x86_INCS       = $(VPOX_PYTHON35M_INC)
+VPoxPython3_5m_x86_LIBS       = $(VPOX_PYTHON35M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON36_INC
+#
+# Python 3.6 version
+#
+DLLS += VPoxPython3_6
+VPoxPython3_6_EXTENDS    = VPoxPythonBase
+VPoxPython3_6_EXTENDS_BY = appending
+VPoxPython3_6_TEMPLATE   = XPCOM
+VPoxPython3_6_INCS       = $(VPOX_PYTHON36_INC)
+VPoxPython3_6_LIBS       = $(VPOX_PYTHON36_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON36_LIB_X86
+DLLS += VPoxPython3_6_x86
+VPoxPython3_6_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_6_x86_EXTENDS_BY = appending
+VPoxPython3_6_x86_TEMPLATE   = XPCOM
+VPoxPython3_6_x86_INCS       = $(VPOX_PYTHON36_INC)
+VPoxPython3_6_x86_LIBS       = $(VPOX_PYTHON36_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON36M_INC
+#
+# Python 3.6 version with pymalloc
+#
+DLLS += VPoxPython3_6m
+VPoxPython3_6m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_6m_EXTENDS_BY = appending
+VPoxPython3_6m_TEMPLATE   = XPCOM
+VPoxPython3_6m_INCS       = $(VPOX_PYTHON36M_INC)
+VPoxPython3_6m_LIBS       = $(VPOX_PYTHON36M_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON36M_LIB_X86
+DLLS += VPoxPython3_6m_x86
+VPoxPython3_6m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_6m_x86_EXTENDS_BY = appending
+VPoxPython3_6m_x86_TEMPLATE   = XPCOM
+VPoxPython3_6m_x86_INCS       = $(VPOX_PYTHON36M_INC)
+VPoxPython3_6m_x86_LIBS       = $(VPOX_PYTHON36M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON37_INC
+#
+# Python 3.7 version
+#
+DLLS += VPoxPython3_7
+VPoxPython3_7_EXTENDS    = VPoxPythonBase
+VPoxPython3_7_EXTENDS_BY = appending
+VPoxPython3_7_TEMPLATE   = XPCOM
+VPoxPython3_7_INCS       = $(VPOX_PYTHON37_INC)
+VPoxPython3_7_LIBS       = $(VPOX_PYTHON37_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON37_LIB_X86
+DLLS += VPoxPython3_7_x86
+VPoxPython3_7_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_7_x86_EXTENDS_BY = appending
+VPoxPython3_7_x86_TEMPLATE   = XPCOM
+VPoxPython3_7_x86_INCS       = $(VPOX_PYTHON37_INC)
+VPoxPython3_7_x86_LIBS       = $(VPOX_PYTHON37_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON37M_INC
+#
+# Python 3.7 version with pymalloc
+#
+DLLS += VPoxPython3_7m
+VPoxPython3_7m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_7m_EXTENDS_BY = appending
+VPoxPython3_7m_TEMPLATE   = XPCOM
+VPoxPython3_7m_INCS       = $(VPOX_PYTHON37M_INC)
+VPoxPython3_7m_LIBS       = $(VPOX_PYTHON37M_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON37M_LIB_X86
+DLLS += VPoxPython3_7m_x86
+VPoxPython3_7m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_7m_x86_EXTENDS_BY = appending
+VPoxPython3_7m_x86_TEMPLATE_   = XPCOM
+VPoxPython3_7m_x86_INCS       = $(VPOX_PYTHON37M_INC)
+VPoxPython3_7m_x86_LIBS       = $(VPOX_PYTHON37M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON38_INC
+#
+# Python 3.8 version
+#
+DLLS += VPoxPython3_8
+VPoxPython3_8_EXTENDS    = VPoxPythonBase
+VPoxPython3_8_EXTENDS_BY = appending
+VPoxPython3_8_TEMPLATE   = XPCOM
+VPoxPython3_8_INCS       = $(VPOX_PYTHON38_INC)
+VPoxPython3_8_LIBS       = $(VPOX_PYTHON38_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON38_LIB_X86
+DLLS += VPoxPython3_8_x86
+VPoxPython3_8_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_8_x86_EXTENDS_BY = appending
+VPoxPython3_8_x86_TEMPLATE   = XPCOM
+VPoxPython3_8_x86_INCS       = $(VPOX_PYTHON38_INC)
+VPoxPython3_8_x86_LIBS       = $(VPOX_PYTHON38_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON38M_INC
+#
+# Python 3.8 version with pymalloc
+#
+DLLS += VPoxPython3_8m
+VPoxPython3_8m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_8m_EXTENDS_BY = appending
+VPoxPython3_8m_TEMPLATE   = XPCOM
+VPoxPython3_8m_INCS       = $(VPOX_PYTHON38M_INC)
+VPoxPython3_8m_LIBS       = $(VPOX_PYTHON38M_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON38M_LIB_X86
+DLLS += VPoxPython3_8m_x86
+VPoxPython3_8m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_8m_x86_EXTENDS_BY = appending
+VPoxPython3_8m_x86_TEMPLATE_   = XPCOM
+VPoxPython3_8m_x86_INCS       = $(VPOX_PYTHON38M_INC)
+VPoxPython3_8m_x86_LIBS       = $(VPOX_PYTHON38M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON39_INC
+#
+# Python 3.9 version
+#
+DLLS += VPoxPython3_9
+VPoxPython3_9_EXTENDS    = VPoxPythonBase
+VPoxPython3_9_EXTENDS_BY = appending
+VPoxPython3_9_TEMPLATE   = XPCOM
+VPoxPython3_9_INCS       = $(VPOX_PYTHON39_INC)
+VPoxPython3_9_LIBS       = $(VPOX_PYTHON39_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON39_LIB_X86
+DLLS += VPoxPython3_9_x86
+VPoxPython3_9_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_9_x86_EXTENDS_BY = appending
+VPoxPython3_9_x86_TEMPLATE   = XPCOM
+VPoxPython3_9_x86_INCS       = $(VPOX_PYTHON39_INC)
+VPoxPython3_9_x86_LIBS       = $(VPOX_PYTHON39_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON39M_INC
+#
+# Python 3.9 version with pymalloc
+#
+DLLS += VPoxPython3_9m
+VPoxPython3_9m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_9m_EXTENDS_BY = appending
+VPoxPython3_9m_TEMPLATE   = XPCOM
+VPoxPython3_9m_INCS       = $(VPOX_PYTHON39M_INC)
+VPoxPython3_9m_LIBS       = $(VPOX_PYTHON39M_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON39M_LIB_X86
+DLLS += VPoxPython3_9m_x86
+VPoxPython3_9m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_9m_x86_EXTENDS_BY = appending
+VPoxPython3_9m_x86_TEMPLATE_   = XPCOM
+VPoxPython3_9m_x86_INCS       = $(VPOX_PYTHON39M_INC)
+VPoxPython3_9m_x86_LIBS       = $(VPOX_PYTHON39M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON310_INC
+#
+# Python 3.10 version
+#
+DLLS += VPoxPython3_10
+VPoxPython3_10_EXTENDS    = VPoxPythonBase
+VPoxPython3_10_EXTENDS_BY = appending
+VPoxPython3_10_TEMPLATE   = XPCOM
+VPoxPython3_10_INCS       = $(VPOX_PYTHON310_INC)
+VPoxPython3_10_LIBS       = $(VPOX_PYTHON310_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON310_LIB_X86
+DLLS += VPoxPython3_10_x86
+VPoxPython3_10_x86_EXTENDS    = VPoxPythonBase_x86
+VPoxPython3_10_x86_EXTENDS_BY = appending
+VPoxPython3_10_x86_TEMPLATE   = XPCOM
+VPoxPython3_10_x86_INCS       = $(VPOX_PYTHON310_INC)
+VPoxPython3_10_x86_LIBS       = $(VPOX_PYTHON310_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHON310M_INC
+#
+# Python 3.10 version with pymalloc
+#
+DLLS += VPoxPython3_10m
+VPoxPython3_10m_EXTENDS    = VPoxPythonBase_m
+VPoxPython3_10m_EXTENDS_BY = appending
+VPoxPython3_10m_TEMPLATE   = XPCOM
+VPoxPython3_10m_INCS       = $(VPOX_PYTHON310M_INC)
+VPoxPython3_10m_LIBS       = $(VPOX_PYTHON310M_LIB)
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHON310M_LIB_X86
+DLLS += VPoxPython3_10m_x86
+VPoxPython3_10m_x86_EXTENDS    = VPoxPythonBase_x86_m
+VPoxPython3_10m_x86_EXTENDS_BY = appending
+VPoxPython3_10m_x86_TEMPLATE_  = XPCOM
+VPoxPython3_10m_x86_INCS       = $(VPOX_PYTHON310M_INC)
+VPoxPython3_10m_x86_LIBS       = $(VPOX_PYTHON310M_LIB_X86)
+  endif
+ endif
+endif
+
+ifdef VPOX_PYTHONDEF_INC
+#
+# Python without versioning
+#
+DLLS += VPoxPython
+VPoxPython_EXTENDS      = VPoxPythonBase
+VPoxPython_DEFS         = $(filter-out VPOX_PYXPCOM_VERSIONED,$(VPoxPythonBase_DEFS))
+VPoxPython_INCS         = $(VPoxPythonBase_INCS) $(VPOX_PYTHONDEF_INC)
+if "$(KBUILD_TARGET)" == "linux"
+ VPoxPython_LIBS        = $(VPoxPythonBase_LIBS)
+else
+ VPoxPython_LIBS        = $(VPoxPythonBase_LIBS) $(VPOX_PYTHONDEF_LIB)
+endif
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  ifdef VPOX_PYTHONDEF_LIB_X86
+VPoxPython_x86_EXTENDS      = VPoxPythonBase_x86
+VPoxPython_x86_DEFS         = $(filter-out VPOX_PYXPCOM_VERSIONED,$(VPoxPythonBase_x86_DEFS))
+VPoxPython_x86_INCS         = $(VPoxPythonBase_x86_INCS) $(VPOX_PYTHONDEF_INC)
+if "$(KBUILD_TARGET)" == "linux"
+ VPoxPython_x86_LIBS        = $(VPoxPythonBase_x86_LIBS)
+else
+ VPoxPython_x86_LIBS        = $(VPoxPythonBase_x86_LIBS) $(VPOX_PYTHONDEF_LIB_X86)
+endif
+  endif
+ endif
+endif
+
+endif # VPOX_ONLY_SDK
+
+#
+# Install the python modules.
+#
+INSTALLS += VPoxPython-inst-py-xpcom
+VPoxPython-inst-py-xpcom_INST = $(INST_SDK)bindings/xpcom/python/xpcom/
+VPoxPython-inst-py-xpcom_MODE = a+r,u+w
+VPoxPython-inst-py-xpcom_SOURCES = \
+	vpoxxpcom.py \
+	components.py \
+	file.py \
+	__init__.py \
+	nsError.py \
+	primitives.py \
+	xpcom_consts.py \
+	xpt.py \
+	client/__init__.py=>client/__init__.py \
+	server/__init__.py=>server/__init__.py \
+	server/enumerator.py=>server/enumerator.py \
+	server/factory.py=>server/factory.py \
+	server/loader.py=>server/loader.py \
+	server/module.py=>server/module.py \
+	server/policy.py=>server/policy.py
+
+
+include $(FILE_KBUILD_SUB_FOOTER)

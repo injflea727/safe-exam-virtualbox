@@ -1,0 +1,359 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Windows Guest Additions Installer.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include Sub-Makefiles.
+include $(PATH_SUB_CURRENT)/Loader/Makefile.kmk
+include $(PATH_SUB_CURRENT)/InstallHelper/Makefile.kmk
+
+# Globals
+VPOX_PATH_WIN_ADD_INS_SRC := $(PATH_SUB_CURRENT)
+VPOX_PATH_ADDITIONS.win.x86 := $(PATH_OUT_BASE)/win.x86/$(KBUILD_TYPE)/bin/additions
+VPOX_WITH_GUEST_INSTALL_HELPER := 1 # Use our guest install helper DLL.
+
+## @todo VPOX_WIN_ADD_INS_OUT_DIR := $(PATH_TARGET)/Additions/Installer/win
+
+PROGRAMS += VPoxDrvInst
+VPoxDrvInst_TEMPLATE= VPoxGuestR3Exe
+VPoxDrvInst_DEFS    = _WIN32_WINNT=0x0400 _UNICODE UNICODE
+VPoxDrvInst_DEFS   += VPOX_SVN_REV=$(VPOX_SVN_REV)
+ifdef VPOX_WITH_WDDM
+ VPoxDrvInst_DEFS  += VPOX_WITH_WDDM
+endif
+VPoxDrvInst_DEPS    = $(VPOX_SVN_REV_KMK)
+VPoxDrvInst_SDKS    = ReorderCompilerIncs $(VPOX_WINPSDK_GST) $(VPOX_WINDDK_GST)
+VPoxDrvInst_LIBS    = \
+	$(PATH_SDK_$(VPOX_WINDDK_GST)_LIB)/setupapi.lib \
+	$(PATH_SDK_$(VPOX_WINDDK_GST)_LIB)/newdev.lib
+VPoxDrvInst_SOURCES = \
+	VPoxDrvInst.cpp \
+	VPoxDrvInst.rc
+
+PROGRAMS += VPoxGuestDrvInst
+VPoxGuestDrvInst_TEMPLATE= VPoxGuestR3Exe
+VPoxGuestDrvInst_DEFS    =  _WIN32_WINNT=0x0400 UNICODE
+VPoxGuestDrvInst_SOURCES = \
+	VPoxGuestDrvInst.cpp \
+	VPoxGuestDrvInst.rc
+
+PROGRAMS += RegCleanup
+RegCleanup_TEMPLATE = VPoxGuestR3Exe
+RegCleanup_DEFS     = _WIN32_WINNT=0x0400 UNICODE
+RegCleanup_SOURCES  = \
+	RegCleanup.cpp \
+	RegCleanup.rc
+
+
+#
+# The installer.
+#
+PACKING     += $(PATH_STAGE_BIN)/additions/VPoxWindowsAdditions-$(KBUILD_TARGET_ARCH).exe
+OTHER_CLEAN += \
+	$(PATH_STAGE_BIN)/additions/VPoxWindowsAdditions-$(KBUILD_TARGET_ARCH).exe \
+	$(PATH_STAGE_BIN)/additions/VPoxWHQLFake.exe
+
+DRIVER_FILES := \
+	$(PATH_STAGE_BIN)/additions/VPoxGuestDrvInst.exe \
+	$(PATH_STAGE_BIN)/additions/RegCleanup.exe \
+	$(PATH_STAGE_BIN)/additions/VPoxMouse.sys \
+	$(PATH_STAGE_BIN)/additions/VPoxGuest.sys \
+	$(PATH_STAGE_BIN)/additions/VPoxVideo.sys \
+	$(PATH_STAGE_BIN)/additions/VPoxDisp.dll \
+	$(PATH_STAGE_BIN)/additions/VPoxSF.sys \
+	$(PATH_STAGE_BIN)/additions/VPoxMRXNP.dll \
+	$(PATH_STAGE_BIN)/additions/VPoxTray.exe \
+	$(PATH_STAGE_BIN)/additions/VPoxControl.exe \
+	$(PATH_STAGE_BIN)/additions/VPoxWHQLFake.exe \
+	$(PATH_STAGE_BIN)/additions/VPoxService.exe
+ifeq ($(KBUILD_TARGET_ARCH),amd64)
+      # Also include 32-bit network provider DLLs on 64-bit guests to enable
+      # running 32-bit apps which use that.
+      DRIVER_FILES += \
+		$(PATH_STAGE_BIN)/additions/VPoxMRXNP-x86.dll
+endif
+ifeq ($(KBUILD_TARGET_ARCH),x86)
+DRIVER_FILES += \
+	$(PATH_STAGE_BIN)/additions/VPoxMouseNT.sys \
+	$(PATH_STAGE_BIN)/additions/VPoxSFW2K.sys
+endif
+DRIVER_FILES += \
+	$(PATH_STAGE_BIN)/additions/VPoxVideo.inf \
+	$(PATH_STAGE_BIN)/additions/VPoxGuest.inf \
+	$(PATH_STAGE_BIN)/additions/VPoxMouse.inf
+ifdef VPOX_SIGN_ADDITIONS
+DRIVER_FILES += \
+	$(PATH_STAGE_BIN)/additions/VPoxVideo.cat \
+	$(PATH_STAGE_BIN)/additions/VPoxVideo-PreW10.cat \
+	$(PATH_STAGE_BIN)/additions/VPoxGuest.cat \
+	$(PATH_STAGE_BIN)/additions/VPoxGuest-PreW10.cat \
+	$(PATH_STAGE_BIN)/additions/VPoxMouse.cat \
+	$(PATH_STAGE_BIN)/additions/VPoxMouse-PreW10.cat
+endif
+ifdef VPOX_WITH_WDDM
+DRIVER_FILES += \
+	$(PATH_STAGE_BIN)/additions/VPoxWddm.sys \
+	$(PATH_STAGE_BIN)/additions/VPoxWddm.inf \
+	$(PATH_STAGE_BIN)/additions/VPoxDispD3D.dll
+ ifdef VPOX_WITH_MESA3D
+DRIVER_FILES += \
+	$(PATH_STAGE_BIN)/additions/VPoxNine.dll \
+	$(PATH_STAGE_BIN)/additions/VPoxSVGA.dll \
+	$(PATH_STAGE_BIN)/additions/VPoxICD.dll \
+	$(PATH_STAGE_BIN)/additions/VPoxGL.dll
+ endif
+ ifdef VPOX_SIGN_ADDITIONS
+DRIVER_FILES += \
+	$(PATH_STAGE_BIN)/additions/VPoxWddm.cat \
+	$(PATH_STAGE_BIN)/additions/VPoxWddm-PreW10.cat
+ endif
+ ifeq ($(KBUILD_TARGET_ARCH),amd64)
+DRIVER_FILES += \
+	$(PATH_STAGE_BIN)/additions/VPoxDispD3D-x86.dll
+  ifdef VPOX_WITH_MESA3D
+DRIVER_FILES += \
+	$(PATH_STAGE_BIN)/additions/VPoxNine-x86.dll \
+	$(PATH_STAGE_BIN)/additions/VPoxSVGA-x86.dll \
+	$(PATH_STAGE_BIN)/additions/VPoxICD-x86.dll \
+	$(PATH_STAGE_BIN)/additions/VPoxGL-x86.dll
+  endif
+ endif
+endif
+VB_WIN_ADD_NSIS_ENV := \
+	-E 'PATH_OUT=$(subst /,\,$(PATH_OUT))' \
+	-E 'PATH_TARGET=$(subst /,\,$(PATH_TARGET))' \
+	-E 'PATH_TARGET_X86=$(subst /,\,$(PATH_OUT_BASE)/win.x86/$(KBUILD_TYPE)/obj)' \
+	-E 'VPOX_PATH_ADDITIONS_WIN_X86=$(subst /,\,$(VPOX_PATH_ADDITIONS.win.x86))' \
+	-E 'VPOX_PATH_DIFX=$(subst /,\,$(VPOX_PATH_DIFX))' \
+	-E 'VPOX_VENDOR=$(VPOX_VENDOR)' \
+	-E 'VPOX_VENDOR_SHORT=$(VPOX_VENDOR_SHORT)' \
+	-E 'VPOX_PRODUCT=$(VPOX_PRODUCT)' \
+	-E 'VPOX_C_YEAR=$(VPOX_C_YEAR)' \
+	-E 'VPOX_VERSION_STRING=$(VPOX_VERSION_STRING)' \
+	-E 'VPOX_VERSION_STRING_RAW=$(VPOX_VERSION_STRING_RAW)' \
+	-E 'VPOX_VERSION_MAJOR=$(VPOX_VERSION_MAJOR)' \
+	-E 'VPOX_VERSION_MINOR=$(VPOX_VERSION_MINOR)' \
+	-E 'VPOX_VERSION_BUILD=$(VPOX_VERSION_BUILD)' \
+	-E 'VPOX_SVN_REV=$(VPOX_SVN_REV)' \
+	-E 'VPOX_WINDOWS_ADDITIONS_ICON_FILE=$(subst /,\,$(VPOX_WINDOWS_ADDITIONS_ICON_FILE))' \
+	-E 'VPOX_NSIS_ICON_FILE=$(subst /,\,$(VPOX_NSIS_ICON_FILE))' \
+	-E 'VPOX_WITH_GUEST_INSTALL_HELPER=$(if $(VPOX_WITH_GUEST_INSTALL_HELPER),1,0)' \
+	-E 'VPOX_WITH_GUEST_INSTALLER_UNICODE=$(if $(VPOX_WITH_GUEST_INSTALLER_UNICODE),1,0)' \
+	-E 'VPOX_WITH_LICENSE_INSTALL_RTF=$(if $(VPOX_BRAND_LICENSE_RTF),1,0)' \
+	-E 'VPOX_WITH_WDDM=$(if $(VPOX_WITH_WDDM),1,0)' \
+	-E 'VPOX_WITH_MESA3D=$(if $(VPOX_WITH_MESA3D),1,0)' \
+	-E 'VPOX_BRAND_WIN_ADD_INST_DLGBMP=$(subst /,\,$(VPOX_BRAND_WIN_ADD_INST_DLGBMP))' \
+	-E 'VPOX_BRAND_LICENSE_RTF=$(subst /,\,$(VPOX_BRAND_LICENSE_RTF))' \
+	$(foreach lang,$(VPOX_INSTALLER_ADD_LANGUAGES),-E 'VPOX_BRAND_$(lang)_LICENSE_RTF=$(VPOX_BRAND_$(lang)_LICENSE_RTF)') \
+	-E 'BUILD_TYPE=$(KBUILD_TYPE)' \
+	-E 'BUILD_TARGET_ARCH=$(KBUILD_TARGET_ARCH)'
+
+ifdef VPOX_SIGNING_MODE
+#
+# This is a hack to sign the uninstaller.
+# See http://nsis.sourceforge.net/Signing_an_Uninstaller for more details.
+#
+OTHER_CLEAN += $(PATH_TARGET)/VPoxWindowsAdditions-$(KBUILD_TARGET_ARCH)-uninst.exe
+
+$(PATH_TARGET)/VPoxWindowsAdditions-$(KBUILD_TARGET_ARCH)-uninst.exe: \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditions.nsi \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsCommon.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsExternal.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsLog.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsUninstall.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsUninstallOld.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsW2KXP.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsVista.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsNT4.nsh \
+		$(DRIVER_FILES) \
+		$(VPOX_WINDOWS_ADDITIONS_ICON_FILE) \
+		$(VPOX_NSIS_ICON_FILE) \
+		$(VPOX_VERSION_STAMP) \
+               $$(VPoxDrvInst_1_STAGE_TARGET) \
+		| $$(dir $$@)
+	$(call MSG_L1,Creating $@, from $<)
+	$(QUIET)$(REDIRECT) -C $(VPOX_PATH_WIN_ADD_INS_SRC) \
+		$(VB_WIN_ADD_NSIS_ENV) \
+		-- $(EXEC_X86_WIN32) $(VPOX_PATH_NSIS)/makensis.exe /NOCD /V2 \
+			$(if $(VPOX_SIGN_ADDITIONS),'/DVPOX_SIGN_ADDITIONS=1') \
+			$(if $(VPOX_WITH_VPOX_LEGACY_TS_CA),'/DVPOX_WITH_VPOX_LEGACY_TS_CA=1') \
+			$(if $(VPOX_INSTALLER_ADD_LANGUAGES),'/DVPOX_INSTALLER_ADD_LANGUAGES=1') \
+			$(foreach lang,$(VPOX_INSTALLER_ADD_LANGUAGES),'/DVPOX_BRAND_$(lang)_LICENSE_RTF=1') \
+			'/DUNINSTALLER_ONLY=1' \
+			'$(subst /,\,$<)'
+
+OTHER_CLEAN += $(PATH_TARGET)/uninst.exe
+$(PATH_TARGET)/uninst.exe: $(PATH_TARGET)/VPoxWindowsAdditions-$(KBUILD_TARGET_ARCH)-uninst.exe | $$(dir $$@)
+	$(call MSG_L1,Creating $@, from $<)
+	$(QUIET)$(RM) -f $@
+	- $<
+	$(TEST) -f $@
+	$(call VPOX_SIGN_FILE_FN,$@)
+endif
+
+WHQLFAKE := $(PATH_SUB_CURRENT)/VPoxWHQLFake.au3
+
+$(PATH_STAGE_BIN)/additions/VPoxWHQLFake.exe:
+	$(call MSG_L1,Creating $@, from $<)
+	$(QUIET)$(EXEC_X86_WIN32) $(VPOX_PATH_AUTOIT3)/Aut2Exe/Aut2exe.exe \
+		/in $(WHQLFAKE) \
+		/out $(PATH_STAGE_BIN)/additions/VPoxWHQLFake.exe \
+		/icon $(VPOX_WINDOWS_ADDITIONS_ICON_FILE) \
+		/comp 4 \
+		/unicode
+
+ifdef VPOX_GA_ATTESTATION_SIGNING
+VPOX_DRIVERS_PACK_NAME := VPoxDrivers-$(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD)r$(VPOX_SVN_REV)-$(KBUILD_TARGET_ARCH).cab
+VPOX_SIGNED_DRIVERS_ZIP_NAME := $(VPOX_DRIVERS_PACK_NAME).Signed.zip
+include $(KBUILD_PATH)/tools/ZIP.kmk
+ifndef TOOL_ZIP_PACK
+ TOOL_ZIP_PACK = zip
+endif
+endif
+
+$(PATH_STAGE_BIN)/additions/VPoxWindowsAdditions-$(KBUILD_TARGET_ARCH).exe: \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditions.nsi \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsCommon.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsExternal.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsLog.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsUninstall.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsUninstallOld.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsW2KXP.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsVista.nsh \
+		$(PATH_SUB_CURRENT)/VPoxGuestAdditionsNT4.nsh \
+		$(DRIVER_FILES) \
+		$(VPOX_WINDOWS_ADDITIONS_ICON_FILE) \
+		$(VPOX_NSIS_ICON_FILE) \
+		$(if $(VPOX_SIGNING_MODE),$(PATH_TARGET)/uninst.exe) \
+		$(if $(VPOX_GA_ATTESTATION_SIGNING),$(PATH_OUT)/repackadd/$(VPOX_SIGNED_DRIVERS_ZIP_NAME)) \
+		$(VPOX_VERSION_STAMP) \
+		$$(VPoxDrvInst_1_STAGE_TARGET)
+	$(call MSG_L1,Creating $@, from $<)
+ifdef VPOX_GA_ATTESTATION_SIGNING
+	$(TOOL_ZIP_UNPACK) -oj $(PATH_OUT)/repackadd/$(VPOX_SIGNED_DRIVERS_ZIP_NAME) -d $(PATH_STAGE_BIN)/additions/
+endif
+	$(QUIET)$(REDIRECT) -C $(VPOX_PATH_WIN_ADD_INS_SRC) \
+		$(VB_WIN_ADD_NSIS_ENV) \
+		-- $(EXEC_X86_WIN32) $(VPOX_PATH_NSIS)/makensis.exe /NOCD /V2 \
+			$(if $(VPOX_SIGN_ADDITIONS),'/DVPOX_SIGN_ADDITIONS=1') \
+			$(if $(VPOX_SIGNING_MODE),'/DEXTERNAL_UNINSTALLER=1') \
+			$(if $(VPOX_WITH_VPOX_LEGACY_TS_CA),'/DVPOX_WITH_VPOX_LEGACY_TS_CA=1') \
+			$(if $(VPOX_INSTALLER_ADD_LANGUAGES),'/DVPOX_INSTALLER_ADD_LANGUAGES=1') \
+			$(foreach lang,$(VPOX_INSTALLER_ADD_LANGUAGES),'/DVPOX_BRAND_$(lang)_LICENSE_RTF=1') \
+			'$(subst /,\,$<)'
+	$(call VPOX_SIGN_FILE_FN,$@)
+
+ifdef VPOX_GA_ATTESTATION_SIGNING
+$(PATH_OUT)/repackadd/$(VPOX_SIGNED_DRIVERS_ZIP_NAME): \
+		$(PATH_OUT)/repackadd/sign-attestation.sh \
+		$(PATH_OUT)/repackadd/$(VPOX_DRIVERS_PACK_NAME)
+	$(RM_EXT) -f $(PATH_OUT)/repackadd/*.zip
+	cd $(PATH_OUT)/repackadd && $(SHELL) $(PATH_OUT)/repackadd/sign-attestation.sh $(PATH_OUT)/repackadd/$(VPOX_DRIVERS_PACK_NAME)
+	$(MV_EXT) $(PATH_OUT)/repackadd/$(VPOX_DRIVERS_PACK_NAME).*.zip $(PATH_OUT)/repackadd/$(VPOX_SIGNED_DRIVERS_ZIP_NAME)
+
+$(PATH_OUT)/repackadd/$(VPOX_DRIVERS_PACK_NAME): \
+		$(PATH_OUT)/repackadd/PackDriversForSubmission.cmd
+	$(RM_EXT) -f $(PATH_OUT)/repackadd/*.cab
+	$(RM_EXT) -f $(PATH_OUT)/repackadd/*.ddf
+	$(RM_EXT) -f $(PATH_OUT)/repackadd/*.inf
+	$(RM_EXT) -f $(PATH_OUT)/repackadd/*.rpt
+	$(EXEC_X86_WIN32) cmd /c $(PATH_OUT)/repackadd/PackDriversForSubmission.cmd -b $(PATH_STAGE_BIN) -a $(KBUILD_TARGET_ARCH) -x -n --no-main --ga -o $(PATH_OUT)/repackadd/$(VPOX_DRIVERS_PACK_NAME)
+	$(call VPOX_SIGN_EV_FILE_FN,$@)
+endif #VPOX_GA_ATTESTATION_SIGNING
+
+#
+# Repackaging scripts and files.
+#
+INSTALLS += RePackScriptsAdd
+RePackScriptsAdd_TEMPLATE = DUMMY
+RePackScriptsAdd_INST = repackadd/
+RePackScriptsAdd_INSTTYPE = stage
+RePackScriptsAdd_SOURCES = \
+	../../../Installer/win/Scripts/UnpackBlessedDrivers.cmd \
+	$(RePackScriptsAdd_0_OUTDIR)/PackDriversForSubmission.cmd \
+	$(RePackScriptsAdd_0_OUTDIR)/Combined-1-Prepare.cmd \
+	$(RePackScriptsAdd_0_OUTDIR)/Combined-3-RepackAdditions.cmd \
+	$(RePackScriptsAdd_0_OUTDIR)/sign-ev.cmd
+RePackScriptsAdd_CLEAN = \
+	$(RePackScriptsAdd_0_OUTDIR)/sign-ev.cmd
+
+ifndef VPOX_OSE
+RePackScriptsAdd_SOURCES += \
+	$(RePackScriptsAdd_0_OUTDIR)/Combined-0-Additions.cmd \
+	$(RePackScriptsAdd_0_OUTDIR)/Combined-2-SignAdditions.cmd \
+	../../../Installer/win/Scripts/sign-attestation.sh
+endif
+
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScriptsAdd,../../../Installer/win/Scripts/PackDriversForSubmission.cmd,PackDriversForSubmission.cmd)
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScriptsAdd,../../../Installer/win/Scripts/Combined-1-Prepare.cmd,Combined-1-Prepare.cmd)
+ifndef VPOX_OSE
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScriptsAdd,../../../Installer/win/Scripts/Combined-0-Additions.cmd,Combined-0-Additions.cmd)
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScriptsAdd,../../../Installer/win/Scripts/Combined-2-SignAdditions.cmd,Combined-2-SignAdditions.cmd)
+endif
+$(call VPOX_EDIT_VERSION_AND_BUILD_RULE_FN,RePackScriptsAdd,../../../Installer/win/Scripts/Combined-3-RepackAdditions.cmd,Combined-3-RepackAdditions.cmd)
+
+# The %~dp1\ oddity is working around otherwise ending with \" during
+# expansion of the CCS command line which for a reason I cannot immediately
+# understand appends a " to the path.
+$$(RePackScriptsAdd_0_OUTDIR)/sign-ev.cmd: | $$(dir $$@)
+	$(APPEND) -nt "$@" \
+		'if ".%KBUILD_DEVTOOLS%" == "." (echo KBUILD_DEVTOOLS is not set & exit /b 1)' \
+		'if ".%KBUILD_BIN_PATH%" == "." (echo KBUILD_BIN_PATH is not set & exit /b 1)' \
+		'if ".%1" == "." (echo No .cab file specified & exit /b 1)' \
+		$(subst $(KBUILD_BIN_PATH),%KBUILD_BIN_PATH%,$(subst $(KBUILD_DEVTOOLS),%KBUILD_DEVTOOLS%, \
+		'( $(call VPOX_SIGN_EV_FILE_FN,%1,%~dp1\) ) || exit /b1' \
+		) )
+
+#
+# Repacking resources.
+#
+INSTALLS += RePackScriptsAddResources
+RePackScriptsAddResources_TEMPLATE = DUMMY
+RePackScriptsAddResources_INST = repackadd/resources/
+RePackScriptsAddResources_INSTTYPE = stage
+RePackScriptsAddResources_DIRS = Languages
+RePackScriptsAddResources_SOURCES = \
+	welcome.bmp \
+	$(VPOX_WINDOWS_ADDITIONS_ICON_FILE)=>VirtualPoxGA-vista.ico \
+	$(VPOX_NSIS_ICON_FILE)=>VirtualPoxGA-nsis.ico \
+	iexplore.ico \
+	$(PATH_ROOT)/doc/License-gpl-2.0.rtf \
+	VPoxGuestAdditions.nsi \
+	dumplog.nsh \
+	ReplaceDLL.nsh \
+	servicepack.nsh \
+	strstr.nsh \
+	VPoxGuestAdditionsCommon.nsh \
+	VPoxGuestAdditionsExternal.nsh \
+	VPoxGuestAdditionsLog.nsh\
+	VPoxGuestAdditionsNT4.nsh \
+	VPoxGuestAdditionsUninstall.nsh \
+	VPoxGuestAdditionsUninstallOld.nsh \
+	VPoxGuestAdditionsVista.nsh\
+	VPoxGuestAdditionsW2KXP.nsh\
+	winver.nsh \
+	ISO/AUTORUN.INF \
+	ISO/NT3xReadme.txt \
+       \
+	Languages/English.nsh=>Languages/English.nsh \
+	Languages/French.nsh=>Languages/French.nsh \
+	Languages/German.nsh=>Languages/German.nsh
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

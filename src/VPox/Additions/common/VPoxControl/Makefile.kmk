@@ -1,0 +1,57 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Guest Additions Command Line Management Interface.
+#
+
+#
+# Copyright (C) 2010-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include sub-makefile(s).
+include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+
+#
+# VPoxControl
+#
+PROGRAMS += VPoxControl
+if "$(KBUILD_TARGET)" == "win" || defined(VPOX_WITH_MASOCHISTIC_WARNINGS) ## @todo use VPoxGuestR3Exe everywhere
+VPoxControl_TEMPLATE = VPoxGuestR3Exe
+else
+VPoxControl_TEMPLATE = NewVPoxGuestR3Exe
+endif
+ifeq ($(KBUILD_TARGET),win)
+ ifdef VPOX_SIGN_ADDITIONS # (See the main Windows Additions makefile.)
+  VPoxControl_INSTTYPE = none
+  VPoxControl_DEBUG_INSTTYPE = both
+ endif
+endif
+VPoxControl_DEFS     += \
+	$(if $(VPOX_WITH_HGCM),VPOX_WITH_HGCM,) \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS,) \
+	$(if $(VPOX_WITH_SHARED_FOLDERS),VPOX_WITH_SHARED_FOLDERS,)
+VPoxControl_DEFS.win += \
+	$(if $(VPOX_WITH_DPC_LATENCY_CHECKER),VPOX_WITH_DPC_LATENCY_CHECKER,)
+VPoxControl_SDKS = VPOX_ZLIB_STATIC
+VPoxControl_SOURCES = \
+	VPoxControl.cpp
+VPoxControl_SOURCES.win = \
+	VPoxControl.rc
+VPoxControl_LDFLAGS.darwin = -framework IOKit
+VPoxControl_LIBS.netbsd = crypt
+VPoxControl_USES.win += vpoximportchecker
+VPoxControl_VPOX_IMPORT_CHECKER.win.x86 = nt31
+VPoxControl_VPOX_IMPORT_CHECKER.win.amd64 = xp64
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

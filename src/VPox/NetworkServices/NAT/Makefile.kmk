@@ -1,0 +1,150 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-makefile for NAT Networking
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+ifdef VPOX_WITH_LWIP_NAT # entire file
+
+ ifndef LWIP_SOURCES
+  include $(PATH_SUB_CURRENT)/../../Devices/Network/lwip-new/Config.kmk
+ endif
+
+#
+# Globals
+#
+VPOX_PATH_NAT_SRC := $(PATH_SUB_CURRENT)
+
+
+#
+# Hardened stub exe for VPoxNetNAT.
+#
+ ifdef VPOX_WITH_HARDENING
+PROGRAMS += VPoxNetNATHardened
+VPoxNetNATHardened_TEMPLATE = VPOXR3HARDENEDEXE
+VPoxNetNATHardened_NAME     = VPoxNetNAT
+VPoxNetNATHardened_DEFS     = SERVICE_NAME=\"VPoxNetNAT\"
+VPoxNetNATHardened_SOURCES  = VPoxNetNATHardened.cpp
+VPoxNetNATHardened_LDFLAGS.win = /SUBSYSTEM:windows
+$(call VPOX_SET_VER_INFO_EXE,VPoxNetNATHardened,VirtualPox NAT Engine,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+ endif
+
+
+#
+# VPoxNetNAT.
+#
+ ifdef VPOX_WITH_HARDENING
+DLLS     += VPoxNetNAT
+ else
+PROGRAMS += VPoxNetNAT
+ endif
+VPoxNetNAT_TEMPLATE := $(if-expr defined(VPOX_WITH_HARDENING),VPOXMAINDLL,VPOXMAINCLIENTEXE)
+VPoxNetNAT_NAME     := VPoxNetNAT
+VPoxNetNAT_DEFS      = IPv6
+# VPoxNetNAT_DEFS.linux = WITH_VALGRIND # instrument lwip memp.c
+VPoxNetNAT_DEFS.win  = VPOX_COM_OUTOFPROC_MODULE _WIN32_WINNT=0x501 # Windows XP
+# Convince Solaris headers to expose socket stuff we need.
+#
+# Setting _XOPEN_SOURCE to either 500 or 600 would always work, but
+# <sys/feature_tests.h> insists that 600 requires C99 and so it
+# explodes for older g++.  It also insists that 500 is NOT to be used
+# with C99.
+#
+# Newer g++ in C++11 mode (formerly known as C++0x) needs 600, so it
+# employs sleight of hand to pretend it's C99 to keep feature test
+# happy.
+#
+# Compile the C code with settings that match g++.  This probably
+# should be centralized so that whole codebase uses consistent
+# settings.
+ ifeq ($(KBUILD_TARGET),solaris)
+  ifneq ($(VPOX_GCC_VERSION_CXX),)
+   ifneq ($(int-ge $(VPOX_GCC_VERSION_CXX),40600),)
+# we compile C++ code with -std=c++0x / -std=c++11
+VPoxNetNAT_CFLAGS.solaris += -std=c99
+VPoxNetNAT_DEFS.solaris += _XOPEN_SOURCE=600
+   else
+VPoxNetNAT_DEFS.solaris += _XOPEN_SOURCE=500
+   endif
+  endif
+VPoxNetNAT_DEFS.solaris += __EXTENSIONS__=1
+ endif
+
+# (current dir is for for lwipopts.h)
+VPoxNetNAT_INCS += . $(addprefix ../../Devices/Network/lwip-new/,$(LWIP_INCS))
+
+VPoxNetNAT_SOURCES = \
+	VPoxNetLwipNAT.cpp \
+	../NetLib/VPoxNetBaseService.cpp \
+	../NetLib/VPoxNetPortForwardString.cpp \
+	../NetLib/VPoxNetIntIf.cpp \
+	../NetLib/VPoxNetUDP.cpp \
+	../NetLib/VPoxNetARP.cpp \
+	../NetLib/ComHostUtils.cpp \
+	$(addprefix ../../Devices/Network/lwip-new/,$(LWIP_SOURCES)) \
+	proxy_pollmgr.c \
+	proxy_rtadvd.c \
+	proxy.c \
+	pxremap.c \
+	pxtcp.c \
+	pxudp.c \
+	pxdns.c \
+	fwtcp.c \
+	fwudp.c \
+	portfwd.c \
+	proxy_dhcp6ds.c \
+	proxy_tftpd.c
+
+ ifeq ($(KBUILD_TARGET),win)
+VPoxNetNAT_SOURCES += pxping_win.c # unprivileged Icmp API
+ else
+VPoxNetNAT_SOURCES        += pxping.c     # raw sockets
+VPoxNetNAT_CFLAGS.linux   += -Wno-address-of-packed-member # Needed for GCC 9.
+ endif
+
+VPoxNetNAT_SOURCES.darwin  += rtmon_bsd.c
+VPoxNetNAT_SOURCES.freebsd += rtmon_bsd.c
+VPoxNetNAT_SOURCES.linux   += rtmon_linux.c
+VPoxNetNAT_SOURCES.solaris += rtmon_bsd.c
+VPoxNetNAT_SOURCES.win     += \
+	rtmon_win.c \
+	RTWinPoll.cpp \
+	RTWinSocketPair.cpp
+
+VPoxNetNAT_LIBS = \
+ 	$(LIB_RUNTIME)
+VPoxNetNAT_LIBS.solaris += socket nsl
+
+VPoxNetNAT_LDFLAGS.win = /SUBSYSTEM:windows
+
+# ifeq ($(VPOX_WITH_HARDENING),)
+#  ifn1of ($(KBUILD_TARGET), darwin win)
+#   # helper for debugging unprivileged
+#   VPoxNetNAT_DEFS += VPOX_RAWSOCK_DEBUG_HELPER
+#   VPoxNetNAT_SOURCES += getrawsock.c
+#  endif
+# endif
+
+
+ ifdef VPOX_WITH_HARDENING
+$(call VPOX_SET_VER_INFO_DLL,VPoxNetNAT,VirtualPox NAT Engine (dll),$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+ else
+$(call VPOX_SET_VER_INFO_EXE,VPoxNetNAT,VirtualPox NAT Engine,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+ endif
+
+endif # VPOX_WITH_LWIP_NAT
+include $(FILE_KBUILD_SUB_FOOTER)
+

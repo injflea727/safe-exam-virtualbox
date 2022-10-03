@@ -1,0 +1,578 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Network Filter Driver (VPoxNetFlt).
+#
+
+#
+# Copyright (C) 2008-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+if1of ($(KBUILD_TARGET), darwin win) # this ifeq must go, see @todo around elif
+ #
+ # VPoxNetFlt.sys - The mixed case driver.
+ #
+ SYSMODS += VPoxNetFlt
+ VPoxNetFlt_TEMPLATE = VPOXR0DRV
+ VPoxNetFlt_INST = $(INST_VPOXNETFLT)$(if $(eq $(KBUILD_TARGET),darwin),Contents/MacOS/)
+ VPoxNetFlt_DEBUG_INST.darwin = $(patsubst %/,%,$(INST_VPOXNETFLT))
+ if defined(VPOX_SIGNING_MODE) && "$(KBUILD_TARGET)" == "win"
+  VPoxNetFlt_INSTTYPE = none
+  VPoxNetFlt_DEBUG_INSTTYPE = both
+ endif
+ VPoxNetFlt_DEFS = IN_RT_R0 IN_SUP_STATIC
+ VPoxNetFlt_INCS = .
+ VPoxNetFlt_SOURCES.darwin = \
+ 	darwin/VPoxNetFlt-darwin.cpp
+ VPoxNetFlt_SDKS.win = ReorderCompilerIncs $(VPOX_WINDDK_WLH) $(VPOX_WINPSDK)INCS
+ VPoxNetFlt_SOURCES.win = \
+ 	win/drv/VPoxNetFltP-win.cpp \
+ 	win/drv/VPoxNetFltM-win.cpp \
+ 	win/drv/VPoxNetFltRt-win.cpp \
+ 	win/drv/VPoxNetFlt-win.rc
+ # with WINDDKWLH the WIN9X_COMPAT_SPINLOCK is needed to avoid inline declaration of KeInitializeSpinLock
+ # otherwise the linker would complain about dumplicate _KeInitializeSpinLock@4 definition
+ # in ntoskrnl.lib and our object files
+ VPoxNetFlt_DEFS.win += WIN9X_COMPAT_SPINLOCK=1
+ VPoxNetFlt_DEFS.win += VPOXNETFLT_STATIC_CONFIG
+ VPoxNetFlt_DEFS.win += VPOXNETFLT_NO_PACKET_QUEUE
+ VPoxNetFlt_DEFS.win += NDIS_MINIPORT_DRIVER NDIS_WDM=1 BINARY_COMPATIBLE=0
+ VPoxNetFlt_DEFS.win += NDIS50_MINIPORT=1 NDIS50=1
+ ifdef VPOX_LOOPBACK_USEFLAGS
+  VPoxNetFlt_DEFS.win += VPOX_LOOPBACK_USEFLAGS
+ endif
+ VPoxNetFlt_SOURCES = VPoxNetFlt.c
+ #VPoxNetFlt_LDFLAGS.darwin = -v -Wl,-whyload -Wl,-v -Wl,-whatsloaded
+ VPoxNetFlt_LDFLAGS.win.x86 = -Entry:DriverEntry@8
+ VPoxNetFlt_LDFLAGS.win.amd64 = -Entry:DriverEntry
+ VPoxNetFlt_LIBS.win = \
+ 	$(PATH_SDK_$(VPOX_WINDDK_WLH)_LIB)/ntoskrnl.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_WLH)_LIB)/hal.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_WLH)_LIB)/ndis.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_WLH)_LIB)/tdi.lib \
+ 	$(PATH_STAGE_LIB)/RuntimeR0Drv$(VPOX_SUFF_LIB)
+ VPoxNetFlt_LIBS = \
+ 	$(PATH_STAGE_LIB)/SUPR0IdcClient$(VPOX_SUFF_LIB)
+
+ darwin/VPoxNetFlt-darwin.cpp_DEFS = VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+
+# Darwin extras.
+ifeq ($(KBUILD_TARGET),darwin)
+ INSTALLS += VPoxNetFlt.kext
+ VPoxNetFlt.kext_INST     = $(INST_VPOXNETFLT)Contents/
+ VPoxNetFlt.kext_SOURCES  = $(VPoxNetFlt.kext_0_OUTDIR)/Contents/Info.plist
+ VPoxNetFlt.kext_CLEAN    = $(VPoxNetFlt.kext_0_OUTDIR)/Contents/Info.plist
+ VPoxNetFlt.kext_BLDDIRS  = $(VPoxNetFlt.kext_0_OUTDIR)/Contents/
+
+$$(VPoxNetFlt.kext_0_OUTDIR)/Contents/Info.plist: $(PATH_SUB_CURRENT)/darwin/Info.plist $(VPOX_VERSION_MK) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxNetFlt,$@,$<)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $@ \
+		$<
+
+ $(evalcall2 VPOX_TEST_SIGN_KEXT,VPoxNetFlt)
+
+ INSTALLS.darwin += Scripts-darwin
+ Scripts-darwin_INST = $(INST_DIST)
+ Scripts-darwin_EXEC_SOURCES = \
+ 	darwin/loadnetflt.sh
+endif # darwin
+
+
+ifeq ($(KBUILD_TARGET),win)
+ #
+ # Windows extras.
+ #
+ INSTALLS.win += VPoxNetFlt-inf
+ VPoxNetFlt-inf_TEMPLATE = VPoxR0DrvInfCat
+ VPoxNetFlt-inf_SOURCES = \
+ 	$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFlt.inf \
+ 	$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFltM.inf
+ VPoxNetFlt-inf_CLEAN = $(VPoxNetFlt-inf_SOURCES)
+ VPoxNetFlt-inf_BLDDIRS = $(PATH_TARGET)/VPoxNetFltCat.dir
+
+$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFlt.inf: $(PATH_SUB_CURRENT)/win/drv/VPoxNetFlt.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxNetFlt-inf,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFltM.inf: $(PATH_SUB_CURRENT)/win/drv/VPoxNetFltM.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxNetFlt-inf,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+ ifdef VPOX_SIGNING_MODE
+VPoxNetFlt-inf_SOURCES += \
+	$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFlt.sys \
+	$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFltNobj.dll \
+	$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFlt.cat
+
+$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFlt.sys: $$(VPoxNetFlt_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFltNobj.dll: $$(VPoxNetFltNobj_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFlt.cat: \
+		$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFlt.sys \
+		$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFltNobj.dll \
+		$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFlt.inf \
+		$(PATH_TARGET)/VPoxNetFltCat.dir/VPoxNetFltM.inf
+	$(call MSG_TOOL,Inf2Cat,VPoxNetFlt-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+
+ endif # signing
+
+
+ #
+ # VPoxNetLwf.sys - The light-weight filter driver for NDIS6.
+ #
+ SYSMODS += VPoxNetLwf
+ VPoxNetLwf_TEMPLATE = VPOXR0DRV
+ VPoxNetLwf_INST = $(INST_VPOXNETFLT)
+ if defined(VPOX_SIGNING_MODE)
+  VPoxNetLwf_INSTTYPE = none
+  VPoxNetLwf_DEBUG_INSTTYPE = both
+ endif
+ VPoxNetLwf_DEFS = IN_RT_R0 IN_SUP_STATIC
+ VPoxNetLwf_INCS = .
+ VPoxNetLwf_SOURCES = VPoxNetFlt.c VPoxNetFlt.rc
+ VPoxNetLwf_SDKS.win = ReorderCompilerIncs $(VPOX_WINDDK_WLH) $(VPOX_WINPSDK)INCS
+ VPoxNetLwf_SOURCES.win = \
+ 	win/drv/VPoxNetLwf-win.cpp
+ # with WINDDKWLH the WIN9X_COMPAT_SPINLOCK is needed to avoid inline declaration of KeInitializeSpinLock
+ # otherwise the linker would complain about dumplicate _KeInitializeSpinLock@4 definition
+ # in ntoskrnl.lib and our object files
+ VPoxNetLwf_DEFS.win += WIN9X_COMPAT_SPINLOCK=1 NDISLWF=1 DBG=1
+# VPoxNetLwf_DEFS.win += VPOXNETFLT_STATIC_CONFIG
+# VPoxNetLwf_DEFS.win += VPOXNETFLT_NO_PACKET_QUEUE
+# VPoxNetLwf_DEFS.win += NDIS_MINIPORT_DRIVER NDIS_WDM=1 BINARY_COMPATIBLE=0
+ VPoxNetLwf_DEFS.win += NDIS60=1
+# ifdef VPOX_LOOPBACK_USEFLAGS
+#  VPoxNetLwf_DEFS.win += VPOX_LOOPBACK_USEFLAGS
+# endif
+# VPoxNetLwf_SOURCES = VPoxNetLwf.c
+ VPoxNetLwf_LDFLAGS.win.x86 = -Entry:DriverEntry@8
+ VPoxNetLwf_LDFLAGS.win.amd64 = -Entry:DriverEntry
+ VPoxNetLwf_LIBS.win = \
+ 	$(PATH_SDK_$(VPOX_WINDDK_WLH)_LIB)/ntoskrnl.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_WLH)_LIB)/hal.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_WLH)_LIB)/ndis.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_WLH)_LIB)/netio.lib \
+ 	$(PATH_STAGE_LIB)/RuntimeR0Drv$(VPOX_SUFF_LIB)
+ VPoxNetLwf_LIBS = \
+ 	$(PATH_STAGE_LIB)/SUPR0IdcClient$(VPOX_SUFF_LIB)
+ #
+ # VPoxNetLwf installation.
+ #
+ INSTALLS.win += VPoxNetLwf-inf
+ VPoxNetLwf-inf_TEMPLATE = VPoxR0DrvInfCat
+ VPoxNetLwf-inf_SOURCES = \
+ 	$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.inf
+ VPoxNetLwf-inf_CLEAN = $(VPoxNetLwf-inf_SOURCES)
+ VPoxNetLwf-inf_BLDDIRS = $(PATH_TARGET)/VPoxNetLwfCat.dir
+
+$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.inf: $(PATH_SUB_CURRENT)/win/drv/VPoxNetLwf.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxNetLwf-inf,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+ ifdef VPOX_SIGNING_MODE
+VPoxNetLwf-inf_SOURCES += \
+	$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.sys \
+	$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.cat \
+	$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.cat=>VPoxNetLwf-PreW10.cat
+
+#	$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwfNobj.dll \
+
+$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.sys: $$(VPoxNetLwf_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+#$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwfNobj.dll: $$(VPoxNetLwfNobj_1_TARGET) | $$(dir $$@)
+#	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.cat: \
+		$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.sys \
+		$(PATH_TARGET)/VPoxNetLwfCat.dir/VPoxNetLwf.inf
+	$(call MSG_TOOL,Inf2Cat,VPoxNetLwf-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+
+ endif # signing
+
+
+
+ #
+ # WinNetConfig - static library with host network interface config API
+ #
+ LIBRARIES.win += WinNetConfig
+ WinNetConfig_TEMPLATE = VPOXR3STATIC
+ WinNetConfig_DEFS     = _WIN32_WINNT=0x0501 _UNICODE UNICODE
+ WinNetConfig_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK)
+ WinNetConfig_SOURCES  = \
+ 	win/cfg/VPoxNetCfg.cpp
+ WinNetConfig_INCS.win += $(PATH_TOOL_$(VPOX_VCC_TOOL)_INC)
+
+ #
+ # NetFltInstall
+ #
+ PROGRAMS.win  += NetFltInstall
+ NetFltInstall_TEMPLATE = VPOXR3STATIC
+ NetFltInstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ NetFltInstall_SOURCES  = win/tools/VPoxNetFltInstall.cpp
+ NetFltInstall_LIBS     = \
+ 	$(WinNetConfig_1_TARGET) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+  	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+
+
+ #
+ # NetFltUninstall
+ #
+ PROGRAMS.win  += NetFltUninstall
+ NetFltUninstall_TEMPLATE = VPOXR3STATIC
+ NetFltUninstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ NetFltUninstall_SOURCES  = win/tools/VPoxNetFltUninstall.cpp
+ NetFltUninstall_LIBS     = \
+ 	$(WinNetConfig_1_TARGET) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+  	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+
+ #
+ # NetAdpInstall
+ #
+ PROGRAMS.win  += NetAdpInstall
+ NetAdpInstall_TEMPLATE = VPOXR3STATIC
+ NetAdpInstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ NetAdpInstall_SOURCES  = win/tools/VPoxNetAdpInstall.cpp
+ NetAdpInstall_LIBS     = \
+ 	$(WinNetConfig_1_TARGET) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+  	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+
+
+ #
+ # NetAdpUninstall
+ #
+ PROGRAMS.win  += NetAdpUninstall
+ NetAdpUninstall_TEMPLATE = VPOXR3STATIC
+ NetAdpUninstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ NetAdpUninstall_SOURCES  = win/tools/VPoxNetAdpUninstall.cpp
+ NetAdpUninstall_LIBS     = \
+ 	$(WinNetConfig_1_TARGET) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+  	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+
+ #
+ # NetAdp6Install
+ #
+ PROGRAMS.win  += NetAdp6Install
+ NetAdp6Install_TEMPLATE = VPOXR3STATIC
+ NetAdp6Install_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ NetAdp6Install_SOURCES  = win/tools/VPoxNetAdpInstall.cpp
+ NetAdp6Install_DEFS    += NDIS60=1
+ NetAdp6Install_LIBS     = \
+ 	$(WinNetConfig_1_TARGET) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+  	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+
+
+ #
+ # NetAdp6Uninstall
+ #
+ PROGRAMS.win  += NetAdp6Uninstall
+ NetAdp6Uninstall_TEMPLATE = VPOXR3STATIC
+ NetAdp6Uninstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ NetAdp6Uninstall_SOURCES  = win/tools/VPoxNetAdpUninstall.cpp
+ NetAdp6Uninstall_DEFS    += NDIS60=1
+ NetAdp6Uninstall_LIBS     = \
+ 	$(WinNetConfig_1_TARGET) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+  	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+
+ #
+ # NetLwfInstall
+ #
+ PROGRAMS.win  += NetLwfInstall
+ NetLwfInstall_TEMPLATE = VPOXR3STATIC
+ NetLwfInstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ NetLwfInstall_SOURCES  = win/tools/VPoxNetLwfInstall.cpp
+ NetLwfInstall_LIBS     = \
+ 	$(WinNetConfig_1_TARGET) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+  	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+
+
+ #
+ # NetLwfUninstall
+ #
+ PROGRAMS.win  += NetLwfUninstall
+ NetLwfUninstall_TEMPLATE = VPOXR3STATIC
+ NetLwfUninstall_SDKS     = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ NetLwfUninstall_SOURCES  = win/tools/VPoxNetLwfUninstall.cpp
+ NetLwfUninstall_LIBS     = \
+ 	$(WinNetConfig_1_TARGET) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/Newdev.lib \
+  	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+ 	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+
+ #
+ # VPoxNetFltNobj
+ #
+ DLLS.win += VPoxNetFltNobj
+ VPoxNetFltNobj_TEMPLATE   = VPOXR3STATIC
+ if defined(VPOX_SIGNING_MODE)
+  VPoxNetFltNobj_INSTTYPE  = none
+  VPoxNetFltNobj_DEBUG_INSTTYPE = both
+ endif
+ VPoxNetFltNobj_SDKS       = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+ VPoxNetFltNobj_DEFS       = _WIN32_WINNT=0x0500 WIN32 _ATL_STATIC_REGISTRY
+ VPoxNetFltNobj_INCS       = \
+ 	$(VPoxNetFltNobj_0_OUTDIR)
+ VPoxNetFltNobj_SOURCES    = \
+ 	win/nobj/VPoxNetFltNobj.cpp \
+ 	win/nobj/VPoxNetFltNobj.def \
+ 	win/nobj/VPoxNetFltNobj.rc
+ VPoxNetFltNobj_LIBS       = \
+ 	$(VPOX_LIB_RUNTIME_STATIC)
+ #VPoxNetFltNobj_INTERMEDIATES =
+ VPoxNetFltNobj_DEPS       = \
+ 	$(VPoxNetFltNobj_0_OUTDIR)/VPoxNetFltNobjT_i.c \
+ 	$(VPoxNetFltNobj_0_OUTDIR)/VPoxNetFltNobjT_p.c \
+ 	$(VPoxNetFltNobj_0_OUTDIR)/VPoxNetFltNobjT.h \
+ 	$(VPoxNetFltNobj_0_OUTDIR)/dlldata.c \
+ 	$(VPoxNetFltNobj_0_OUTDIR)/VPoxNetFltNobjT.tlb
+ VPoxNetFltNobj_CLEAN      = $(VPoxNetFltNobj_DEPS)
+
+$$(VPoxNetFltNobj_0_OUTDIR)/VPoxNetFltNobjT_i.c \
++ $$(VPoxNetFltNobj_0_OUTDIR)/VPoxNetFltNobjT_p.c \
++ $$(VPoxNetFltNobj_0_OUTDIR)/VPoxNetFltNobjT.h \
++ $$(VPoxNetFltNobj_0_OUTDIR)/dlldata.c \
++ $$(VPoxNetFltNobj_0_OUTDIR)/VPoxNetFltNobjT.tlb: \
+		$(PATH_SUB_CURRENT)/win/nobj/VPoxNetFltNobjT.idl \
+		| $$(dir $$@)
+	$(VPOX_WIN_MIDL) /nologo \
+		/out $(call VPOX_FN_MAKE_WIN_PATH,$(VPoxNetFltNobj_0_OUTDIR)) \
+		/cpp_cmd $(subst $(EXEC_X86_WIN32),,$(call VPOX_FN_MAKE_WIN_PATH,$(TOOL_$(VPOX_VCC_TOOL)_CC))) \
+		$(addprefix /I , $(call VPOX_FN_MAKE_WIN_PATH,$(SDK_$(VPOX_WINDDK)_INCS))) \
+		$(call VPOX_FN_MAKE_WIN_PATH,$<)
+
+ #
+ # VPoxNetAdp.sys - The VirtualPox Adapter miniport driver.
+ #
+ SYSMODS.win += VPoxNetAdp
+ VPoxNetAdp_TEMPLATE = VPOXR0DRV
+ #VPoxNetAdp_INST = $(INST_VPOXNETADP)
+ if defined(VPOX_SIGNING_MODE)
+  VPoxNetAdp_INSTTYPE.win = none
+  VPoxNetAdp_DEBUG_INSTTYPE.win = both
+ endif
+ VPoxNetAdp_DEFS = IN_RT_R0 IN_SUP_STATIC
+ VPoxNetAdp_INCS := $(PATH_SUB_CURRENT)
+ VPoxNetAdp_SDKS = ReorderCompilerIncs $(VPOX_WINDDK_WLH) $(VPOX_WINPSDK)INCS
+ VPoxNetAdp_SOURCES = \
+ 	VPoxNetFlt.c \
+ 	win/drv/VPoxNetFltM-win.cpp \
+ 	win/drv/VPoxNetFltRt-win.cpp \
+ 	win/drv/VPoxNetFlt-win.rc
+ VPoxNetAdp_DEFS += VPOXNETFLT_STATIC_CONFIG VPOXNETADP
+ VPoxNetAdp_DEFS.win += VPOXNETFLT_NO_PACKET_QUEUE
+ VPoxNetAdp_DEFS += NDIS_MINIPORT_DRIVER NDIS_WDM=1 BINARY_COMPATIBLE=0
+ VPoxNetAdp_DEFS += NDIS50_MINIPORT=1 NDIS50=1
+ VPoxNetAdp_LDFLAGS.win.x86 = -Entry:DriverEntry@8
+ VPoxNetAdp_LDFLAGS.win.amd64 = -Entry:DriverEntry
+ VPoxNetAdp_LIBS.win = \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/ntoskrnl.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/hal.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/ndis.lib \
+ 	$(PATH_STAGE_LIB)/RuntimeR0Drv$(VPOX_SUFF_LIB)
+ VPoxNetAdp_LIBS = \
+ 	$(PATH_STAGE_LIB)/SUPR0IdcClient$(VPOX_SUFF_LIB)
+
+
+ INSTALLS.win += VPoxNetAdp-inf
+ VPoxNetAdp-inf_TEMPLATE = VPoxR0DrvInfCat
+ VPoxNetAdp-inf_SOURCES = \
+ 	$(PATH_TARGET)/VPoxNetAdpCat.dir/VPoxNetAdp.inf
+ VPoxNetAdp-inf_CLEAN = $(VPoxNetAdp-inf_SOURCES)
+ VPoxNetAdp-inf_BLDDIRS = $(PATH_TARGET)/VPoxNetAdpCat.dir
+
+$(PATH_TARGET)/VPoxNetAdpCat.dir/VPoxNetAdp.inf: $(PATH_SUB_CURRENT)/win/drv/VPoxNetAdp.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxNetAdp-inf,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+ ifdef VPOX_SIGNING_MODE
+VPoxNetAdp-inf_SOURCES += \
+	$(PATH_TARGET)/VPoxNetAdpCat.dir/VPoxNetAdp.sys \
+	$(PATH_TARGET)/VPoxNetAdpCat.dir/VPoxNetAdp.cat
+
+$(PATH_TARGET)/VPoxNetAdpCat.dir/VPoxNetAdp.sys: $$(VPoxNetAdp_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VPoxNetAdpCat.dir/VPoxNetAdp.cat: \
+		$(PATH_TARGET)/VPoxNetAdpCat.dir/VPoxNetAdp.sys \
+		$(PATH_TARGET)/VPoxNetAdpCat.dir/VPoxNetAdp.inf
+	$(call MSG_TOOL,Inf2Cat,VPoxNetFlt-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+
+ endif #  ifdef VPOX_SIGNING_MODE
+
+endif #ifeq ($(KBUILD_TARGET), win)
+
+else if1of ($(KBUILD_TARGET), solaris freebsd) ## @todo merge this with the mixed case stuff.
+#
+# vpoxnetflt(.ko/.o/) - The lower case driver.
+# Note! On Solaris the name has to be <= 8 chars long.
+# The DEBUG_HASH* stuff is for CONFIG_DYNAMIC_DEBUG-enabled kernels
+#
+ ifdef VPOX_WITH_VPOXDRV
+  SYSMODS += vpoxnetflt
+  vpoxnetflt_TEMPLATE      = VPOXR0DRV
+  vpoxnetflt_NAME.solaris  = vpoxflt
+  vpoxnetflt_DEFS          = IN_RT_R0
+  vpoxnetflt_DEPS.solaris += $(VPOX_SVN_REV_KMK)
+  vpoxnetflt_INCS         := \
+  	$(PATH_SUB_CURRENT)
+  vpoxnetflt_LDFLAGS.solaris += -N drv/vpoxdrv -N misc/ctf
+  vpoxnetflt_LIBS = \
+  	$(PATH_STAGE_LIB)/SUPR0IdcClient$(VPOX_SUFF_LIB)
+  ## @todo vpoxflt should resolves all the IPRT bits from vpoxdrv.
+  #vpoxnetflt_LIBS += \
+  #	$(PATH_STAGE_LIB)/RuntimeR0Drv$(VPOX_SUFF_LIB)
+  vpoxnetflt_SOURCES.solaris = solaris/VPoxNetFlt-solaris.c
+  vpoxnetflt_SOURCES.freebsd = freebsd/VPoxNetFlt-freebsd.c
+  vpoxnetflt_SOURCES = VPoxNetFlt.c
+  solaris/VPoxNetFlt-solaris.c_DEFS = VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+  ifdef VPOX_WITH_NETFLT_CROSSBOW
+   SYSMODS += vpoxnetbow
+   vpoxnetbow_TEMPLATE      = VPOXR0DRV
+   vpoxnetbow_NAME          = vpoxbow
+   vpoxnetbow_DEFS          = vpoxnetflt_DEFS VPOX_WITH_NETFLT_CROSSBOW
+   vpoxnetbow_INCS         := $(PATH_SUB_CURRENT)
+   vpoxnetbow_LDFLAGS      += -N drv/vpoxdrv -N drv/vnic -N misc/mac -N misc/dls
+   vpoxnetbow_LIBS = \
+   	$(PATH_STAGE_LIB)/SUPR0IdcClient$(VPOX_SUFF_LIB)
+   vpoxnetbow_SOURCES.solaris = solaris/VPoxNetFltBow-solaris.c
+   vpoxnetbow_SOURCES         = VPoxNetFlt.c
+   solaris/VPoxNetFltBow-solaris.c_DEFS = VPOX_SVN_REV=$(VPOX_SVN_REV)
+  endif  # VPOX_WITH_NETFLT_CROSSBOW
+ endif # VPOX_WITH_VPOXDRV
+endif # to be removed.
+
+
+ifeq ($(KBUILD_TARGET),linux)
+ #
+ # Install source files for compilation on Linux.
+ # files_vpoxnetflt defines VPOX_VPOXNETFLT_SOURCES.
+ #
+ include $(PATH_SUB_CURRENT)/linux/files_vpoxnetflt
+ INSTALLS += VPoxNetFlt-src VPoxNetFlt-sh
+ VPoxNetFlt-src_INST    = bin/src/vpoxnetflt/
+ VPoxNetFlt-src_SOURCES = \
+	$(subst $(DQUOTE),,$(VPOX_VPOXNETFLT_SOURCES)) \
+	$(VPoxNetFlt-src_0_OUTDIR)/Makefile
+ VPoxNetFlt-src_CLEAN   = \
+	$(VPoxNetFlt-src_0_OUTDIR)/Makefile \
+	$(PATH_TARGET)/VPoxNetFlt-src-1.dep \
+
+ # Scripts needed for building the kernel module.
+
+ includedep $(PATH_TARGET)/VPoxNetFlt-src-1.dep
+ $$(VPoxNetFlt-src_0_OUTDIR)/Makefile: \
+		$(PATH_SUB_CURRENT)/linux/Makefile \
+		$$(if $$(eq $$(VPoxNetFlt/linux/Makefile_VPOX_HARDENED),$$(VPOX_WITH_HARDENING)),,FORCE) \
+		| $$(dir $$@)
+	$(QUIET)$(RM) -f -- $@
+ ifndef VPOX_WITH_HARDENING
+	$(QUIET)$(SED) -e "s;VPOX_WITH_HARDENING;;g" --output $@ $<
+ else
+	$(QUIET)$(CP) -f $< $@
+ endif
+	%$(QUIET2)$(RM) -f -- $(PATH_TARGET)/VPoxNetFlt-src-1.dep
+	%$(QUIET2)$(APPEND) '$(PATH_TARGET)/VPoxNetFlt-src-1.dep' 'VPoxNetFlt/linux/Makefile_VPOX_HARDENED=$(VPOX_WITH_HARDENING)'
+
+ #
+ # Build test for the linux host kernel modules.
+ #
+ $(evalcall2 VPOX_LINUX_KMOD_TEST_BUILD_RULE_FN,VPoxNetFlt-src,vpoxdrv-src,)
+endif # linux
+
+# Gross hack for FreeBSD 7, should figure this out properly
+## @todo Properly generate opt_netgraph.h
+ifeq ($(KBUILD_TARGET),freebsd)
+ vpoxnetflt_DEPS.freebsd += $(PATH_OUT)/opt_netgraph.h
+$(PATH_OUT)/opt_netgraph.h:
+	echo > $(PATH_OUT)/opt_netgraph.h
+
+ #
+ # Install source files for compilation on FreeBSD.
+ # files_vpoxnetflt defines VPOX_VPOXNETFLT_SOURCES.
+ #
+ include $(PATH_SUB_CURRENT)/freebsd/files_vpoxnetflt
+ INSTALLS += VPoxNetFlt-src
+ VPoxNetFlt-src_INST    = bin/src/vpoxnetflt/
+ VPoxNetFlt-src_SOURCES = \
+	$(subst $(DQUOTE),,$(VPOX_VPOXNETFLT_SOURCES)) \
+ 	$(VPoxNetFlt-src_0_OUTDIR)/Makefile
+ VPoxNetFlt-src_CLEAN   = \
+ 	$(VPoxNetFlt-src_0_OUTDIR)/Makefile	\
+
+ $$(VPoxNetFlt-src_0_OUTDIR)/Makefile: \
+		$(PATH_SUB_CURRENT)/freebsd/Makefile \
+		$$(if $$(eq $$(VPoxNetFlt/freebsd/Makefile_VPOX_HARDENED),$$(VPOX_WITH_HARDENING)),,FORCE) \
+		| $$(dir $$@)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(CP) -f $< $@
+ ifndef VPOX_WITH_HARDENING
+	$(QUIET)$(SED) -e "s;VPOX_WITH_HARDENING;;g" --output $@.tmp $@
+	${QUIET}$(MV) -f $@.tmp $@
+ endif
+ ifndef VPOX_WITH_NETFLT_VIMAGE
+	$(QUIET)$(SED) -e "s;-DVIMAGE;;g" --output $@.tmp $@
+	${QUIET}$(MV) -f $@.tmp $@
+ endif
+endif # freebsd
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

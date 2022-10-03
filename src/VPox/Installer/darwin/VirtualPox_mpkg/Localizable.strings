@@ -1,0 +1,23 @@
+'VirtualPox_title' = '@VPOX_PRODUCT@';
+
+'choiceVPoxKEXTs_title' = '@VPOX_PRODUCT@ Kernel Extensions';
+'choiceVPoxKEXTs_msg' = 'Installs the @VPOX_PRODUCT@ Kernel Extensions into /Library/Application Support/VirtualPox.';
+
+'choiceVPox_title' = '@VPOX_PRODUCT@';
+'choiceVPox_msg' = 'Installs the @VPOX_PRODUCT@ application into /Applications.';
+
+'choiceVPoxCLI_title' = '@VPOX_PRODUCT@ Command Line Utilities';
+'choiceVPoxCLI_msg' = 'Installs the @VPOX_PRODUCT@ command line utilities into /usr/bin.';
+
+'choiceOSXFuseCore_title' = 'FUSE for macOS core package';
+'choiceOSXFuseCore_msg' = 'Installs the FUSE for macOS core package for the image mounter.';
+
+'RUNNING_VMS_TLE' = "Running VirtualPox virtual machines detected!";
+'RUNNING_VMS_MSG' = "The installer has detected running virtual machines. Please shut down all running VirtualPox machines and then restart the installation.";
+
+'UNSUPPORTED_HW_MACHINE_TLE' = "Unsupported hardware architecture detected!";
+'UNSUPPORTED_HW_MACHINE_MSG' = "The installer has detected an unsupported architecture. VirtualPox only runs on the amd64 architecture.";
+
+'UNSUPPORTED_OS_TLE' = "Unsupported OS version detected!";
+'UNSUPPORTED_OS_MSG' = "The installer has detected an unsupported operation system. VirtualPox requires Mac OS X 10.9 or later.";
+

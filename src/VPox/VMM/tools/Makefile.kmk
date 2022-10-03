@@ -1,0 +1,76 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VMM tools.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# Targets.
+#
+ifdef VPOX_WITH_HARDENING
+PROGRAMS += VPoxVMMPreloadHardened
+DLLS     += VPoxVMMPreload
+else
+PROGRAMS += VPoxVMMPreload
+endif
+
+
+#
+# Hardened stub.
+#
+VPoxVMMPreloadHardened_TEMPLATE = VPOXR3HARDENEDEXE
+VPoxVMMPreloadHardened_SOURCES  = VPoxVMMPreloadHardened.cpp
+VPoxVMMPreloadHardened_NAME     = VPoxVMMPreload
+
+
+#
+# The real thing
+#
+VPoxVMMPreload_TEMPLATE  := $(if $(VPOX_WITH_HARDENING),VPoxR3Dll,VPOXR3EXE)
+VPoxVMMPreload_SOURCES    = VPoxVMMPreload.cpp
+VPoxVMMPreload_LIBS = $(LIB_RUNTIME)
+ifdef VPOX_WITH_HARDENING
+VPoxVMMPreload_LDFLAGS.darwin += -install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxVMMPreload.dylib
+endif
+
+
+#
+# CPU report program (CPUM DB).
+#
+PROGRAMS += VPoxCpuReport
+VPoxCpuReport_TEMPLATE := VPoxR3Static
+VPoxCpuReport_DEFS      = VPOX_IN_VMM IN_VMM_R3 IN_VPOX_CPU_REPORT $(VMM_COMMON_DEFS)
+VPoxCpuReport_INCS      = ../include
+VPoxCpuReport_SOURCES   = \
+	VPoxCpuReport.cpp \
+	VPoxCpuReportMsrSup.cpp \
+	../VMMR3/CPUMR3CpuId.cpp
+VPoxCpuReport_SOURCES.linux = \
+	VPoxCpuReportMsrLinux.cpp
+VPoxCpuReport_DEFS.linux    = VBCR_HAVE_PLATFORM_MSR_PROBER
+VPoxCpuReport_LIBS      = \
+	$(PATH_STAGE_LIB)/SUPR3Static$(VPOX_SUFF_LIB) \
+       $(VPOX_LIB_RUNTIME_STATIC)
+VPoxCpuReport_LIBS.solaris = kstat contract
+
+VPoxCpuReport_LDFLAGS.darwin = \
+	-framework IOKit -framework CoreFoundation -framework CoreServices
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

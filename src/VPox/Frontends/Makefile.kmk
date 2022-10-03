@@ -1,0 +1,58 @@
+# $Id: Makefile.kmk $
+## @file
+# Top-level makefile for the VPox frontends.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include Sub-Makefiles
+ifdef VPOX_WITH_MAIN
+ include $(PATH_SUB_CURRENT)/VPoxManage/Makefile.kmk
+endif
+ifndef VPOX_ONLY_DOCS
+ ifdef VPOX_WITH_MAIN
+  ifdef VPOX_WITH_FE_BALLOONCTRL
+   include $(PATH_SUB_CURRENT)/VPoxBalloonCtrl/Makefile.kmk
+  endif
+  ifdef VPOX_WITH_FE_AUTOSTART
+   include $(PATH_SUB_CURRENT)/VPoxAutostart/Makefile.kmk
+  endif
+  ifdef VPOX_WITH_FE_BUGREPORT
+   include $(PATH_SUB_CURRENT)/VPoxBugReport/Makefile.kmk
+  endif
+ endif
+ ifdef VPOX_WITH_VPOXSDL
+  include $(PATH_SUB_CURRENT)/VPoxSDL/Makefile.kmk
+ endif
+ ifdef VPOX_WITH_VPOXFB
+  include $(PATH_SUB_CURRENT)/VPoxFB/Makefile.kmk
+ endif
+ ifdef VPOX_WITH_HEADLESS
+  include $(PATH_SUB_CURRENT)/VPoxHeadless/Makefile.kmk
+ endif
+ ifdef VPOX_WITH_QTGUI
+  include $(PATH_SUB_CURRENT)/VirtualPox/Makefile.kmk
+ endif
+ include $(PATH_SUB_CURRENT)/Common/Makefile.kmk
+endif # !VPOX_ONLY_DOCS
+
+## @todo Include Python shell into binary delivery?
+ifdef VPOX_ONLY_SDK
+ include $(PATH_SUB_CURRENT)/VPoxShell/Makefile.kmk
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

@@ -1,0 +1,197 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Bus Mouse Extension Pack Sample.
+#
+
+#
+# Copyright (C) 2010-2020 Oracle Corporation
+#
+# Permission is hereby granted, free of charge, to any person
+# obtaining a copy of this software and associated documentation
+# files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use,
+# copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following
+# conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Extend the extension pack templates.
+#
+TEMPLATE_VPoxR3ExtPackBusMouse          = For the ring-3 context modules in the Bus Mouse extension pack.
+TEMPLATE_VPoxR3ExtPackBusMouse_EXTENDS  = VPoxR3ExtPack
+TEMPLATE_VPoxR3ExtPackBusMouse_INST     = $(INST_EXTPACK)BusMouse/$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)/
+
+TEMPLATE_VPoxR0ExtPackBusMouse          = For the ring-0 context modules in the Bus Mouse extension pack.
+TEMPLATE_VPoxR0ExtPackBusMouse_EXTENDS  = VPoxR0ExtPack
+TEMPLATE_VPoxR0ExtPackBusMouse_INST     = $(INST_EXTPACK)BusMouse/$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)/
+
+TEMPLATE_VPoxRcExtPackBusMouse          = For the raw-mode context modules in the Bus Mouse extension pack.
+TEMPLATE_VPoxRcExtPackBusMouse_EXTENDS  = VPoxRcExtPack
+TEMPLATE_VPoxRcExtPackBusMouse_INST     = $(INST_EXTPACK)BusMouse/$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)/
+
+TEMPLATE_VPoxInsExtPackBusMouse         = For the install targets of an extension pack.
+TEMPLATE_VPoxInsExtPackBusMouse_EXTENDS = VPoxR0ExtPack
+TEMPLATE_VPoxInsExtPackBusMouse_INST    = $(INST_EXTPACK)BusMouse/
+
+#
+# Globals.
+#
+VPOX_BUSMOUSE_NAME         = BusMouse
+VPOX_BUSMOUSE_MANGLED_NAME = BusMouse
+VPOX_PATH_EXTPACK_BUSMOUSE = $(PATH_STAGE)/$(INST_EXTPACK)BusMouse
+
+
+#
+# VPoxBusMouseMain - The module which the VirtualPox Main API talks to.
+#
+DLLS += VPoxBusMouseMain
+VPoxBusMouseMain_TEMPLATE = VPoxR3ExtPackBusMouse
+VPoxBusMouseMain_SOURCES = VPoxBusMouseMain.cpp
+VPoxBusMouseMain_DEFS =
+
+
+#
+# VPoxBusMouseMainVM - The module in a VM which the VirtualPox Main API talks to.
+#
+DLLS += VPoxBusMouseMainVM
+VPoxBusMouseMainVM_TEMPLATE = VPoxR3ExtPackBusMouse
+VPoxBusMouseMainVM_SOURCES = VPoxBusMouseMainVM.cpp
+VPoxBusMouseMainVM_DEFS =
+
+
+#
+# The device code.
+#
+DLLS += VPoxBusMouseR3
+VPoxBusMouseR3_TEMPLATE = VPoxR3ExtPackBusMouse
+VPoxBusMouseR3_SOURCES  = DevBusMouse.cpp
+
+$(if-expr defined(VPOX_WITH_VPOXR0_AS_DLL),DLLS,SYSMODS) += VPoxBusMouseR0
+VPoxBusMouseR0_TEMPLATE = VPoxR0ExtPackBusMouse
+VPoxBusMouseR0_SOURCES  = DevBusMouse.cpp
+
+ifdef VPOX_WITH_RAW_MODE
+ SYSMODS += VPoxBusMouseRC
+ VPoxBusMouseRC_TEMPLATE = VPoxRcExtPackBusMouse
+ VPoxBusMouseRC_SOURCES  = DevBusMouse.cpp
+endif
+
+
+#
+# Install the description.
+#
+INSTALLS += VPoxBusMouseIns
+VPoxBusMouseIns_TEMPLATE = VPoxInsExtPackBusMouse
+VPoxBusMouseIns_SOURCES = \
+	$(VPoxBusMouseIns_0_OUTDIR)/ExtPack.xml
+$(call VPOX_EDIT_VERSION_RULE_FN,VPoxBusMouseIns,ExtPack.xml)
+
+
+#
+# Packing.
+#
+ifndef VPOX_WITHOUT_EXTPACK_BUSMOUSE_PACKING
+ PACKING += $(VPOX_PATH_PACKAGES)/$(VPOX_BUSMOUSE_MANGLED_NAME)-$(VPOX_VERSION_STRING)r$(VPOX_SVN_REV).vpox-extpack
+endif
+
+ifndef VPOX_WITH_EXTPACK_OS_ARCHS
+ ifeq ($(USER),bird) # for now
+  VPOX_WITH_EXTPACK_OS_ARCHS = $(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)
+ endif
+endif
+
+# Build the file list.  The macro takes 1=darwin.x86, 2=dist/VirtualPox.app/Contents/MacOS, 3=dylib
+VPOX_BUSMOUSE_FILES_MACRO = \
+	$(PATH_OUT_BASE)/$(1)/$(KBUILD_TYPE)/$(2)/ExtensionPacks/$(VPOX_BUSMOUSE_MANGLED_NAME)/$(1)/VPoxBusMouseMain.$(3)=>$(1)/VPoxBusMouseMain.$(3) \
+	$(PATH_OUT_BASE)/$(1)/$(KBUILD_TYPE)/$(2)/ExtensionPacks/$(VPOX_BUSMOUSE_MANGLED_NAME)/$(1)/VPoxBusMouseMainVM.$(3)=>$(1)/VPoxBusMouseMainVM.$(3) \
+	$(PATH_OUT_BASE)/$(1)/$(KBUILD_TYPE)/$(2)/ExtensionPacks/$(VPOX_BUSMOUSE_MANGLED_NAME)/$(1)/VPoxBusMouseR3.$(3)=>$(1)/VPoxBusMouseR3.$(3) \
+	$(PATH_OUT_BASE)/$(1)/$(KBUILD_TYPE)/$(2)/ExtensionPacks/$(VPOX_BUSMOUSE_MANGLED_NAME)/$(1)/VPoxBusMouseR0.r0=>$(1)/VPoxBusMouseR0.r0
+ifdef VPOX_WITH_RAW_MODE
+ VPOX_BUSMOUSE_FILES_MACRO += \
+ 	$(PATH_OUT_BASE)/$(1)/$(KBUILD_TYPE)/$(2)/ExtensionPacks/$(VPOX_BUSMOUSE_MANGLED_NAME)/$(1)/VPoxBusMouseRC.rc=>$(1)/VPoxBusMouseRC.rc
+endif
+
+VPOX_BUSMOUSE_FILES := \
+	$(VPOX_PATH_EXTPACK_BUSMOUSE)/ExtPack.xml=>ExtPack.xml
+
+if1of (darwin.amd64, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,darwin.amd64,dist/VirtualPox.app/Contents/MacOS,dylib)
+endif
+if1of (darwin.x86, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,darwin.x86,dist/VirtualPox.app/Contents/MacOS,dylib)
+endif
+if1of (freebsd.amd64, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,freebsd.amd64,bin,so)
+endif
+if1of (freebsd.x86, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,freebsd.x86,bin,so)
+endif
+if1of (linux.amd64, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,linux.amd64,bin,so)
+endif
+if1of (linux.x86, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,linux.x86,bin,so)
+endif
+if1of (os2.x86, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,os2.x86,bin,so)
+endif
+if1of (solaris.amd64, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,solaris.amd64,bin,so)
+endif
+if1of (solaris.x86, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,solaris.x86,bin,so)
+endif
+if1of (win.amd64, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,win.amd64,bin,dll)
+endif
+if1of (win.x86, $(VPOX_WITH_EXTPACK_OS_ARCHS))
+ VPOX_BUSMOUSE_FILES += $(call VPOX_BUSMOUSE_FILES_MACRO,win.x86,bin,dll)
+endif
+
+# Pack it all up using a temporary staging directory.
+$(VPOX_PATH_PACKAGES)/$(VPOX_BUSMOUSE_MANGLED_NAME)-$(VPOX_VERSION_STRING)r$(VPOX_SVN_REV).vpox-extpack: \
+		$$(foreach file, $$(VPOX_BUSMOUSE_FILES), $$(firstword $$(subst =>,$$(SP),$$(file)))) \
+		| $(VPOX_PATH_PACKAGES)/
+	$(RM) -f $(wildcard $(VPOX_PATH_PACKAGES)/$(VPOX_BUSMOUSE_MANGLED_NAME)-*.vpox-extpack) \
+		$(VPoxBusMouseIns_0_OUTDIR)/ExtPack.manifest \
+		$(VPoxBusMouseIns_0_OUTDIR)/ExtPack.signature
+# Stage all the files
+	$(RM) -Rf $(VPoxBusMouseIns_0_OUTDIR)/Stage/
+	$(foreach file, $(VPOX_BUSMOUSE_FILES),\
+		$(NLTAB)$(MKDIR) -p $(dir $(lastword $(subst =>,$(SP)$(VPoxBusMouseIns_0_OUTDIR)/Stage/,$(file)))) \
+		$(NLTAB)$(CP) $(subst =>,$(SP)$(VPoxBusMouseIns_0_OUTDIR)/Stage/,$(file)) )
+# Create the manifest
+	$(VPOX_RTMANIFEST) \
+		--manifest $(VPoxBusMouseIns_0_OUTDIR)/Stage/ExtPack.manifest \
+		--chdir $(VPoxBusMouseIns_0_OUTDIR)/Stage/ \
+		$(foreach file, $(VPOX_BUSMOUSE_FILES), $(lastword $(subst =>,$(SP),$(file))))
+	$(APPEND) $(VPoxBusMouseIns_0_OUTDIR)/Stage/ExtPack.signature "todo"
+	$(CHMOD) a+r \
+		$(VPoxBusMouseIns_0_OUTDIR)/Stage/ExtPack.manifest \
+		$(VPoxBusMouseIns_0_OUTDIR)/Stage/ExtPack.signature
+# Tar it up.
+	tar -cvf - -C $(VPoxBusMouseIns_0_OUTDIR)/Stage/ . | gzip -9c > $@
+# Clean up
+	$(RM) -Rf $(VPoxBusMouseIns_0_OUTDIR)/Stage/
+
+BLDDIRS += $(VPOX_PATH_PACKAGES)/
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

@@ -1,0 +1,70 @@
+# $Id: deffiles $
+## @file
+# VirtualPox linux Guest Additions default files list
+#
+
+#
+# Copyright (C) 2009-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+# This file contains the names of all files that the Guest Additions for
+# Linux guests have ever installed into the main filesystem tree (/usr and
+# /sbin).  No entries should ever be removed from this file, as it is used
+# for uninstalling old installations of VirtualPox which did not keep track
+# of the names of their files, or damaged installations which lost track of
+# them.
+
+DEFAULT_FILE_NAMES=" \
+    /usr/bin/vpoxadd-xclient \
+    /usr/bin/VPoxClient \
+    /usr/bin/VPoxControl \
+    /usr/sbin/vpox-greeter \
+    /usr/sbin/vpoxadd-timesync \
+    /usr/sbin/vpoxadd-service \
+    /usr/sbin/VPoxService \
+    /sbin/mount.vpoxsf \
+    /usr/share/xgreeters/vpox-greeter.desktop \
+    /etc/X11/Xsession.d/98vpoxadd-xclient \
+    /etc/X11/xinit.d/98vpoxadd-xclient \
+    /etc/X11/xinit/xinitrc.d/98vpoxadd-xclient.sh \
+    /usr/bin/VPoxRandR \
+    /usr/bin/VPoxClient-all \
+    /etc/xdg/autostart/vpoxclient.desktop \
+    /usr/share/autostart/vpoxclient.desktop \
+    /etc/udev/rules.d/60-vpoxadd.rules \
+    /usr/share/xserver-xorg/pci/vpoxvideo.ids \
+    /etc/hal/fdi/policy/90-vpoxguest.fdi \
+    /etc/udev/rules.d/70-xorg-vpoxmouse.rules \
+    /usr/share/hal/fdi/policy/20thirdparty/90-vpoxguest.fdi \
+    /usr/lib/X11/xorg.conf.d/50-vpoxmouse.conf \
+    /usr/share/X11/xorg.conf.d/50-vpoxmouse.conf \
+    /usr/lib/dri/vpoxvideo_dri.so \
+    /usr/lib64/dri/vpoxvideo_dri.so \
+    /usr/lib64/xorg/modules/drivers/vpoxvideo_drv.so \
+    /usr/lib/xorg/modules/drivers/vpoxvideo_drv.so \
+    /usr/X11R6/lib64/modules/drivers/vpoxvideo_drv.so \
+    /usr/X11R6/lib/modules/drivers/vpoxvideo_drv.so \
+    /usr/X11R6/lib/X11/modules/drivers/vpoxvideo_drv.so \
+    /usr/lib64/xorg/modules/input/vpoxmouse_drv.so \
+    /usr/lib/xorg/modules/input/vpoxmouse_drv.so \
+    /usr/X11R6/lib64/modules/input/vpoxmouse_drv.so \
+    /usr/X11R6/lib/modules/input/vpoxmouse_drv.so \
+    /usr/X11R6/lib/X11/modules/input/vpoxmouse_drv.so
+"
+
+DEFAULT_VERSIONED_FILE_NAMES=" \
+    /usr/src/vpoxadd \
+    /usr/src/vpoxguest \
+    /usr/src/vpoxvfs \
+    /usr/src/vpoxsf \
+    /usr/src/vpoxvideo \
+"
+

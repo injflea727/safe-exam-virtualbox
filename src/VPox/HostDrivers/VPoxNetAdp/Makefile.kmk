@@ -1,0 +1,218 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Network Adapter Driver (VPoxNetAdp).
+#
+
+#
+# Copyright (C) 2009-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+if1of ($(KBUILD_TARGET), solaris darwin freebsd)
+ #
+ # VPoxNetAdp - Virtual Network Adapter
+ # Note! On Solaris the name has to be <= 8 chars long.
+ #
+ ifdef VPOX_WITH_VPOXDRV
+  SYSMODS += VPoxNetAdp
+  VPoxNetAdp_TEMPLATE         = VPOXR0DRV
+  VPoxNetAdp_INST             = $(INST_VPOXNETADP)$(if $(eq $(KBUILD_TARGET),darwin),Contents/MacOS/)
+  VPoxNetAdp_DEBUG_INST.darwin= $(patsubst %/,%,$(INST_VPOXNETADP))
+  VPoxNetAdp_NAME.solaris     = vpoxnet
+  VPoxNetAdp_NAME.freebsd     = vpoxnetadp
+  VPoxNetAdp_DEPS.solaris    += $(VPOX_SVN_REV_KMK)
+  VPoxNetAdp_DEFS             = IN_RT_R0 VPOX_SVN_REV=$(VPOX_SVN_REV) IN_SUP_STATIC
+  #VPoxNetAdp_LDFLAGS.darwin   = -v -Wl,-whyload -Wl,-v -Wl,-whatsloaded
+  VPoxNetAdp_LDFLAGS.solaris += -N misc/gld -N drv/vpoxdrv
+  VPoxNetAdp_INCS             = \
+  	.
+  VPoxNetAdp_SOURCES.darwin   = \
+  	darwin/VPoxNetAdp-darwin.cpp \
+  	VPoxNetAdp.c
+  VPoxNetAdp_SOURCES.solaris  = \
+  	solaris/VPoxNetAdp-solaris.c
+  VPoxNetAdp_SOURCES.freebsd   = \
+  	freebsd/VPoxNetAdp-freebsd.c \
+  	VPoxNetAdp.c
+  VPoxNetAdp_SOURCES          =
+  #VPoxNetAdp_SOURCES          = \
+  #	VPoxNetAdp.c
+  VPoxNetAdp_LIBS            += \
+  	$(PATH_STAGE_LIB)/SUPR0IdcClient$(VPOX_SUFF_LIB)
+ endif
+endif
+
+#
+# Darwin extras.
+#
+ifeq ($(KBUILD_TARGET),darwin)
+ INSTALLS += VPoxNetAdp.kext
+ VPoxNetAdp.kext_INST     = $(INST_VPOXNETADP)Contents/
+ VPoxNetAdp.kext_SOURCES  = $(VPoxNetAdp.kext_0_OUTDIR)/Contents/Info.plist
+ VPoxNetAdp.kext_CLEAN    = $(VPoxNetAdp.kext_0_OUTDIR)/Contents/Info.plist
+ VPoxNetAdp.kext_BLDDIRS  = $(VPoxNetAdp.kext_0_OUTDIR)/Contents/
+
+$$(VPoxNetAdp.kext_0_OUTDIR)/Contents/Info.plist: $(PATH_SUB_CURRENT)/darwin/Info.plist $(VPOX_VERSION_MK) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxNetAdp,$@,$<)
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $@ \
+		$<
+
+ $(evalcall2 VPOX_TEST_SIGN_KEXT,VPoxNetAdp)
+
+ INSTALLS.darwin += Scripts-darwin-adp
+ Scripts-darwin-adp_INST = $(INST_DIST)
+ Scripts-darwin-adp_EXEC_SOURCES = \
+ 	darwin/loadnetadp.sh
+endif # darwin
+
+ifeq ($(KBUILD_TARGET),win)
+ #
+ # VPoxNetAdp6.sys - The VirtualPox Adapter miniport driver.
+ #
+ SYSMODS.win += VPoxNetAdp6
+ VPoxNetAdp6_TEMPLATE = VPOXR0DRV
+ if defined(VPOX_SIGNING_MODE)
+  VPoxNetAdp6_INSTTYPE.win = none
+  VPoxNetAdp6_DEBUG_INSTTYPE.win = both
+ endif
+ VPoxNetAdp6_DEFS = IN_RT_R0 IN_SUP_STATIC
+ VPoxNetAdp6_INCS := $(PATH_SUB_CURRENT)
+ VPoxNetAdp6_SDKS = ReorderCompilerIncs $(VPOX_WINDDK_WLH) $(VPOX_WINPSDK)INCS
+ VPoxNetAdp6_SOURCES = \
+ 	win/VPoxNetAdp-win.cpp \
+ 	win/VPoxNetAdp-win.rc
+ VPoxNetAdp6_DEFS += NDIS_MINIPORT_DRIVER NDIS_WDM=1 BINARY_COMPATIBLE=0
+ VPoxNetAdp6_DEFS += NDIS60_MINIPORT=1 NDIS60=1
+ VPoxNetAdp6_LDFLAGS.win.x86 = -Entry:DriverEntry@8
+ VPoxNetAdp6_LDFLAGS.win.amd64 = -Entry:DriverEntry
+ VPoxNetAdp6_LIBS.win = \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/ntoskrnl.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/hal.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/ndis.lib \
+ 	$(PATH_STAGE_LIB)/RuntimeR0Drv$(VPOX_SUFF_LIB)
+ VPoxNetAdp6_LIBS = \
+ 	$(PATH_STAGE_LIB)/SUPR0IdcClient$(VPOX_SUFF_LIB)
+
+
+ INSTALLS.win += VPoxNetAdp6-inf
+ VPoxNetAdp6-inf_TEMPLATE = VPoxR0DrvInfCat
+ VPoxNetAdp6-inf_SOURCES = \
+ 	$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.inf
+ VPoxNetAdp6-inf_CLEAN = $(VPoxNetAdp6-inf_SOURCES)
+ VPoxNetAdp6-inf_BLDDIRS = $(PATH_TARGET)/VPoxNetAdp6Cat.dir
+
+$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.inf: $(PATH_SUB_CURRENT)/win/VPoxNetAdp6.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxNetAdp6-inf,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+ ifdef VPOX_SIGNING_MODE
+VPoxNetAdp6-inf_SOURCES += \
+	$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.sys \
+	$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.cat \
+	$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.cat=>VPoxNetAdp6-PreW10.cat
+
+$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.sys: $$(VPoxNetAdp6_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.cat: \
+		$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.sys \
+		$(PATH_TARGET)/VPoxNetAdp6Cat.dir/VPoxNetAdp6.inf
+	$(call MSG_TOOL,Inf2Cat,VPoxNetFlt-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+
+ endif #  ifdef VPOX_SIGNING_MODE
+
+endif #ifeq ($(KBUILD_TARGET), win)
+
+ifeq ($(KBUILD_TARGET),linux)
+ #
+ # Install source files for compilation on Linux.
+ # files_vpoxnetadp defines VPOX_VPOXNETADP_SOURCES.
+ #
+ INSTALLS += VPoxNetAdp-src
+ include $(PATH_SUB_CURRENT)/linux/files_vpoxnetadp
+ VPoxNetAdp-src_INST    = bin/src/vpoxnetadp/
+ VPoxNetAdp-src_SOURCES = \
+	$(subst $(DQUOTE),,$(VPOX_VPOXNETADP_SOURCES)) \
+	$(VPoxNetAdp-src_0_OUTDIR)/Makefile
+ VPoxNetAdp-src_CLEAN = \
+	$(VPoxNetAdp-src_0_OUTDIR)/Makefile \
+	$(PATH_TARGET)/VPoxNetAdp-src-1.dep \
+
+ # Scripts needed for building the kernel modules
+ includedep $(PATH_TARGET)/VPoxNetAdp-src-1.dep
+$$(VPoxNetAdp-src_0_OUTDIR)/Makefile: \
+		$(PATH_SUB_CURRENT)/linux/Makefile \
+		$$(if $$(eq $$(VPoxNetAdp/linux/Makefile_VPOX_HARDENED),$$(VPOX_WITH_HARDENING)),,FORCE) \
+		| $$(dir $$@)
+	$(QUIET)$(RM) -f -- $@
+ ifndef VPOX_WITH_HARDENING
+	$(QUIET)$(SED) -e "s;VPOX_WITH_HARDENING;;g" --output $@ $<
+ else
+	$(QUIET)$(CP) -f $< $@
+ endif
+	%$(QUIET2)$(APPEND) -t '$(PATH_TARGET)/VPoxNetAdp-src-1.dep' 'VPoxNetAdp/linux/Makefile_VPOX_HARDENED=$(VPOX_WITH_HARDENING)'
+
+ #
+ # Build test for the linux host kernel modules.
+ #
+ $(evalcall2 VPOX_LINUX_KMOD_TEST_BUILD_RULE_FN,VPoxNetAdp-src,vpoxdrv-src,)
+endif # linux
+
+ifeq ($(KBUILD_TARGET),freebsd)
+ #
+ # Install source files for compilation on FreeBSD.
+ # files_vpoxnetadp defines VPOX_VPOXNETADP_SOURCES.
+ #
+ INSTALLS += VPoxNetAdp-src
+ include $(PATH_SUB_CURRENT)/freebsd/files_vpoxnetadp
+ VPoxNetAdp-src_INST = bin/src/vpoxnetadp/
+ VPoxNetAdp-src_SOURCES = \
+	$(subst $(DQUOTE),,$(VPOX_VPOXNETADP_SOURCES)) \
+	$(VPoxNetAdp-src_0_OUTDIR)/Makefile
+ VPoxNetAdp-src_CLEAN = \
+	$(VPoxNetAdp-src_0_OUTDIR)/Makefile	\
+
+$$(VPoxNetAdp-src_0_OUTDIR)/Makefile: \
+		$(PATH_SUB_CURRENT)/freebsd/Makefile \
+		$$(if $$(eq $$(VPoxNetAdp/freebsd/Makefile_VPOX_HARDENED),$$(VPOX_WITH_HARDENING)),,FORCE) \
+		| $$(dir $$@)
+	$(QUIET)$(RM) -f -- $@
+ ifndef VPOX_WITH_HARDENING
+	$(QUIET)$(SED) -e "s;VPOX_WITH_HARDENING;;g" --output $@ $<
+ else
+	$(QUIET)$(CP) -f $< $@
+ endif
+
+endif # freebsd
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

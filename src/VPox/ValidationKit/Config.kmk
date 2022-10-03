@@ -1,0 +1,234 @@
+# $Id: Config.kmk $
+## @file
+# kBuild Configuration file for the VirtualPox Validation Kit.
+#
+
+#
+# Copyright (C) 2010-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+VPOX_VALIDATIONKIT_CONFIG_KMK_INCLUDED = 1
+
+# Include the top-level configure file.
+ifndef VPOX_ROOT_CONFIG_KMK_INCLUDED
+ include $(PATH_ROOT)/Config.kmk
+endif
+
+#
+# Globals
+#
+VPOX_PATH_VALIDATIONKIT_SRC := $(PATH_ROOT)/src/VPox/ValidationKit
+
+
+#
+# Base template that drops the -static flag since we only want to use the
+# static version of our own libraries and not the system libs.
+#
+TEMPLATE_VPoxValidationKitR3Base = VPox Validation Kit ring-3 program base, both guest and host.
+TEMPLATE_VPoxValidationKitR3Base_EXTENDS = VPoxR3Static
+ifeq ($(KBUILD_TARGET),win)
+ TEMPLATE_VPoxValidationKitR3Base_LDFLAGS         = $(filter-out -IntegrityCheck, $(TEMPLATE_VPoxR3Static_LDFLAGS))
+else ifn1of ($(KBUILD_TARGET), darwin solaris win)
+ TEMPLATE_VPoxValidationKitR3Base_CFLAGS          = $(filter-out -static, $(TEMPLATE_VPoxR3Static_CFLAGS))
+ TEMPLATE_VPoxValidationKitR3Base_CXXFLAGS        = $(filter-out -static, $(TEMPLATE_VPoxR3Static_CXXFLAGS))
+ TEMPLATE_VPoxValidationKitR3Base_OBJCFLAGS       = $(filter-out -static, $(TEMPLATE_VPoxR3Static_OBJCFLAGS))
+ TEMPLATE_VPoxValidationKitR3Base_LDFLAGS         = $(filter-out -static, $(TEMPLATE_VPoxR3Static_LDFLAGS))
+endif
+TEMPLATE_VPoxValidationKitR3Base_LIBS = $(TEMPLATE_VPoxR3Static_LIBS)
+if1of ($(KBUILD_TARGET), linux)
+ TEMPLATE_VPoxValidationKitR3Base_LIBS += supc++
+ TEMPLATE_VPoxValidationKitR3Base_LDTOOL = $(subst GXX,GCC,$(TEMPLATE_VPoxR3Static_TOOL))
+endif
+TEMPLATE_VPoxValidationKitR3Base_LDFLAGS.darwin = $(TEMPLATE_VPoxR3Static_LDFLAGS.darwin) -framework IOKit
+
+#
+# Template for building ring-3 progams for the Validation Kit.
+# These programs can run on any host or guest.
+#
+TEMPLATE_VPoxValidationKitR3 = VPox Validation Kit ring-3 program, both guest and host.
+TEMPLATE_VPoxValidationKitR3_EXTENDS = VPoxValidationKitR3Base
+TEMPLATE_VPoxValidationKitR3_EXTENDS_BY = appending
+TEMPLATE_VPoxValidationKitR3_INST = $(INST_VALIDATIONKIT)$(KBUILD_TARGET)/$(KBUILD_TARGET_ARCH)/
+TEMPLATE_VPoxValidationKitR3_SDKS.win = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+TEMPLATE_VPoxValidationKitR3_DEFS = IN_RT_R3
+TEMPLATE_VPoxValidationKitR3_LIBS.darwin = iconv
+TEMPLATE_VPoxValidationKitR3_LIBS.freebsd = iconv
+TEMPLATE_VPoxValidationKitR3_LIBS = \
+	$(PATH_STAGE_LIB)/RuntimeR3$(VPOX_SUFF_LIB)
+ifeq ($(KBUILD_TARGET),solaris)
+ TEMPLATE_VPoxValidationKitR3_LIBS += \
+	kstat \
+	nsl \
+	contract
+ if1of ($(KBUILD_TARGET_ARCH), amd64 x86)
+  TEMPLATE_VPoxValidationKitR3_LIBS += \
+  	smbios
+ endif
+endif
+ifneq ($(KBUILD_TARGET),win)
+ TEMPLATE_VPoxValidationKitR3_LIBS += \
+ 	$(SDK_VPOX_ZLIB_LIBS)
+endif
+
+# Make VCC100 output work on NT3.x, NT4, W2K, XP and W2K3.
+TEMPLATE_VPoxValidationKitR3_LIBS.win.x86 = \
+       $(PATH_TOOL_$(TEMPLATE_VPoxValidationKitR3_TOOL.win.x86)_LIB)/oldnames.lib \
+       $(PATH_TOOL_$(TEMPLATE_VPoxValidationKitR3_TOOL.win.x86)_LIB)/libcmt$(VPOX_VCC_CRT_TYPE).lib \
+       $(PATH_TOOL_$(TEMPLATE_VPoxValidationKitR3_TOOL.win.x86)_LIB)/libcpmt$(VPOX_VCC_CRT_TYPE).lib \
+	$(PATH_STAGE_LIB)/RuntimeR3VccTricks$(VPOX_SUFF_LIB)
+TEMPLATE_VPoxValidationKitR3_LDFLAGS.win.x86 = \
+  	-Include:_vcc100_shell32_fakes_cpp \
+	-Include:_vcc100_shell32_fakes_asm \
+	-Section:.bss,RW!K
+ifeq ($(KBUILD_TARGET).$(KBUILD_TARGET_ARCH),win.x86)
+ TEMPLATE_VPoxValidationKitR3_POST_CMDS = $(if $(eq $(tool_do),LINK_LIBRARY),,$(VPOX_PE_SET_VERSION) $(out)$$(NLTAB))$(TEMPLATE_VPoxValidationKitR3Base_POST_CMDS)$$(NLTAB)
+endif
+TEMPLATE_VPoxValidationKitR3_LNK_DEPS.win.x86  = $(if $(eq $(tool_do),LINK_LIBRARY),,$(VPOX_PE_SET_VERSION))
+
+#TODO: TEMPLATE_VPoxValidationKitR3_EXTENDS = VPOXGUESTR3EXE
+
+TEMPLATE_VPoxValidationKitR3_USES += vpoximportchecker
+TEMPLATE_VPoxValidationKitR3_VPOX_IMPORT_CHECKER.win.x86   = nt31
+TEMPLATE_VPoxValidationKitR3_VPOX_IMPORT_CHECKER.win.amd64 = xp64
+
+
+#
+# Template for building ring-3 programs for the Validation Kit.
+# These programs can run on the host and may take advantage of the support
+# driver when installed.
+#
+TEMPLATE_VPoxValidationKitR3Host = VPox Validation Kit ring-3 program, mainly host.
+TEMPLATE_VPoxValidationKitR3Host_EXTENDS = VPoxValidationKitR3Base
+TEMPLATE_VPoxValidationKitR3Host_EXTENDS_BY = appending
+TEMPLATE_VPoxValidationKitR3Host_INST = $(INST_VALIDATIONKIT)$(KBUILD_TARGET)/$(KBUILD_TARGET_ARCH)/
+TEMPLATE_VPoxValidationKitR3Host_SDKS.win = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK) VPOX_NTDLL
+TEMPLATE_VPoxValidationKitR3Host_DEFS = IN_RT_R3 IN_SUP_R3
+TEMPLATE_VPoxValidationKitR3Host_LIBS.darwin = iconv
+TEMPLATE_VPoxValidationKitR3Host_LIBS.freebsd = iconv
+TEMPLATE_VPoxValidationKitR3Host_LIBS = \
+	$(PATH_STAGE_LIB)/RuntimeR3$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/SUPR3Static$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/RuntimeR3$(VPOX_SUFF_LIB)
+ifeq ($(KBUILD_TARGET),solaris)
+ TEMPLATE_VPoxValidationKitR3Host_LIBS += \
+	kstat \
+	nsl \
+	contract
+ if1of ($(KBUILD_TARGET_ARCH), amd64 x86)
+  TEMPLATE_VPoxValidationKitR3Host_LIBS += \
+  	smbios
+ endif
+endif
+
+#
+# Template for building agnostic ring-0 host modules for the Validation Kit.
+#
+TEMPLATE_VPoxValidationKitR0 = VPox Validation Kit agnostic ring-0 host module.
+TEMPLATE_VPoxValidationKitR0_EXTENDS = VPoxR0
+TEMPLATE_VPoxValidationKitR0_EXTENDS_BY = appending
+TEMPLATE_VPoxValidationKitR0_INST = $(INST_VALIDATIONKIT)$(KBUILD_TARGET)/$(KBUILD_TARGET_ARCH)/
+TEMPLATE_VPoxValidationKitR0_DEFS = IN_RT_R0
+TEMPLATE_VPoxValidationKitR0_LIBS = \
+	$(PATH_STAGE_LIB)/RuntimeR0$(VPOX_SUFF_LIB) \
+	$(VPOX_LIB_SUPR0)
+
+#
+# List of python sources that should be linted and unittested.
+#
+VPOX_VALIDATIONKIT_PYTHON_SOURCES     :=
+VPOX_VALIDATIONKIT_PYLINT_TARGETS     :=
+VPOX_VALIDATIONKIT_PYUNITTEST_EXCLUDE :=
+
+ifdef VPOX_WITH_PYLINT
+ TESTING +=
+endif
+
+#
+# Process python sources.
+#
+if1of ($(KBUILD_TARGET), win os2)
+ VPOX_PYTHONPATH_VALIDATIONKIT = $(PYTHONPATH);$(VPOX_PATH_VALIDATIONKIT_SRC);$(VPOX_PATH_VALIDATIONKIT_SRC)/testboxscript;$(VPOX_PATH_VALIDATIONKIT_SRC)/testmanager;$(VPOX_PATH_VALIDATIONKIT_SRC)/tests/additions;$(VPOX_PATH_VALIDATIONKIT_SRC)/../VMM/VMMAll
+else
+ VPOX_PYTHONPATH_VALIDATIONKIT = $(PYTHONPATH):$(VPOX_PATH_VALIDATIONKIT_SRC):$(VPOX_PATH_VALIDATIONKIT_SRC)/testboxscript:$(VPOX_PATH_VALIDATIONKIT_SRC)/testmanager:$(VPOX_PATH_VALIDATIONKIT_SRC)/tests/additions:$(VPOX_PATH_VALIDATIONKIT_SRC)/../VMM/VMMAll
+endif
+BLDDIRS += $(PATH_TARGET)/pylint $(PATH_TARGET)/pyunittest
+
+define def_vpox_validationkit_py_check
+$(eval name:=$(basename $(notdir $(py))))
+
+pylint:   $(name)-py-phony.o
+$(name).o: $(name)-py-phony.o
+$(PATH_TARGET)/pylint/$(name).o $(name)-py-phony.o:: $(py) | $(PATH_TARGET)/pylint/
+ifdef VPOX_WITH_PYLINT
+	$(QUIET2)$(call MSG_L1,Subjecting $(py) to pylint...)
+	$(QUIET)$(REDIRECT) -C "$(dir $(py))" -E LC_ALL=C -E PYTHONPATH="$(VPOX_PYTHONPATH_VALIDATIONKIT)" -- \
+		$(VPOX_PYLINT) --rcfile=$(VPOX_PATH_VALIDATIONKIT_SRC)/pylintrc $$(VPOX_PYLINT_FLAGS) $$($(py)_VPOX_PYLINT_FLAGS) ./$(notdir $(py))
+endif
+	$(QUIET)$(APPEND) -t "$(PATH_TARGET)/pylint/$(name).o"
+
+ifn1of ($(py),$(VPOX_VALIDATIONKIT_PYUNITTEST_EXCLUDE))
+pyunittest: $(name)-pyunittest.o
+$(PATH_TARGET)/pyunittest/$(name).o $(name)-pyunittest.o:: $(py) | $(PATH_TARGET)/pyunittest/
+	$(QUIET2)$(call MSG_L1,Unittesting Python source $(py)...)
+	$(QUIET)$(REDIRECT) -E LC_ALL=C -E PYTHONPATH="$(VPOX_PYTHONPATH_VALIDATIONKIT)" -C $(dir $(py)) \
+		-- $(VPOX_UNITTEST_PYTHON) -m unittest -v $(notdir $(basename $(py)))
+	$(QUIET)$(APPEND) -t "$(PATH_TARGET)/pyunittest/$(name).o"
+VPOX_VALIDATIONKIT_PYUNITTEST_TARGETS += $(PATH_TARGET)/pyunittest/$(name).o
+
+TESTING += $(name)-pyunittest.o
+endif
+TESTING += $(name)-py-phony.o
+VPOX_VALIDATIONKIT_PYLINT_TARGETS     += $(PATH_TARGET)/pylint/$(name).o
+endef # def_vpox_validationkit_py_check
+
+
+define def_vpox_validationkit_process_python_sources
+$(if-expr $(words $(_SUB_MAKEFILE_STACK)) <= 0 || "$1" == "FORCE", \
+	$(foreach py, $(VPOX_VALIDATIONKIT_PYTHON_SOURCES), $(eval $(def_vpox_validationkit_py_check))),)
+endef
+
+
+
+#
+# http://www.jshint.com
+#
+VPOX_JSHINT       ?= jshint
+VPOX_JSHINT_FLAGS := --config $(VPOX_PATH_VALIDATIONKIT_SRC)/jshintrc.js --verbose
+ifndef VPOX_WITH_JSHINT
+ VPOX_WITH_JSHINT := $(which $(VPOX_JSHINT))
+endif
+
+#
+# List of javascript sources that should be checked and linted.
+#
+VPOX_VALIDATIONKIT_JS_SOURCES :=
+
+define def_vpox_validationkit_js_check
+$(eval name:=$(basename $(notdir $(js))))
+$(name).o $(name).obj:: # $(PATH_SUB_CURRENT)/$(js)
+	-$(REDIRECT) -E LC_ALL=C  -C $(dir $(js)) -- $$(VPOX_JSHINT) ./$(notdir $(js)) $$(VPOX_JSHINT_FLAGS)
+jslint:: $(name).o
+endef
+
+define def_vpox_validationkit_process_js_sources
+$(if-expr $(words $(_SUB_MAKEFILE_STACK)) <= 0, \
+	$(foreach js, $(VPOX_VALIDATIONKIT_JS_SOURCES), $(eval $(def_vpox_validationkit_js_check))),)
+endef
+

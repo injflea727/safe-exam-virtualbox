@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+  "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd"[
+<!ENTITY % all.entities SYSTEM "all-entities.ent">
+%all.entities;
+]>
+<book id="VPOXU" lang="en">
+
+<!-- VPox bookinfo section -->
+
+  <bookinfo>
+
+    <title>&VPOX_PRODUCT;</title>
+
+    <subtitle>User Manual</subtitle>
+
+    <edition>Version &VPOX_VERSION_STRING;</edition>
+
+    <corpauthor>&VPOX_VENDOR;</corpauthor>
+
+    <address>http://www.virtualpox.org</address>
+
+    <copyright>
+
+      <year>2004-&VPOX_C_YEAR;</year>
+
+      <holder>&VPOX_VENDOR;</holder>
+
+    </copyright>
+
+  </bookinfo>
+
+  <xi:include href="user_Preface.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Introduction.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Installation.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_BasicConcepts.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_GuestAdditions.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Storage.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Networking.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Frontends.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_VPoxManage.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_AdvancedTopics.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Technical.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_VirtualPoxAPI.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Troubleshooting.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Security.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_KnownIssues.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_ChangeLog.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_ThirdParty.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_PrivacyPolicy.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+  <xi:include href="user_Glossary.xml"
+    xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+</book>

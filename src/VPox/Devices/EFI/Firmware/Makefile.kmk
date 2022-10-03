@@ -1,0 +1,347 @@
+# $Id: Makefile.kmk $
+## @file
+# Toplevel sub-makefile for the EFI firmwares.
+#
+# Note! kBuild is only used for the build tools, the rest is handled by the
+#       very custom EFI build system.
+#
+
+#
+# Copyright (C) 2013-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Make sure our Config.kmk is included.
+#
+ifndef VPOX_EFI_FIRMWARE_CONFIG_KMK_INCLUDED
+ include $(PATH_SUB_CURRENT)/Config.kmk
+endif
+
+
+#
+# Include sub-makefiles.
+#
+VPOX_EFI_BLDPROGS := $(BLDPROGS)
+include $(PATH_SUB_CURRENT)/BaseTools/Makefile.kmk
+VPOX_EFI_BLDPROGS := $(filter-out $(VPOX_EFI_BLDPROGS),$(BLDPROGS)) VPoxEfiBldPythonWrappers
+
+#
+# Binary wrappers for python scripts.
+#
+VPOX_EFI_PYTHON_WRAPPERS = \
+	BPDG \
+	build \
+	Ecc \
+	GenFds \
+	GenPatchPcdTable \
+	PatchPcdValue \
+	Trim \
+	TargetTool \
+	UPT
+
+INSTALLS += VPoxEfiBldPythonWrappers
+VPoxEfiBldPythonWrappers_TEMPLATE = VPoxEfiBldProg
+if1of ($(KBUILD_HOST), win os2)
+ VPoxEfiBldPythonWrappers_EXEC_SOURCES = \
+	$(foreach PyWrap,$(VPOX_EFI_PYTHON_WRAPPERS),$(VPoxEfiBldPythonWrappers_0_OUTDIR)/$(PyWrap).cmd)
+else
+ VPoxEfiBldPythonWrappers_EXEC_SOURCES = \
+	$(addprefix $(VPoxEfiBldPythonWrappers_0_OUTDIR)/,$(VPOX_EFI_PYTHON_WRAPPERS))
+endif
+VPoxEfiBldPythonWrappers_CLEAN = $(VPoxEfiBldPythonWrappers_EXEC_SOURCES)
+
+if1of ($(KBUILD_HOST), win os2)
+ define VPoxEfiBldPythonWrappersRuleTemplate
+  $$$$(VPoxEfiBldPythonWrappers_0_OUTDIR)/$(PyWrap).cmd: | $$$$(dir $$$$@)
+	$$(APPEND) -tn "$$@" \
+		'@SET PYTHONPATH=$$(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Source/Python' \
+		'@"$$(VPOX_BLD_PYTHON_2X)" "$$(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Source/Python/$(PyWrap)/$(PyWrap).py" %*'
+ endef
+else
+ define VPoxEfiBldPythonWrappersRuleTemplate
+  $$$$(VPoxEfiBldPythonWrappers_0_OUTDIR)/$(PyWrap): | $$$$(dir $$$$@)
+	$$(APPEND) -tn "$$@" \
+		'#!$(ASH)' \
+		'export PYTHONPATH="$$(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Source/Python"' \
+		'exec "$$(VPOX_BLD_PYTHON_2X)" "$$(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Source/Python/$(PyWrap)/$(PyWrap).py" "$$(DOLLAR)@"'
+	$$(CHMOD) a+x "$$@"
+ endef
+endif
+$(foreach PyWrap,$(VPOX_EFI_PYTHON_WRAPPERS),$(eval $(VPoxEfiBldPythonWrappersRuleTemplate)))
+
+#
+# Rules for building and installing the VPox EFI firmware images.
+#
+INSTALLS += VPoxEfiFirmware
+VPoxEfiFirmware_INST = $(INST_BIN)
+VPoxEfiFirmware_MODE = 0644
+VPoxEfiFirmware_SOURCES = \
+	$(VPoxEfiFirmware_0_OUTDIR)/x86/$(VPOX_EFI_OUTPUT_SUBDIR)/FV/OVMF.fd=>VPoxEFI32.fd \
+	$(VPoxEfiFirmware_0_OUTDIR)/amd64/$(VPOX_EFI_OUTPUT_SUBDIR)/FV/OVMF.fd=>VPoxEFI64.fd
+VPoxEfiFirmware_BLDDIRS = \
+	$(VPoxEfiFirmware_0_OUTDIR)/x86/ \
+	$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/ \
+	$(VPoxEfiFirmware_0_OUTDIR)/amd64/ \
+	$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/
+VPoxEfiFirmware_CLEAN = \
+	$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/target.txt \
+	$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/build_rule.txt \
+	$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/tools_def.txt \
+	$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/target.txt \
+	$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/build_rule.txt \
+	$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/tools_def.txt
+
+# Install the debug info.
+INSTALLS += VPoxEfiFirmwareDbg32
+VPoxEfiFirmwareDbg32_INST = $(INST_VPOXDBG_SYMS)x86/
+VPoxEfiFirmwareDbg32_MODE = 0644
+if1of ($(KBUILD_HOST), win)
+ VPoxEfiFirmwareDbg32_SOURCES = \
+ 	$(foreach mod,$(VPOX_EFI_MODULES),$(VPoxEfiFirmware_0_OUTDIR)/x86/$(VPOX_EFI_OUTPUT_SUBDIR)/IA32/$(mod).pdb)
+else
+ VPoxEfiFirmwareDbg32_SOURCES = \
+ 	$(foreach mod,$(VPOX_EFI_MODULES_FLAT),$(VPoxEfiFirmware_0_OUTDIR)/x86/$(VPOX_EFI_OUTPUT_SUBDIR)/IA32/$(mod).debug)
+endif
+
+INSTALLS += VPoxEfiFirmwareDbg64
+VPoxEfiFirmwareDbg64_INST = $(INST_VPOXDBG_SYMS)amd64/
+VPoxEfiFirmwareDbg64_MODE = 0644
+if1of ($(KBUILD_HOST), win)
+ VPoxEfiFirmwareDbg64_SOURCES = \
+ 	$(foreach mod,$(VPOX_EFI_MODULES),$(VPoxEfiFirmware_0_OUTDIR)/amd64/$(VPOX_EFI_OUTPUT_SUBDIR)/X64/$(mod).pdb)
+else
+ VPoxEfiFirmwareDbg64_SOURCES = \
+ 	$(foreach mod,$(VPOX_EFI_MODULES_FLAT),$(VPoxEfiFirmware_0_OUTDIR)/amd64/$(VPOX_EFI_OUTPUT_SUBDIR)/X64/$(mod).debug)
+endif
+
+
+#
+# Install a custom clean up rule for dealing with the EFI build system output.
+#
+PASS_CLEAN_trgs += VPoxEfiFirmwareCleanup
+VPoxEfiFirmwareCleanup:
+	$(if $(VPoxEfiFirmware_0_OUTDIR),,exit 1)
+	$(RM) -Rf -- "$(VPoxEfiFirmware_0_OUTDIR)/amd64/" "$(VPoxEfiFirmware_0_OUTDIR)/x86/"
+.PHONY: VPoxEfiFirmwareCleanup
+
+
+#
+# The zipfile.
+#
+include $(KBUILD_PATH)/tools/ZIP.kmk
+ifndef TOOL_ZIP_PACK
+ TOOL_ZIP_PACK = zip
+endif
+VPoxEfiFirmware.zip: $(PATH_STAGE)/VPoxEfiFirmware.zip
+$(PATH_STAGE)/VPoxEfiFirmware.zip:
+	$(REDIRECT) -C "$(PATH_STAGE_BIN)" -- $(TOOL_ZIP_PACK) $(TOOL_ZIP_PACKFLAGS) -9X $@ \
+		VPoxEFI32.fd \
+		VPoxEFI64.fd
+	$(REDIRECT) -C "$(PATH_STAGE)/$(INST_VPOXDBG_SYMS)" -- $(TOOL_ZIP_PACK) $(TOOL_ZIP_PACKFLAGS) -9X $@ \
+		$(foreach mod,$(VPOX_EFI_MODULES_FLAT),amd64/$(mod)$(VPOX_EFI_DBG_SUFF)) \
+		$(foreach mod,$(VPOX_EFI_MODULES_FLAT),x86/$(mod)$(VPOX_EFI_DBG_SUFF))
+
+#
+# Include the footer early so that we can use VPoxEfiFirmware_0_OUTDIR below.
+#
+include $(FILE_KBUILD_SUB_FOOTER)
+
+#
+# Incomplete list of dependencies relative.
+#
+VPOX_EFI_DEPENDENCIES = \
+	$(VPOX_PATH_EFI_FIRMWARE)/../DevEFI.h \
+       $(VPOX_PATH_EFI_FIRMWARE)/VPoxPkg/Library/VPoxDebugAgentLib/VPoxDebugAgentLib.c \
+       $(VPOX_PATH_EFI_FIRMWARE)/VPoxPkg/Library/VPoxDebugAgentLib/VPoxDebugAgentLib.inf \
+       $(VPOX_PATH_EFI_FIRMWARE)/VPoxPkg/VPoxPkg.dec \
+       \
+       $(VPOX_PATH_EFI_FIRMWARE)/OvmfPkg/OvmfPkg.dec \
+
+#
+# The common build.py invocation part.
+# Note! windir isn't set in cygwin on tinderwin2a. SystemRoot is.
+# Note! MAKEFLAGS must be zapped on Windows so nmake don't get confused.
+#
+if1of ($(KBUILD_HOST), win)
+ VPOX_EFI_REDIRECT_E_EQUAL:=$(EQUAL)
+ VPOX_EFI_BUILD_CMD = $(REDIRECT) \
+	-E 'PATH=$(VPOX_PATH_STAGE_EFI_BLDPROGS)$(VPOX_SEP)$(PATH);' \
+	-E 'INCLUDE=$(PATH_ROOT)/include$(VPOX_SEP)$(PATH_OUT)$(VPOX_SEP)$(VPOX_SEP)$(PATH_TOOL_$(VPOX_VCC_TOOL)_INC)$(INCLUDE);' \
+	-E 'COMSPEC=$(firstword $(windir) $(SystemRoot) C:\windows)\system32\cmd.exe' \
+	-E 'MAKEFLAGS='
+else
+ VPOX_EFI_REDIRECT_E_EQUAL:=
+VPOX_EFI_BUILD_CMD = $(REDIRECT) \
+	-E "PATH=$(VPOX_PATH_STAGE_EFI_BLDPROGS)$(VPOX_SEP)$(PATH)" \
+	-E     "C_INCLUDE_PATH=$(PATH_ROOT)/include$(VPOX_SEP)$(PATH_OUT)$(VPOX_SEP)$(C_INCLUDE_PATH)" \
+	-E "CPLUS_INCLUDE_PATH=$(PATH_ROOT)/include$(VPOX_SEP)$(PATH_OUT)$(VPOX_SEP)$(C_INCLUDE_PATH)"
+endif
+VPOX_EFI_BUILD_CMD += \
+	-E 'PYTHONPATH=$(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Source/Python' \
+	-E 'PYTHONDONTWRITEBYTECODE=1' \
+	-E 'IASL_BIN=$(VPOX_IASLCMD)' \
+	-E 'NASM_BIN=$(VPOX_NASMCMD)' \
+	-E 'CONF_PATH=$(abspath $(@D)/../../Conf)' \
+	-E 'WORKSPACE=$(VPOX_PATH_EFI_FIRMWARE)' \
+	-E 'EDK_TOOLS_PATH=$(VPOX_PATH_EFI_FIRMWARE)/BaseTools' \
+	-E 'EFI_SOURCE$(VPOX_EFI_REDIRECT_E_EQUAL)' \
+	-E 'ECP_SOURCE$(VPOX_EFI_REDIRECT_E_EQUAL)' \
+	-E 'EDK_SOURCE$(VPOX_EFI_REDIRECT_E_EQUAL)' \
+	-E 'X64_PETOOLS_PREFIX$(VPOX_EFI_REDIRECT_E_EQUAL)' \
+	-E 'ARCH$(VPOX_EFI_REDIRECT_E_EQUAL)' \
+	-E 'IPF_PETOOLS_PREFIX=__no_ipf__' \
+	-E $(if-expr "$(KBUILD_VERBOSE)" != "",'EFI_QUIET=','EFI_QUIET=@') \
+	-C '$(VPOX_PATH_EFI_FIRMWARE)' \
+	-- $(VPOX_BLD_PYTHON_2X) "$(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Source/Python/build/build.py" \
+	-D VPOX=1 \
+	-D VPOX_WITH_OVMF=1 \
+	-D BUILD_NEW_SHELL=1 \
+	-D VPOX_REV=$(VPOX_SVN_REV) \
+	-D "VPOX_OUTPUT_BASE_DIR=$(VPoxEfiFirmware_0_OUTDIR)" \
+	-D "VPOX_PATH_ROOT=$(PATH_ROOT)" \
+	-D "FD_SIZE_4MB=1" \
+	$(if $(VPOX_OSE),-D "VPOX_OSE=1") \
+	$(if-expr "$(KBUILD_VERBOSE)" != "",$(if-expr "$(KBUILD_VERBOSE)" >= 3,-v,),--silent --quiet) \
+	--no-cache \
+	--buildtarget $(VPOX_EFI_BUILD_TARGET) \
+	--tagname $(VPOX_EFI_TOOL_CHAIN)
+
+#
+# Derive the number of parallel jobs (on windows) from KMK_OPTS_JOBS.
+#
+VPOX_EFI_MAX_THREADS := 1
+if defined(KMK_OPTS_JOBS) && "$(KBUILD_HOST)" == "win"
+ VPOX_EFI_MAX_THREADS := $(if-expr $(KMK_OPTS_JOBS) > 0,$(expr $(KMK_OPTS_JOBS) / 2),$(NUMBER_OF_PROCESSORS))
+endif
+
+#
+# Tools configurations.
+#
+$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/tools_def.txt \
+$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/tools_def.txt: \
+               $(VPOX_PATH_EFI_FIRMWARE)/vpox-tools_def.txt \
+		$(MAKEFILE) | $$(dir $$@)
+	$(RM) -f -- "$@"
+	$(SED) \
+		-e 's,@VPOX_IASLCMD@,$(VPOX_IASLCMD),' \
+		-e 's,@VPOX_YASMCMD@,$(VPOX_YASMCMD),' \
+		-e 's,@VPOX_NASMCMD@,$(VPOX_NASMCMD),' \
+		-e 's,@KMK@,$(MAKE),' \
+               \
+		-e 's,@VPOX_PATH_PREFIX_GCC32@,$(PATH_TOOL_$(VPOX_GCC_TOOL)),' \
+		-e 's,@VPOX_PATH_PREFIX_GCC64@,$(PATH_TOOL_$(VPOX_GCC_TOOL)),' \
+               \
+		-e 's,@PATH_VS2010@,$(PATH_TOOL_$(VPOX_VCC_TOOL)),' \
+		-e 's,@PATH_VS2010_AMD64_BIN@,$(PATH_TOOL_$(VPOX_VCC_TOOL))/bin/$(subst x86,x86_amd64,$(KBUILD_HOST_ARCH)),' \
+               \
+		--output $@ $<
+
+# This may not really need sed, just a plain file copy.
+$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/build_rule.txt \
+$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/build_rule.txt: \
+               $(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Conf/build_rule.template \
+		$(MAKEFILE) | $$(dir $$@)
+	$(RM) -f -- "$@"
+	$(SED) \
+		-e 's,@VPOX_IASLCMD@,$(VPOX_IASLCMD),' \
+		-e 's,@VPOX_YASMCMD@,$(VPOX_YASMCMD),' \
+		-e 's,@VPOX_NASMCMD@,$(VPOX_NASMCMD),' \
+		-e 's,@KMK@,$(MAKE),' \
+               \
+		-e 's,@VPOX_PATH_PREFIX_GCC32@,$(PATH_TOOL_$(VPOX_VCC_TOOL)),' \
+		-e 's,@VPOX_PATH_PREFIX_GCC64@,$(PATH_TOOL_$(VPOX_VCC_TOOL)),' \
+               \
+		-e 's,@PATH_VS2010@,$(PATH_TOOL_$(VPOX_VCC_TOOL)),' \
+		-e 's,@PATH_VS2010_AMD64_BIN@,$(PATH_TOOL_$(VPOX_VCC_TOOL))/bin/$(subst x86,x86_amd64,$(KBUILD_HOST_ARCH)),' \
+               \
+		--output $@ $<
+
+
+#
+# VPoxEFI32
+#
+$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/target.txt: $(MAKEFILE) | $$(dir $$@) $(VPOX_EFI_BLDPROGS)
+	$(APPEND) -tn "$@" \
+		"# Automatically generated, do not edit" \
+		"" \
+		"# These variables cannot be overriden by the build.py command line." \
+		"TOOL_CHAIN_CONF = $(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/tools_def.txt" \
+		"BUILD_RULE_CONF = $(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Conf/build_rule.template" \
+		"" \
+		"# These variables are overridden and this is just for show." \
+		"ACTIVE_PLATFORM = OvmfPkg/OvmfPkgIa32.dsc" \
+		"TARGET          = $(VPOX_EFI_BUILD_TARGET)" \
+		"TARGET_ARCH     = IA32" \
+		"TOOL_CHAIN_TAG  = $(VPOX_EFI_TOOL_CHAIN)" \
+		"MAX_CONCURRENT_THREAD_NUMBER = $(VPOX_EFI_MAX_THREADS)"
+
+$(VPoxEfiFirmware_0_OUTDIR)/x86/$(VPOX_EFI_OUTPUT_SUBDIR)/FV/OVMF.fd \
++ $(VPoxEfiFirmwareDbg32_SOURCES): \
+		$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/target.txt \
+		$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/tools_def.txt \
+		$(VPoxEfiFirmware_0_OUTDIR)/x86/Conf/build_rule.txt \
+		$$(VPoxEfiResetVector-x86_1_TARGET) \
+		$(VPOX_EFI_DEPENDENCIES) \
+		$(VPOX_PATH_EFI_FIRMWARE)/OvmfPkg/OvmfPkgIa32.dsc \
+		$(VPOX_PATH_EFI_FIRMWARE)/OvmfPkg/OvmfPkgIa32.fdf
+	+ $(VPOX_EFI_BUILD_CMD) \
+		--arch IA32 \
+		--platform OvmfPkg/OvmfPkgIa32.dsc
+
+#
+# VPoxEFI64
+#
+$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/target.txt: $(MAKEFILE) | $$(dir $$@) $(VPOX_EFI_BLDPROGS)
+	$(APPEND) -tn "$@" \
+		"# Automatically generated, do not edit" \
+		"" \
+		"# These variables cannot be overriden by the build.py command line." \
+		"TOOL_CHAIN_CONF = $(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/tools_def.txt" \
+		"BUILD_RULE_CONF = $(VPOX_PATH_EFI_FIRMWARE)/BaseTools/Conf/build_rule.template" \
+		"" \
+		"# These variables are overridden and this is just for show." \
+		"ACTIVE_PLATFORM = OvmfPkg/OvmfPkgX64.dsc" \
+		"TARGET          = $(VPOX_EFI_BUILD_TARGET)" \
+		"TARGET_ARCH     = X64" \
+		"TOOL_CHAIN_TAG  = $(VPOX_EFI_TOOL_CHAIN)" \
+		"MAX_CONCURRENT_THREAD_NUMBER = $(VPOX_EFI_MAX_THREADS)"
+
+$(VPoxEfiFirmware_0_OUTDIR)/amd64/$(VPOX_EFI_OUTPUT_SUBDIR)/FV/OVMF.fd \
++ $(VPoxEfiFirmwareDbg64_SOURCES): \
+		$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/target.txt \
+		$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/tools_def.txt \
+		$(VPoxEfiFirmware_0_OUTDIR)/amd64/Conf/build_rule.txt \
+		$$(VPoxEfiResetVector-amd64_1_TARGET) \
+		$(VPOX_EFI_DEPENDENCIES) \
+		$(VPOX_PATH_EFI_FIRMWARE)/OvmfPkg/OvmfPkgX64.dsc \
+		$(VPOX_PATH_EFI_FIRMWARE)/OvmfPkg/OvmfPkgX64.fdf
+	+ $(VPOX_EFI_BUILD_CMD) \
+		--arch X64 \
+		--platform OvmfPkg/OvmfPkgX64.dsc
+
+#
+# Some aliases.
+#
+build-efi-x86:   $$(filter %VPoxEFI32.fd,$$(VPoxEfiFirmware_2_STAGE_TARGETS))
+build-efi-amd64: $$(filter %VPoxEFI64.fd,$$(VPoxEfiFirmware_2_STAGE_TARGETS))
+

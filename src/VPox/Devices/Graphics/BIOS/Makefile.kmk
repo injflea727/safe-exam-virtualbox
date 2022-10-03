@@ -1,0 +1,192 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the New VGA BIOS ROM.
+#
+
+#
+# Copyright (C) 2012-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+ifdef VPOX_WITH_OPEN_WATCOM
+
+ #
+ # VPoxVgaBios - The VGA BIOS.
+ #
+ MISCBINS += VPoxVgaBios386
+ VPoxVgaBios386_TEMPLATE = VPoxBios
+ VPoxVgaBios386_ASFLAGS = -0
+ VPoxVgaBios386_CFLAGS = -3
+ VPoxVgaBios386_DEFS = VBE VPOX_BIOS_CPU=80386
+ VPoxVgaBios386_INCS = $(VPOX_GRAPHICS_INCS)
+ VPoxVgaBios386_SOURCES = \
+ 	vgarom.asm \
+ 	vberom.asm \
+ 	vgabios.c \
+ 	vbe.c
+ VPoxVgaBios386_LDFLAGS = \
+ 	output raw offset=0xC0000 \
+ 	order \
+ 	 clname CODE  \
+	  segment VGAROM segaddr=0xC000 \
+ 	  segment _TEXT  segaddr=0xC000 offset=0x980 \
+ 	  segment VBE32  segaddr=0xC000 offset=0x4600 \
+ 	 clname DATA \
+ 	  segment _DATA  segaddr=0xC000 offset=0x4780 \
+
+ MISCBINS += VPoxVgaBios286
+ VPoxVgaBios286_EXTENDS = VPoxVgaBios386
+ VPoxVgaBios286_CFLAGS  = -2
+ VPoxVgaBios286_DEFS    = $(filter-out VPOX_BIOS_CPU=80386,$(VPoxVgaBios386_DEFS)) VPOX_BIOS_CPU=80286
+
+ MISCBINS += VPoxVgaBios8086
+ VPoxVgaBios8086_EXTENDS = VPoxVgaBios386
+ VPoxVgaBios8086_CFLAGS  = -0
+ VPoxVgaBios8086_DEFS    = $(filter-out VPOX_BIOS_CPU=80386,$(VPoxVgaBios386_DEFS)) VPOX_BIOS_CPU=8086
+
+ #
+ # Updates the alternative source file.
+ #
+ define def_VPoxVgaBiosUpdateAltSource
+  $$(PATH_SUB_CURRENT)/VPoxVgaBiosAlternative$(1).asm +| $$(PATH_SUB_CURRENT)/VPoxVgaBiosAlternative$(1).md5sum: \
+  		$$$$(VPoxVgaBios$(1)_1_TARGET) \
+  		$$(VPOX_MAKE_ALTERNATIVE_SOURCE) \
+ 		$$(VPOX_VPOXCMP)
+  if1of ($$(KBUILD_TYPE), release)
+	$$(VPOX_MAKE_ALTERNATIVE_SOURCE) \
+		--bios-image $$< \
+		--bios-map $$(basename $$<).map \
+		--bios-sym $$(basename $$<).sym \
+               --bios-type vga \
+		--output $$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).asm
+	$$(QUIET)yasm -f bin \
+		-o $$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).bin \
+		-l $$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).lst \
+		$$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).asm
+	$$(VPOX_VPOXCMP) $$< $$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).bin
+	$$(CP) --changed -- $$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).asm $$(PATH_ROOT)/src/VPox/Devices/Graphics/BIOS/VPoxVgaBiosAlternative$(1).asm
+	$$(REDIRECT) -C $$(dir $$(VPoxVgaBios$(1)_1_TARGET)) -- \
+		$$(MD5SUM_EXT) -bo $$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).md5sum $$(notdir $$(VPoxVgaBios$(1)_1_TARGET))
+	$$(CP) --changed -- $$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).md5sum $$(PATH_ROOT)/src/VPox/Devices/Graphics/BIOS/VPoxVgaBiosAlternative$(1).md5sum
+	$$(RM) -f -- $$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).asm \
+		$$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).bin \
+		$$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).lst \
+		$$(VPoxVgaBios$(1)_0_OUTDIR)/VPoxVgaBiosAlternative$(1).md5sum
+  else
+	$$(QUIET)$$(ECHO) "Fatal error: Can only update VPoxVgaBiosAlternative$(1).asm/md5sum with a release build."
+	$$(QUIET)exit 1
+  endif
+ endef
+
+ $(evalcall2 def_VPoxVgaBiosUpdateAltSource,386)
+ $(evalcall2 def_VPoxVgaBiosUpdateAltSource,286)
+ $(evalcall2 def_VPoxVgaBiosUpdateAltSource,8086)
+
+ update-vgabios-source: \
+ 	$(PATH_SUB_CURRENT)/VPoxVgaBiosAlternative386.asm \
+ 	$(PATH_SUB_CURRENT)/VPoxVgaBiosAlternative286.asm \
+ 	$(PATH_SUB_CURRENT)/VPoxVgaBiosAlternative8086.asm
+
+endif # VPOX_WITH_OPEN_WATCOM
+
+
+#
+# The library containing the VGA BIOS image.
+#
+LIBRARIES += VgaBiosBin
+VgaBiosBin_TEMPLATE  = VPOXR3
+VgaBiosBin_DEFS      = IN_VPOXDD2
+VgaBiosBin_SOURCES   =
+VgaBiosBin_DEPS      = $(VgaBiosBin_0_OUTDIR)/vbetables.h
+VgaBiosBin_CLEAN     = $(VgaBiosBin_0_OUTDIR)/vbetables.h
+
+define def_VPoxVgaBiosBin
+ VgaBiosBin_SOURCES += $$(VgaBiosBin_0_OUTDIR)/VgaBiosBin$(1).c
+ VgaBiosBin_CLEAN   += $$(VgaBiosBin_0_OUTDIR)/VgaBiosBin$(1).c
+ ifdef VPOX_WITH_OPEN_WATCOM
+  $$$$(VgaBiosBin_0_OUTDIR)/VgaBiosBin$(1).c: $$$$(VPoxVgaBios$(1)_1_TARGET) $$(VPOX_BIN2C) | $$$$(dir $$$$@)
+	$$(call MSG_TOOL,bin2c,VgaBiosBin,$$<,$$@)
+	$$(QUIET)$$(VPOX_BIN2C) -min 32 -max 36 -mask 0x0fff -ascii -export VgaBiosBinary$(1) $$< $$@
+ else
+  VgaBiosBin_CLEAN  += $$(VgaBiosBin_0_OUTDIR)/VPoxVgaBios$(1).rom
+
+  $$$$(VgaBiosBin_0_OUTDIR)/VgaBiosBin$(1).c + $$$$(VgaBiosBin_0_OUTDIR)/VPoxVgaBios$(1).rom: \
+ 		$$(PATH_SUB_CURRENT)/VPoxVgaBiosAlternative$(1).asm \
+ 		$$(PATH_SUB_CURRENT)/VPoxVgaBiosAlternative$(1).md5sum \
+ 		$$(VPOX_BIN2C) | $$$$(dir $$$$@)
+	$$(call MSG_TOOL,bin2c,VgaBiosBin,$$<,$$@)
+	$$(QUIET)yasm -f bin -o $$(VgaBiosBin_0_OUTDIR)/VPoxVgaBios$(1).rom $$<
+	$$(QUIET)$$(REDIRECT) -C $$(VgaBiosBin_0_OUTDIR) -- \
+		$$(MD5SUM_EXT) -c $$(basename $$<).md5sum
+	$$(QUIET)$$(VPOX_BIN2C) -min 32 -max 36 -mask 0x0fff -ascii -export VgaBiosBinary$(1) $$(VgaBiosBin_0_OUTDIR)/VPoxVgaBios$(1).rom $$@
+	$$(QUIET)$$(RM) -f -- $$$$(VgaBiosBin_0_OUTDIR)/VPoxVgaBios$(1).rom
+ endif
+endef
+$(evalcall2 def_VPoxVgaBiosBin,386)
+$(evalcall2 def_VPoxVgaBiosBin,286)
+$(evalcall2 def_VPoxVgaBiosBin,8086)
+
+
+# Rule for making the vbetables.h that DevVGA uses.
+$$(VgaBiosBin_0_OUTDIR)/vbetables.h: $(MAKEFILE_CURRENT) $$(vbetables-gen_1_TARGET) | $$(dir $$@)
+	$(QUIET)$(REDIRECT) -wo $@ -- $(vbetables-gen_1_TARGET)
+
+
+#
+# The VBE tables.
+#
+BLDPROGS += vbetables-gen
+vbetables-gen_TEMPLATE = VPoxBldProg
+vbetables-gen_SOURCES  = vbetables-gen.c
+vbetables-gen_CLEAN    = $(vbetables-gen)
+
+
+#
+# The VGA BIOS Logo.
+#
+LIBRARIES += VgaDefBiosLogo
+VgaDefBiosLogo_TEMPLATE  = VPOXR3
+VgaDefBiosLogo_INCS      = $(VPOX_PATH_DEVICES_SRC)
+VgaDefBiosLogo_SOURCES   = $(VgaDefBiosLogo_0_OUTDIR)/VgaDefBiosLogo.c
+VgaDefBiosLogo_CLEAN     = $(VgaDefBiosLogo_0_OUTDIR)/VgaDefBiosLogo.c
+ifndef VPOX_OSE
+VgaDefBiosLogo_SOURCES  += $(VgaDefBiosLogo_0_OUTDIR)/VgaDefBiosLogoNY.c
+VgaDefBiosLogo_CLEAN    += $(VgaDefBiosLogo_0_OUTDIR)/VgaDefBiosLogoNY.c
+endif
+
+# Rule for making the bios logo.
+$$(VgaDefBiosLogo_0_OUTDIR)/VgaDefBiosLogo.c: $(VPOX_BRAND_BIOS_LOGO) $(VPOX_BIN2C) | $$(dir $$@)
+	$(call MSG_TOOL,bin2c,VgaDefBiosLogo,$<,$@)
+	$(QUIET)$(VPOX_BIN2C) VgaDefBiosLogo $< $@
+
+# Rule for making the bios logo.
+$$(VgaDefBiosLogo_0_OUTDIR)/VgaDefBiosLogoNY.c: $(PATH_ROOT)/src/VPox/Devices/Graphics/BIOS/puel_logo_ny.bmp $(VPOX_BIN2C) | $$(dir $$@)
+	$(call MSG_TOOL,bin2c,VgaDefBiosLogoNY,$<,$@)
+	$(QUIET)$(VPOX_BIN2C) VgaDefBiosLogoNY $< $@
+
+
+ifdef VPOX_WITH_OPEN_WATCOM
+ #
+ # Install the symbol file for the BIOS.
+ #
+ INSTALLS += VPoxVgaBiosSym
+ VPoxVgaBiosSym_TEMPLATE = VPoxDbgSyms
+ VPoxVgaBiosSym_SOURCES = \
+ 	$(basename $(VPoxVgaBios386_1_TARGET)).sym \
+ 	$(basename $(VPoxVgaBios286_1_TARGET)).sym \
+ 	$(basename $(VPoxVgaBios8086_1_TARGET)).sym
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

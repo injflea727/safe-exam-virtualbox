@@ -1,0 +1,783 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Solaris installer.
+#
+
+#
+# Copyright (C) 2007-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifneq ($(KBUILD_HOST),solaris)
+$(error "The Solaris installer can only be built on Solaris!") # yeah, right.
+endif
+
+
+#
+# Globals
+#
+VPOX_PATH_SOL_INST_SRC     := $(PATH_SUB_CURRENT)
+VPOX_PATH_SI_SCRATCH       := $(PATH_TARGET)/Installer-solaris
+VPOX_PATH_SI_SCRATCH_PKG   := $(PATH_TARGET)/Installer-solaris/pkg
+VPOX_PATH_SI_SCRATCH_DBG   := $(PATH_TARGET)/Installer-solaris/DebugPkg
+VPOX_SI_ARCH               := $(subst x86,i386,$(KBUILD_TARGET_ARCH))
+VPOX_SI_ICON_TYPES         := ova ovf vpox vpox-extpack vdi vmdk vhd hdd
+VPOX_SI_ICON_SIZES         := 16 20 24 32 48 64 72 96 128 256
+VPOX_SI_GTAR               := /usr/sfw/bin/gtar
+VPOX_SI_OBJCOPY_STRIP      := /usr/sfw/bin/gobjcopy --strip-debug -R .comment
+ifeq ($(KBUILD_TARGET_ARCH),amd64)
+ VPOX_SI_OBJCOPY_DBGINFO   := /usr/sfw/bin/gobjcopy --only-keep-debug
+else
+ VPOX_SI_OBJCOPY_DBGINFO   := $(CP) -p # Solaris ld/gobjcopy(2.15) don't get along on x86, works only on amd64. So just using cp for now.
+endif
+
+# Unset this to speed up things during makefile hacking.
+VPOX_SI_DEP_ON_MAKEFILE    := $(MAKEFILE_CURRENT)
+
+
+# Base package
+PKGINFO_ARCH      = $(shell uname -p)
+PKGINFO_DATE      = $(date %Y.%m.%d.%H.%M.%S)
+PKGINFO_REVSTAMP  = $(PKGINFO_DATE).$(VPOX_SVN_REV)
+PKGINFO_PSTAMP    = vpox_$(subst .,,$(PKGINFO_DATE))_r$(VPOX_SVN_REV)
+PKG_FILENAME     := VirtualPox-$(VPOX_VERSION_STRING)-SunOS-$(KBUILD_TARGET_ARCH)-r$(VPOX_SVN_REV)
+
+
+#
+# Targets
+#
+PROGRAMS         += VPoxZoneAccess VPoxISAExec
+INSTALLS         += solaris-doc solaris-bin solaris-drv-confs solaris-icons
+BLDDIRS          += $(VPOX_PATH_SI_SCRATCH)
+PACKING          += \
+	$(PATH_STAGE_BIN)/$(PKG_FILENAME).tar.gz \
+	$(if $(VPOX_WITH_SOLARIS_IPS_PACKAGE),$(PATH_STAGE_BIN)/$(PKG_FILENAME).p5p,) \
+	$(PATH_STAGE_BIN)/VirtualPoxDebug.tar.bz2
+OTHER_CLEAN      += \
+	$(VPOX_PATH_SI_SCRATCH)/$(PKG_FILENAME).pkg \
+	$(PATH_STAGE_BIN)/$(PKG_FILENAME).tar.gz \
+	$(PATH_STAGE_BIN)/$(PKG_FILENAME).p5p \
+	$(PATH_STAGE_BIN)/VirtualPoxDebug.tar.bz2 \
+	$(VPOX_PATH_SI_SCRATCH)/dist-copy.ts
+
+#
+# VPoxZoneAccess
+#
+VPoxZoneAccess_TEMPLATE = VPOXR3EXE
+VPoxZoneAccess_DEPS     = $(VPOX_SVN_REV_KMK)
+VPoxZoneAccess_SOURCES  = VPoxZoneAccess.c
+VPoxZoneAccess_LIBS     = $(LIB_RUNTIME)
+
+#
+# VPoxISAExec
+#
+VPoxISAExec_TEMPLATE = VPOXR3EXE
+VPoxISAExec_DEPS     = $(VPOX_SVN_REV_KMK)
+VPoxISAExec_SOURCES  = VPoxISAExec.c
+
+#
+# Solaris installs.
+#
+solaris-doc_INST    = bin/
+solaris-doc_MODE    = a+r,u+w
+solaris-doc_SOURCES = \
+	$(VPOX_BRAND_LICENSE_TXT)=>LICENSE \
+	$(PATH_ROOT)/src/VPox/Frontends/VirtualPox/images/$(if $(VPOX_OSE),OSE,NonOSE)/VirtualPox_64px.png=>VPox.png \
+	$(PATH_ROOT)/src/VPox/Artwork/$(if $(VPOX_OSE),OSE,NonOSE)/virtualpox-128px.png=>virtualpox.png
+
+solaris-bin_INST = bin/
+solaris-bin_MODE = a+rx,u+w
+solaris-bin_SOURCES = \
+	$(if $(VPOX_WITH_PYTHON),$(PATH_ROOT)/src/VPox/Frontends/VPoxShell/vpoxshell.py,) \
+	$(VPOX_PATH_SOL_INST_SRC)/vpoxconfig.sh \
+	$(VPOX_PATH_SOL_INST_SRC)/VPox.sh \
+	$(VPOX_PATH_SOL_INST_SRC)/pkginstall.sh \
+	$(VPOX_PATH_SOL_INST_SRC)/smf-vpoxballoonctrl.sh \
+	$(VPOX_PATH_SOL_INST_SRC)/smf-vpoxautostart.sh \
+	$(if $(VPOX_WITH_WEBSERVICES),$(VPOX_PATH_SOL_INST_SRC)/smf-vpoxwebsrv.sh,)
+
+solaris-drv-confs_INST = bin/
+solaris-drv-confs_MODE = a+r,u+w
+solaris-drv-confs_SOURCES = \
+	$(PATH_ROOT)/src/VPox/HostDrivers/Support/solaris/vpoxdrv.conf \
+	$(if $(VPOX_WITH_NETFLT),$(PATH_ROOT)/src/VPox/HostDrivers/VPoxNetFlt/solaris/vpoxflt.conf) \
+	$(if $(VPOX_WITH_NETFLT_CROSSBOW),$(PATH_ROOT)/src/VPox/HostDrivers/VPoxNetFlt/solaris/vpoxbow.conf) \
+	$(if $(VPOX_WITH_NETADP),$(PATH_ROOT)/src/VPox/HostDrivers/VPoxNetAdp/solaris/vpoxnet.conf) \
+	$(if $(VPOX_WITH_USB),$(PATH_ROOT)/src/VPox/HostDrivers/VPoxUSB/solaris/vpoxusbmon.conf) \
+	$(if $(VPOX_WITH_USB),$(PATH_ROOT)/src/VPox/HostDrivers/VPoxUSB/solaris/vpoxusb.conf)
+
+solaris-icons_INST = bin/icons/
+solaris-icons_MODE = a+r,u+w
+solaris-icons_SOURCES = $(foreach f,$(VPOX_SI_ICON_TYPES), $(foreach s,$(VPOX_SI_ICON_SIZES)\
+	,$(PATH_ROOT)/src/VPox/Artwork/other/virtualpox-$(f)-$(s)px.png=>$(s)x$(s)/mimetypes/virtualpox-$(f).png))
+
+
+#
+# What follows is various files lists (and a symlink list) that lists various
+# types of files going from/to various places during installation.
+#
+# Each list has the following attributes (used by makefile command and
+# dependency generation):
+#       .SUBDIRS := <yes|no>
+#       .STRIP   := <yes|objcopy|no>
+#       .MODE    := <0644|0755>
+#       .SRC     := <Directory to copy the files from>
+#       .DST     := <Directory to copy the files to>
+#
+
+
+## List of file list variable names.
+SOLARIS_FILE_LIST_VARS :=
+
+## @def SOLARIS_ETC_FILES
+# System-wide configuration files to copy from VPOX_PATH_SOL_INST_SRC to /etc.
+SOLARIS_FILE_LIST_VARS += SOLARIS_ETC_FILES
+SOLARIS_ETC_FILES.SUBDIRS := yes
+SOLARIS_ETC_FILES.STRIP   := no
+SOLARIS_ETC_FILES.MODE    := 0644
+SOLARIS_ETC_FILES.SRC     := $(PATH_ROOT)/src/VPox/HostDrivers/VPoxNetAdp/solaris
+SOLARIS_ETC_FILES.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/etc
+SOLARIS_ETC_FILES := $(if-expr defined(VPOX_WITH_NETADP),hostname.vpoxnet0,)
+
+## @def SOLARIS_SMF_FILES
+# Service management facility manifest files to copy from VPOX_PATH_SOL_INST_SRC to /var/svc/manifest/application/virtualpox/.
+SOLARIS_FILE_LIST_VARS += SOLARIS_SMF_FILES
+SOLARIS_SMF_FILES.SUBDIRS := yes
+SOLARIS_SMF_FILES.STRIP   := no
+SOLARIS_SMF_FILES.MODE    := 0644
+SOLARIS_SMF_FILES.SRC     := $(VPOX_PATH_SOL_INST_SRC)
+SOLARIS_SMF_FILES.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/var/svc/manifest/application/virtualpox
+SOLARIS_SMF_FILES = \
+	virtualpox-zoneaccess.xml \
+	virtualpox-balloonctrl.xml \
+	virtualpox-autostart.xml \
+	$(if-expr defined(VPOX_WITH_WEBSERVICES),virtualpox-webservice.xml,)
+
+## @def SOLARIS_MIME_INFO_FILES
+# MIME info files to be copied directly from VPOX_PATH_SOL_INST_SRC to /usr/share/mime-info/.
+SOLARIS_FILE_LIST_VARS += SOLARIS_MIME_INFO_FILES
+SOLARIS_MIME_INFO_FILES.SUBDIRS := yes
+SOLARIS_MIME_INFO_FILES.STRIP   := no
+SOLARIS_MIME_INFO_FILES.MODE    := 0644
+SOLARIS_MIME_INFO_FILES.SRC     := $(VPOX_PATH_SOL_INST_SRC)
+SOLARIS_MIME_INFO_FILES.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/mime-info
+SOLARIS_MIME_INFO_FILES = \
+	virtualpox.keys \
+	virtualpox.mime
+
+## @def SOLARIS_PIXMAP_FILES
+# Bitmap files to copy directly from INST_BIN to /usr/share/pixmaps/.
+SOLARIS_FILE_LIST_VARS += SOLARIS_PIXMAP_FILES
+SOLARIS_PIXMAP_FILES.SUBDIRS = no
+SOLARIS_PIXMAP_FILES.STRIP   = no
+SOLARIS_PIXMAP_FILES.MODE    = 0644
+SOLARIS_PIXMAP_FILES.SRC     = $(PATH_STAGE_BIN)
+SOLARIS_PIXMAP_FILES.DST     = $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/pixmaps
+SOLARIS_PIXMAP_FILES = \
+	VPox.png \
+	virtualpox.png
+
+
+## @def SOLARIS_INSTALLER_SCRIPTS
+# Installer shell scripts that gets copied directly from VPOX_PATH_SOL_INST_SRC to VPOX_PATH_SI_SCRATCH_PKG (/).
+SOLARIS_FILE_LIST_VARS += SOLARIS_INSTALLER_SCRIPTS
+SOLARIS_INSTALLER_SCRIPTS.SUBDIRS = no
+SOLARIS_INSTALLER_SCRIPTS.STRIP   = no
+SOLARIS_INSTALLER_SCRIPTS.MODE    = 0755
+SOLARIS_INSTALLER_SCRIPTS.SRC     = $(VPOX_PATH_SOL_INST_SRC)
+SOLARIS_INSTALLER_SCRIPTS.DST     = $(VPOX_PATH_SI_SCRATCH_PKG)
+SOLARIS_INSTALLER_SCRIPTS = \
+	postinstall.sh \
+	checkinstall.sh \
+	preremove.sh \
+	makepackage.sh
+
+## @def SOLARIS_INSTALLER_FILES
+# Installer files that gets copied directly from VPOX_PATH_SOL_INST_SRC to VPOX_PATH_SI_SCRATCH_PKG (/).
+SOLARIS_FILE_LIST_VARS += SOLARIS_INSTALLER_FILES
+SOLARIS_INSTALLER_FILES.SUBDIRS = no
+SOLARIS_INSTALLER_FILES.STRIP   = no
+SOLARIS_INSTALLER_FILES.MODE    = 0644
+SOLARIS_INSTALLER_FILES.SRC     = $(VPOX_PATH_SOL_INST_SRC)
+SOLARIS_INSTALLER_FILES.DST     = $(VPOX_PATH_SI_SCRATCH_PKG)
+SOLARIS_INSTALLER_FILES = \
+	vpox.space
+
+## @def SOLARIS_INSTALLER_LICENSE
+# List of files that are copied directly from INST_BIN to VPOX_PATH_SI_SCRATCH_PKG (/).
+# LICENSE is needed by IPS packaging only.
+SOLARIS_FILE_LIST_VARS += SOLARIS_INSTALLER_LICENSE
+SOLARIS_INSTALLER_LICENSE.SUBDIRS := no
+SOLARIS_INSTALLER_LICENSE.STRIP   := no
+SOLARIS_INSTALLER_LICENSE.MODE    := 0644
+SOLARIS_INSTALLER_LICENSE.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_INSTALLER_LICENSE.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)
+SOLARIS_INSTALLER_LICENSE = \
+	LICENSE
+
+## @def SOLARIS_DRIVER_BINS
+# List of kernel module files that are copied from INST_BIN to platform/i86pc/kernel/drv/[amd64/] and stripped of debug info.
+SOLARIS_FILE_LIST_VARS += SOLARIS_DRIVER_BINS
+SOLARIS_DRIVER_BINS.SUBDIRS := no
+SOLARIS_DRIVER_BINS.STRIP   := no
+SOLARIS_DRIVER_BINS.MODE    := 0644
+SOLARIS_DRIVER_BINS.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_DRIVER_BINS.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/platform/i86pc/kernel/drv/$(subst x86,,$(KBUILD_TARGET_ARCH))
+SOLARIS_DRIVER_BINS = \
+	vpoxdrv \
+	$(if $(VPOX_WITH_NETFLT),vpoxflt,) \
+	$(if $(VPOX_WITH_NETFLT_CROSSBOW),vpoxbow,) \
+	$(if $(VPOX_WITH_NETADP),vpoxnet,) \
+	$(if $(VPOX_WITH_USB),vpoxusbmon,) \
+	$(if $(VPOX_WITH_USB),vpoxusb,)
+
+## @def SOLARIS_DRIVER_CONFS
+# List of kernel module configuration files that are copied directly from INST_BIN to platform/i86pc/kernel/drv/.
+SOLARIS_FILE_LIST_VARS += SOLARIS_DRIVER_CONFS
+SOLARIS_DRIVER_CONFS.SUBDIRS := no
+SOLARIS_DRIVER_CONFS.STRIP   := no
+SOLARIS_DRIVER_CONFS.MODE    := 0644
+SOLARIS_DRIVER_CONFS.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_DRIVER_CONFS.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/platform/i86pc/kernel/drv
+SOLARIS_DRIVER_CONFS = \
+	vpoxdrv.conf \
+	$(if $(VPOX_WITH_NETFLT),vpoxflt.conf,) \
+	$(if $(VPOX_WITH_NETFLT_CROSSBOW),vpoxbow.conf,) \
+	$(if $(VPOX_WITH_NETADP),vpoxnet.conf,) \
+	$(if $(VPOX_WITH_USB),vpoxusbmon.conf,) \
+	$(if $(VPOX_WITH_USB),vpoxusb.conf,)
+
+## @def SOLARIS_COMMON
+# List of files that are copied directly from INST_BIN to /opt/VirtualPox/.
+SOLARIS_FILE_LIST_VARS += SOLARIS_COMMON
+SOLARIS_COMMON.SUBDIRS := yes
+SOLARIS_COMMON.STRIP   := no
+SOLARIS_COMMON.MODE    := 0644
+SOLARIS_COMMON.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_COMMON.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox
+SOLARIS_COMMON = \
+	LICENSE
+
+## @def SOLARIS_COMMON_EXES
+# List of executable script (and VPoxISAExec) files that are copied directly from INST_BIN to /opt/VirtualPox/.
+SOLARIS_FILE_LIST_VARS += SOLARIS_COMMON_EXES
+SOLARIS_COMMON_EXES.SUBDIRS := no
+SOLARIS_COMMON_EXES.STRIP   := no
+SOLARIS_COMMON_EXES.MODE    := 0755
+SOLARIS_COMMON_EXES.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_COMMON_EXES.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox
+SOLARIS_COMMON_EXES = \
+	VPoxISAExec
+
+## @def SOLARIS_COMMON_BINS
+# List of INST_BIN shared libraries that should be copied into /opt/VirtualPox/ and stripped.
+SOLARIS_FILE_LIST_VARS += SOLARIS_COMMON_STRIP_BINS
+SOLARIS_COMMON_STRIP_BINS.SUBDIRS := yes
+SOLARIS_COMMON_STRIP_BINS.STRIP   := yes
+SOLARIS_COMMON_STRIP_BINS.MODE    := 0644
+SOLARIS_COMMON_STRIP_BINS.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_COMMON_STRIP_BINS.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/
+SOLARIS_COMMON_STRIP_BINS =
+
+## @def SOLARIS_STRIP_EXES
+# List of exectuables files that are copied from INST_BIN to /opt/VirtualPox/$(VPOX_SI_ARCH)/ and stripped of debug info.
+SOLARIS_FILE_LIST_VARS += SOLARIS_STRIP_EXES
+SOLARIS_STRIP_EXES.SUBDIRS := no
+SOLARIS_STRIP_EXES.STRIP   := yes
+SOLARIS_STRIP_EXES.MODE    := 0755
+SOLARIS_STRIP_EXES.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_STRIP_EXES.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(VPOX_SI_ARCH)
+SOLARIS_STRIP_EXES = \
+	VPoxZoneAccess \
+	$(if $(VPOX_WITH_QTGUI),VirtualPox VirtualPoxVM,) \
+	VPoxManage \
+	$(if $(VPOX_WITH_VPOXSDL),VPoxSDL,) \
+	$(if $(VPOX_WITH_NETADP),VPoxNetAdpCtl,) \
+	VPoxNetDHCP \
+	VPoxNetNAT \
+	$(if $(VPOX_WITH_EXTPACK),VPoxExtPackHelperApp,) \
+	VPoxSVC \
+	$(if $(VPOX_WITH_VMSVGA3D), VPoxTestOGL,) \
+	VPoxXPCOMIPCD \
+	$(if $(VPOX_WITH_KCHMVIEWER),kchmviewer,) \
+	$(if $(VPOX_WITH_DTRACE),VPoxDTrace,)
+
+## @def SOLARIS_STRIP_BINS
+# List of shared libraries that are copied from INST_BIN to /opt/VirtualPox/$(VPOX_SI_ARCH)/ and stripped of debug info.
+SOLARIS_FILE_LIST_VARS += SOLARIS_STRIP_BINS
+SOLARIS_STRIP_BINS.SUBDIRS := yes
+SOLARIS_STRIP_BINS.STRIP   := yes
+SOLARIS_STRIP_BINS.MODE    := 0644
+SOLARIS_STRIP_BINS.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_STRIP_BINS.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(VPOX_SI_ARCH)
+SOLARIS_STRIP_BINS = \
+	VPoxDD.so \
+	VPoxDD2.so \
+	VPoxRT.so \
+	VPoxDDU.so \
+	VPoxVMM.so \
+	VPoxXPCOM.so \
+	VPoxXPCOMC.so \
+	$(if $(VPOX_WITH_SHARED_FOLDERS),VPoxSharedFolders.so,) \
+	$(if $(VPOX_WITH_SHARED_CLIPBOARD),VPoxSharedClipboard.so,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPoxDragAndDropSvc.so,) \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPoxGuestPropSvc.so,) \
+	$(if $(VPOX_WITH_GUEST_CONTROL),VPoxGuestControlSvc.so,) \
+	VPoxHostChannel.so \
+	$(if $(VPOX_WITH_JXPCOM),libvpoxjxpcom.so,) \
+	$(if $(VPOX_WITH_QTGUI),\
+	  VPoxKeyboard.so) \
+	$(if $(VPOX_WITH_DEBUGGER_GUI),VPoxDbg.so DbgPlugInDiggers.so,) \
+	components/VPoxC.so \
+	components/VPoxSVCM.so \
+	components/VPoxXPCOMIPCC.so
+
+ifdef VPOX_WITH_QTGUI
+ ifdef VPOX_WITH_ORACLE_QT
+  SOLARIS_STRIP_BINS += \
+  	libQt5CoreVPox.so.5 \
+  	libQt5GuiVPox.so.5 \
+  	libQt5XcbQpaVPox.so.5 \
+  	libQt5PrintSupportVPox.so.5 \
+  	libQt5DBusVPox.so.5 \
+  	libQt5X11ExtrasVPox.so.5 \
+  	libQt5WidgetsVPox.so.5 \
+  	plugins/platforms/libqxcb.so \
+  	plugins/xcbglintegrations/libqxcb-glx-integration.so \
+  	$(if $(VPOX_GUI_USE_QGL),libQt5OpenGLVPox.so.5,)
+ endif
+endif #VPOX_WITH_QTGUI
+
+ifdef VPOX_WITH_32_ON_64_MAIN_API
+ SOLARIS_STRIP_BINS += \
+	VPoxRT-x86.so \
+	VPoxXPCOM-x86.so \
+	components/VPoxClient-x86.so \
+	components/VPoxSVCM-x86.so \
+	components/VPoxXPCOMIPCC-x86.so
+endif
+ifdef VPOX_WITH_HARDENING
+ SOLARIS_STRIP_BINS += \
+	VPoxNetDHCP.so \
+	VPoxNetNAT.so \
+	$(if $(VPOX_WITH_VPOXSDL),VPoxSDL.so,) \
+	$(if $(VPOX_WITH_QTGUI),VirtualPoxVM.so UICommon.so,)
+endif
+
+## @def SOLARIS_STRIP_OBJS
+# List of relocable object files to be copied from INST_BIN to /opt/VirtualPox/$(VPOX_SI_ARCH)/ and carefully
+# stripped of debug info but not relocation information.  These are the ring-0 and raw-mode context modules.
+SOLARIS_FILE_LIST_VARS += SOLARIS_STRIP_OBJS
+SOLARIS_STRIP_OBJS.SUBDIRS := no
+SOLARIS_STRIP_OBJS.STRIP   := objcopy
+SOLARIS_STRIP_OBJS.MODE    := 0644
+SOLARIS_STRIP_OBJS.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_STRIP_OBJS.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(VPOX_SI_ARCH)
+SOLARIS_STRIP_OBJS = \
+	VPoxDDR0.r0 \
+	VMMR0.r0
+ifdef VPOX_WITH_RAW_MODE
+SOLARIS_STRIP_OBJS += \
+	VPoxDDRC.rc \
+	VMMRC.rc
+endif
+
+## @def SOLARIS_NO_STRIP
+# List of data files that should be copied from INST_BIN to /opt/VirtualPox/$(VPOX_SI_ARCH)/.
+SOLARIS_FILE_LIST_VARS += SOLARIS_NO_STRIP
+SOLARIS_NO_STRIP.SUBDIRS := yes
+SOLARIS_NO_STRIP.STRIP   := no
+SOLARIS_NO_STRIP.MODE    := 0644
+SOLARIS_NO_STRIP.SRC     := $(PATH_STAGE_BIN)
+SOLARIS_NO_STRIP.DST     := $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(VPOX_SI_ARCH)
+SOLARIS_NO_STRIP = \
+	components/VPoxXPCOMBase.xpt \
+	components/VirtualPox_XPCOM.xpt \
+	$(if $(and $(VPOX_LICENSE_FILES),$(VPOX_WITH_QTGUI)),$(VPOX_LICENSE_FILES))
+
+## @def SOLARIS_USRBIN_LINKS
+# List of links to create in /usr/bin to /opt/VirtualPox/VPox.sh.
+# Naturally no subdirectories.
+SOLARIS_USRBIN_LINKS = \
+	$(if $(VPOX_WITH_QTGUI),VirtualPox VirtualPoxVM,) \
+	$(if $(VPOX_WITH_HEADLESS),VPoxHeadless,) \
+	$(if $(VPOX_WITH_VPOXSDL),VPoxSDL,) \
+	VPoxManage \
+	$(if $(VPOX_WITH_DTRACE),VPoxDTrace,)
+
+SOLARIS_COMMON_EXES += \
+	vpoxconfig.sh \
+	VPox.sh \
+	pkginstall.sh \
+	smf-vpoxballoonctrl.sh \
+	smf-vpoxautostart.sh \
+	$(if $(VPOX_WITH_WEBSERVICES),smf-vpoxwebsrv.sh,)
+
+
+# Documentation (packed as DOCS as they are arch. neutral)
+ifdef VPOX_WITH_DOCS_PACKING
+ SOLARIS_COMMON += \
+	VirtualPox.chm \
+	UserManual.pdf \
+	$(foreach f,$(VPOX_MANUAL_ADD_LANGUAGES),VirtualPox_$(f).chm UserManual_$(f).pdf)
+endif
+
+# Python XPCOM glue
+ifdef VPOX_WITH_PYTHON
+ SOLARIS_COMMON += \
+	$(VPOXINST_SDK_BINDINGS_XPCOM_PYTHON_FILES) \
+	$(VPOXINST_SDK_INSTALLER_PYTHON_FILES)
+ ifeq ($(KBUILD_TARGET_ARCH),amd64)
+  SOLARIS_PYTHON_32_ON_64_BINS = $(notdir $(wildcard $(PATH_STAGE_BIN)/VPoxPython*_x86.so))
+  ifdef VPOX_WITH_32_ON_64_MAIN_API
+   SOLARIS_COMMON_STRIP_BINS   += $(SOLARIS_PYTHON_32_ON_64_BINS)
+  endif
+  SOLARIS_COMMON_STRIP_BINS    += $(filter-out $(SOLARIS_PYTHON_32_ON_64_BINS), $(notdir $(wildcard $(PATH_STAGE_BIN)/VPoxPython*.so)))
+ else
+  SOLARIS_COMMON_STRIP_BINS    += $(notdir $(wildcard $(PATH_STAGE_BIN)/VPoxPython*.so)))
+ endif
+endif
+
+ifdef VPOX_WITH_JXPCOM
+ SOLARIS_COMMON += \
+ 	sdk/bindings/xpcom/java/vpoxjxpcom.jar
+endif
+
+# auth stuff
+SOLARIS_STRIP_BINS += \
+	VPoxAuth.so \
+	VPoxAuthSimple.so
+
+# VRDP
+ifdef VPOX_WITH_VRDP
+ ifndef VPOX_WITH_EXTPACK_PUEL
+  SOLARIS_STRIP_BINS += \
+  	VPoxVRDP.so
+ endif
+ SOLARIS_COMMON += \
+ 	rdesktop-vrdp.tar.gz
+ ifdef VPOX_WITH_VRDP_RDESKTOP
+  SOLARIS_COMMON += $(addprefix rdesktop-vrdp-keymaps/,$(notdir $(wildcard $(PATH_STAGE_BIN)/rdesktop-vrdp-keymaps/*)))
+  SOLARIS_STRIP_EXES += \
+  	rdesktop-vrdp
+ endif
+endif
+
+SOLARIS_STRIP_BINS += \
+	$(if $(and $(VPOX_WITH_HARDENING),$(VPOX_WITH_HEADLESS)),VPoxHeadless.so,)
+
+SOLARIS_STRIP_EXES += \
+	$(if $(VPOX_WITH_HEADLESS),VPoxHeadless) \
+	VPoxBugReport \
+	VPoxBalloonCtrl \
+	VPoxAutostart \
+	$(if $(VPOX_WITH_WEBSERVICES),vpoxwebsrv) \
+	$(if $(VPOX_WITH_VPOX_IMG)$(VPOX_WITH_TESTCASES),vpox-img)
+
+# Guest Additions
+ifdef VPOX_WITH_ADDITIONS_PACKING
+# SOLARIS_COMMON += \
+#	additions/VPoxGuestAdditions.iso
+endif
+
+
+# EFI firmware
+ifdef VPOX_WITH_EFIFW_PACKING
+ SOLARIS_COMMON += \
+	VPoxEFI32.fd \
+	VPoxEFI64.fd
+endif
+
+# Unattended installation template scripts.
+ifdef VPOX_UNATTENDED_TEMPLATES
+ SOLARIS_COMMON += $(addprefix UnattendedTemplates/,$(VPOX_UNATTENDED_TEMPLATES))
+endif
+
+# DTrace library, testcase and scripts (as the rest of this file, this makes bold
+# ASSUMPTIONS about VBPX_INST_XXX variable values).
+ifdef VPOX_WITH_DTRACE
+ SOLARIS_COMMON += \
+ 	$(addprefix dtrace/lib/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_LIB_ARCH_FILES)) \
+ 	$(addprefix dtrace/testcase/$(KBUILD_TARGET_ARCH)/,$(VPOXINST_DTRACE_TESTCASE_ARCH_FILES)) \
+ 	$(addprefix dtrace/scripts/,$(VPOXINST_DTRACE_SCRIPTS_FILES))
+endif
+
+
+#
+# End of file lists.
+#
+
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
+PATH_S10LIBS.x86 := $(sort $(wildcard $(PATH_DEVTOOLS)/solaris.x86/s10libs/v*))
+ifneq ($(PATH_S10LIBS.x86),)
+ PATH_S10LIBS.x86 := $(call lastword,$(PATH_S10LIBS.x86))
+endif
+PATH_S10LIBS.amd64 := $(sort $(wildcard $(PATH_DEVTOOLS)/solaris.amd64/s10libs/v*))
+ifneq ($(PATH_S10LIBS.amd64),)
+ PATH_S10LIBS.amd64 := $(call lastword,$(PATH_S10LIBS.amd64))
+endif
+
+#
+# Copy all files needed for packaging into the final directory structure
+#
+$(VPOX_PATH_SI_SCRATCH)/dist-copy.ts: \
+		$(VPOX_VERSION_STAMP) \
+		\
+		$(VPOX_PATH_INST_COMMON_SRC)/virtualpox.desktop.in \
+		$(VPOX_PATH_INST_COMMON_SRC)/virtualpox.xml \
+		$(VPOX_PATH_SOL_INST_SRC)/virtualpox.applications.in \
+		$(VPOX_PATH_SOL_INST_SRC)/vpox.pkginfo \
+		$(VPOX_PATH_SOL_INST_SRC)/vpox-ips.mog \
+		\
+		$(if-expr defined(VPOX_WITH_ADDITIONS_PACKING),$(PATH_STAGE_BIN)/additions/VPoxGuestAdditions.iso,) \
+		$(if-expr !defined(VPOX_OSE) && defined(VPOX_WITH_VPOXSDL), $(PATH_DEVTOOLS_TRG)/libsdl/v1.2.13/lib/libSDL-1.2.so.0.11.2,) \
+		\
+		$(if $(VPOX_OSE),,$(foreach arch, x86 amd64, $(foreach lib, libgcc_s.so.1 libstdc++.so.6, \
+			$(PATH_S10LIBS.$(arch))/$(lib)))) \
+		\
+		$(if $(VPOX_OSE),,$(foreach arch, amd64, $(foreach lib, libxcb.so.1 libX11-xcb.so.1 libX11.so.4 libGL.so, \
+			$(PATH_S10LIBS.$(arch))/$(lib)))) \
+		\
+		$(foreach var, $(SOLARIS_FILE_LIST_VARS),$(foreach file, $($(var)), $($(var).SRC)/$(file))) \
+		\
+		$(foreach size, $(VPOX_SI_ICON_SIZES), $(foreach type, $(VPOX_SI_ICON_TYPES) \
+		,$(PATH_ROOT)/src/VPox/Artwork/other/virtualpox-$(type)-$(size)px.png)) \
+		\
+		$(VPOX_SI_DEP_ON_MAKEFILE) \
+		| $$(dir $$@)
+	$(call MSG_L1,Copying files to package staging area)
+# Start with a clean slate, don't want to pick up random garbage.
+	$(RM) -Rf -- "$(VPOX_PATH_SI_SCRATCH_PKG)/"
+	$(QUIET)$(RM) -f -- "$@"
+
+# Create all the directories we need. We specify each sub directory to make sure the mode is correct.
+	$(MKDIR) -p -m 0755 -- $(sort $(VPOX_PATH_SI_SCRATCH_PKG)/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/opt/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/ \
+		$(if $(VPOX_OSE),,$(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/legacy/) \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/amd64/ \
+		$(if $(VPOX_OSE),,$(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/amd64/legacy/) \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/platform/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/platform/i86pc/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/platform/i86pc/kernel/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/platform/i86pc/kernel/drv/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/bin/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/applications/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/application-registry/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/icons/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/icons/hicolor/ \
+		$(foreach size, $(VPOX_SI_ICON_SIZES) \
+		,$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/icons/hicolor/$(size)x$(size)/ \
+		 $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/icons/hicolor/$(size)x$(size)/mimetypes/) \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/mime/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/mime/packages/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/var/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/var/svc/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/var/svc/manifest/ \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/var/svc/manifest/application/ \
+		$(foreach var,$(SOLARIS_FILE_LIST_VARS), $($(var).DST)/) \
+		$(foreach var,$(SOLARIS_FILE_LIST_VARS),$(if-expr "$($(var).SUBDIRS)" == "yes",$(sort $(dir $(addprefix $($(var).DST)/,$($(var))))),)) \
+	)
+
+# Generic copy file lists.
+	$(foreach var, $(SOLARIS_FILE_LIST_VARS), $(foreach file, $($(var)) \
+	,$(if-expr "$($(var).STRIP)" == "objcopy" && defined(VPOX_DO_STRIP)\
+	,$(NLTAB)$(VPOX_SI_OBJCOPY_STRIP) "$($(var).SRC)/$(file)" "$($(var).DST)/$(file)" \
+	 $(NLTAB)$(CHMOD) "$($(var).MODE)" "$($(var).DST)/$(file)" \
+	,$(NLTAB)$(INSTALL) -m "$($(var).MODE)" $(if-expr "$($(var).STRIP)" == "yes" && defined(VPOX_DO_STRIP),-s,) \
+		"$($(var).SRC)/$(file)" "$($(var).DST)/$(file)")))
+
+# VirtualPox: Common files.
+	$(if-expr defined(VPOX_WITH_ADDITIONS_PACKING) \
+	,$(INSTALL) -m 0644 $(PATH_STAGE_BIN)/additions/VPoxGuestAdditions.iso  $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/,)
+	$(LN_SYMLINK) -f ./pkginstall.sh $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/ipsinstall.sh
+	$(SED) -e "s/_HARDENED_/$(if $(VPOX_WITH_HARDENED),hardened,)/" \
+		--output $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/vpoxconfig.sh \
+		 $(VPOX_PATH_SOL_INST_SRC)/vpoxconfig.sh
+	$(CHMOD) 0755 $(VPOX_PATH_SOL_INST_SRC)/vpoxconfig.sh
+	$(INSTALL) -m 0644 $(VPOX_PATH_SOL_INST_SRC)/vpox.pkgresponse $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/autoresponse
+	$(if-expr defined(VPOX_WITH_PYTHON) \
+	,$(SED) -e "s@^#!.*@#!/usr/bin/python2.7@" \
+		--output $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/vpoxshell.py \
+		$(PATH_STAGE_BIN)/vpoxshell.py \
+	$(NLTAB)$(CHMOD) 0755 $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/vpoxshell.py,)
+
+# VirtualPox: Arch specific files.
+	$(if-expr defined(VPOX_WITH_QTGUI) \
+	,$(NLTAB)$(LN_SYMLINK) ../rdesktop-vrdp-keymaps/ $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(VPOX_SI_ARCH)/rdesktop-vrdp-keymaps,)
+
+	$(if-expr defined(VPOX_WITH_ADDITIONS_PACKING) \
+	,$(NLTAB)$(LN_SYMLINK) ../VPoxGuestAdditions.iso $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(VPOX_SI_ARCH)/,)
+
+	$(if-expr !defined(VPOX_OSE) && defined(VPOX_WITH_VPOXSDL) \
+	,$(INSTALL) -s -m 0644 $(PATH_DEVTOOLS_TRG)/libsdl/v1.2.13/lib/libSDL-1.2.so.0.11.2 \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(VPOX_SI_ARCH)/libSDL-1.2.so.0,)
+
+	$(if $(VPOX_OSE),,$(foreach arch, x86 amd64, $(foreach lib, libgcc_s.so.1 libstdc++.so.6 \
+		,$(NLTAB)$(INSTALL) -s -m 0644 $(PATH_S10LIBS.$(arch))/$(lib) \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(if-expr $(arch) == "amd64",amd64/,)legacy/$(lib))))
+
+	$(if $(VPOX_OSE),,$(foreach arch, amd64, $(foreach lib, libxcb.so.1 libX11-xcb.so.1 libX11.so.4 libGL.so \
+		,$(NLTAB)$(INSTALL) -s -m 0644 $(PATH_S10LIBS.$(arch))/$(lib) \
+		$(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(if-expr $(arch) == "amd64",amd64/,)legacy/$(lib))))
+
+	$(if-expr defined(VPOX_WITH_EFIFW_PACKING) \
+	,$(LN_SYMLINK) ../VPoxEFI32.fd ../VPoxEFI64.fd $(VPOX_PATH_SI_SCRATCH_PKG)/opt/VirtualPox/$(VPOX_SI_ARCH)/,)
+
+# Links to /usr/bin.
+	$(foreach link,$(SOLARIS_USRBIN_LINKS) \
+	,$(NLTAB)$(LN_SYMLINK) ../../opt/VirtualPox/VPox.sh $(VPOX_PATH_SI_SCRATCH_PKG)/usr/bin/$(link))
+
+# Desktop stuff in /usr/share/applications/.
+	$(SED) -e "s+@VPOX_PRODUCT@+$(VPOX_PRODUCT)+" \
+		-e "s+@VPOX_DOC_PATH@+/opt/VirtualPox+" \
+		--output $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/applications/virtualpox.desktop \
+		$(VPOX_PATH_INST_COMMON_SRC)/virtualpox.desktop.in
+	$(CHMOD) 0644 $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/applications/virtualpox.desktop
+
+# Desktop stuff in /usr/share/mime/packages/ (S10 cannot deal with icon information in virtualpox.xml).
+	$(SED) -e '/<icon/d' \
+		--output $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/mime/packages/virtualpox.xml \
+		$(VPOX_PATH_INST_COMMON_SRC)/virtualpox.xml
+	$(CHMOD) 0644 $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/mime/packages/virtualpox.xml
+
+# Desktop stuff in /usr/share/application-registry.
+	$(SED) -e "s+@VPOX_PRODUCT@+$(VPOX_PRODUCT)+" \
+		--output $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/application-registry/virtualpox.applications \
+		$(VPOX_PATH_SOL_INST_SRC)/virtualpox.applications.in
+	$(CHMOD) 0644 $(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/application-registry/virtualpox.applications
+
+# Icons stuff under /usr/share/icons/hicolor/<size>x<size>/mimetypes/.
+	$(foreach size, $(VPOX_SI_ICON_SIZES), $(foreach type, $(VPOX_SI_ICON_TYPES) \
+		,$(NLTAB)$(INSTALL) -m 0644 \
+			$(PATH_ROOT)/src/VPox/Artwork/other/virtualpox-$(type)-$(size)px.png \
+			$(VPOX_PATH_SI_SCRATCH_PKG)/usr/share/icons/hicolor/$(size)x$(size)/mimetypes/virtualpox-$(type).png))
+
+# Files related to package creation.
+	$(SED) -e "s/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g" \
+		-e "s/@VPOX_VENDOR@/$(VPOX_VENDOR)/g" \
+		-e "s/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g" \
+		-e "s/@VPOX_VERSION_REVSTAMP@/$(PKGINFO_REVSTAMP)/g" \
+		-e "s/@UNAME_P@/$(PKGINFO_ARCH)/g" \
+		-e "s/@VPOX_PSTAMP@/$(PKGINFO_PSTAMP)/g" \
+		--output $(VPOX_PATH_SI_SCRATCH_PKG)/vpox.pkginfo \
+		$(VPOX_PATH_SOL_INST_SRC)/vpox.pkginfo
+	$(SED) -e "s/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g" \
+		-e "s/@VPOX_VENDOR@/$(VPOX_VENDOR)/g" \
+		-e "s/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g" \
+		-e "s/@VPOX_SVN_REV@/$(VPOX_SVN_REV)/g" \
+		-e "s/@UNAME_P@/$(PKGINFO_ARCH)/g" \
+		--output $(VPOX_PATH_SI_SCRATCH_PKG)/vpox-ips.mog \
+		$(VPOX_PATH_SOL_INST_SRC)/vpox-ips.mog
+	$(APPEND) -t $@ "done"
+
+#
+# Creates the System V style installer package.
+#
+solaris-package:: $(VPOX_PATH_SI_SCRATCH)/$(PKG_FILENAME).pkg
+$(VPOX_PATH_SI_SCRATCH)/$(PKG_FILENAME).pkg: \
+		$(VPOX_PATH_SI_SCRATCH)/dist-copy.ts \
+		$(VPOX_SI_DEP_ON_MAKEFILE) \
+		| $$(dir $$@)
+	$(call MSG_L1,Creating install package: $(PKG_FILENAME).pkg)
+	$(VPOX_PATH_SI_SCRATCH_PKG)/makepackage.sh \
+		$(if-expr defined(VPOX_WITH_HARDENING),--hardened,) \
+		$(VPOX_PATH_SI_SCRATCH_PKG) \
+		$(PKG_FILENAME) \
+		$(KBUILD_TARGET_ARCH) \
+		$(VPOX_SVN_REV)
+	$(MV) -- "$(VPOX_PATH_SI_SCRATCH_PKG)/$(PKG_FILENAME).pkg" "$@"
+
+#
+# Creates the tar file containing license, readme and autoresponse file in addition to the System V package.
+#
+solaris-package-tar-gz:: $(PATH_STAGE_BIN)/$(PKG_FILENAME).tar.gz
+$(PATH_STAGE_BIN)/$(PKG_FILENAME).tar.gz: \
+		$(VPOX_PATH_SI_SCRATCH)/$(PKG_FILENAME).pkg \
+		$(PATH_STAGE_BIN)/LICENSE \
+		$(VPOX_PATH_SOL_INST_SRC)/vpox.pkgresponse \
+		$(PATH_ROOT)/doc/ReadMe-Solaris.txt \
+		$(VPOX_SI_DEP_ON_MAKEFILE) \
+		| $(VPOX_PATH_SI_SCRATCH)/
+	$(call MSG_L1,Creating final tar.gz package: $(PKG_FILENAME).tar.gz)
+	$(QUIET)$(RM) -f -- $(VPOX_PATH_SI_SCRATCH)/ReadMe.txt "$@"
+	$(QUIET)$(SED) \
+		-e "s/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g" \
+		-e "s/@VPOX_VENDOR@/$(VPOX_VENDOR)/g" \
+		-e "s/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g" \
+		-e "s/@BUILD_TARGET_ARCH@/$(KBUILD_TARGET_ARCH)/g" \
+		-e "s/@VPOX_SVN_REV@/$(VPOX_SVN_REV)/g" \
+		--output $(VPOX_PATH_SI_SCRATCH)/ReadMe.txt \
+		$(PATH_ROOT)/doc/ReadMe-Solaris.txt
+	$(QUIET)$(VPOX_SI_GTAR) -C $(VPOX_PATH_SI_SCRATCH) -czvf "$@" --show-transformed-name \
+		--xform 's,^.*/,,g' --xform 's,vpox.pkgresponse,autoresponse,' \
+		$(VPOX_PATH_SI_SCRATCH)/ReadMe.txt \
+		$(PATH_STAGE_BIN)/LICENSE \
+		$(VPOX_PATH_SOL_INST_SRC)/vpox.pkgresponse \
+		$(VPOX_PATH_SI_SCRATCH)/$(PKG_FILENAME).pkg
+	$(QUIET)$(RM) -f -- $(VPOX_PATH_SI_SCRATCH)/ReadMe.txt
+	$(call MSG_L1,Packaging $@ is completed.)
+
+#
+# Creates the IPS style installer package.
+#
+solaris-package-ips:: $(PATH_STAGE_BIN)/$(PKG_FILENAME).p5p
+$(PATH_STAGE_BIN)/$(PKG_FILENAME).p5p: \
+		$(VPOX_PATH_SI_SCRATCH)/dist-copy.ts \
+		$(VPOX_SI_DEP_ON_MAKEFILE) \
+		| $$(dir $$@)
+	$(call MSG_L1,Creating install package: $(PKG_FILENAME).p5p)
+	$(VPOX_PATH_SI_SCRATCH_PKG)/makepackage.sh \
+		--ips \
+		$(if-expr defined(VPOX_WITH_HARDENING),--hardened,) \
+		$(VPOX_PATH_SI_SCRATCH_PKG) \
+		$(PKG_FILENAME) \
+		$(KBUILD_TARGET_ARCH) \
+		$(VPOX_SVN_REV)
+	$(MV) -- "$(VPOX_PATH_SI_SCRATCH_PKG)/$(PKG_FILENAME).p5p" "$@"
+
+
+## List of file list variable names relevant for debug info.
+SOLARIS_FILE_LIST_DBGINFO_VARS := $(foreach var, $(SOLARIS_FILE_LIST_VARS), $(if-expr "$($(var).STRIP)" != "no",$(var),))
+## Adds a .DBGDST property to each of the debug info file lists. Simplifies our job below
+$(foreach var,$(SOLARIS_FILE_LIST_DBGINFO_VARS) \
+	,$(eval $(var).DBGDST := $(subst $(VPOX_PATH_SI_SCRATCH_PKG)/,$(VPOX_PATH_SI_SCRATCH_DBG)/,$(subst /opt/VirtualPox,,$($(var).DST)))))
+
+#
+# Creates a tar file containing the debug info.
+#
+$(PATH_STAGE_BIN)/VirtualPoxDebug.tar.bz2: \
+		$(VPOX_VERSION_STAMP) \
+		$(VPOX_SI_DEP_ON_MAKEFILE) \
+		$(foreach var, $(SOLARIS_FILE_LIST_DBGINFO_VARS), $(foreach file, $($(var)), $($(var).SRC)/$(file)))
+	$(call MSG_L1,Preparing $@)
+	$(RM) -Rf -- "$(VPOX_PATH_SI_SCRATCH_DBG)/"
+	$(RM) -f -- "$@"
+	$(MKDIR) -p -m 0755 \
+		$(VPOX_PATH_SI_SCRATCH_DBG)/ \
+		$(sort $(foreach var, $(SOLARIS_FILE_LIST_DBGINFO_VARS), $($(var).DBGDST)/ $(if-expr "$($(var).SUBDIRS)" == "yes" \
+		,$(sort $(dir $(foreach file, $($(var)), $($(var).DBGDST)/$(file)))),)))
+	$(foreach var, $(SOLARIS_FILE_LIST_DBGINFO_VARS),$(foreach file, $($(var)) \
+	,$(NLTAB)$(VPOX_SI_OBJCOPY_DBGINFO) "$($(var).SRC)/$(file)" "$($(var).DBGDST)/$(file)"))
+	$(call MSG_L1,Packing $@)
+	$(QUIET)$(VPOX_SI_GTAR) --dereference --owner 0 --group 0 \
+		-cvjRhf "$@" -C "$(VPOX_PATH_SI_SCRATCH_DBG)/.." "./$(notdir $(VPOX_PATH_SI_SCRATCH_DBG))/"
+	$(QUIET)$(CHMOD) 0644 $@
+	$(call MSG_L1,Packaging $@ is completed.)
+	$(RM) -Rf "$(VPOX_PATH_SI_SCRATCH_DBG)/"
+

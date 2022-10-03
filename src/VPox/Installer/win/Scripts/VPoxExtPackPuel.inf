@@ -1,0 +1,58 @@
+; $Id: VPoxExtPackPuel.inf $
+;; @file
+; VPoxExtPackPuel - VirtualPox PUEL ExtPack drivers.
+;
+
+;
+; Copyright (C) 2018-2020 Oracle Corporation
+;
+; This file is part of VirtualPox Open Source Edition (OSE), as
+; available from http://www.virtualpox.org. This file is free software;
+; you can redistribute it and/or modify it under the terms of the GNU
+; General Public License (GPL) as published by the Free Software
+; Foundation, in version 2 as it comes in the "COPYING" file of the
+; VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+; hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+;
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = System
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318}
+CatalogFile = VPoxExtPackPuel.cat
+Provider    = %ORACLE%
+;edit-DriverVer  = 08/26/2008,2.00.0000
+
+[SourceDisksNames]
+1=%VPoxExtPackPuel.DskDesc%,"",,
+
+[SourceDisksFiles]
+VPoxEhciR0.r0=1
+VPoxNvmeR0.r0=1
+;VPoxPciRawR0.r0=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+VPoxExtPackPuelInstall.Files = 12
+
+[Manufacturer]
+;x86 %ORACLE%=VPoxExtPackPuel
+;amd64 %ORACLE%=VPoxExtPackPuel, NTamd64
+
+;x86 [VPoxExtPackPuel]
+;amd64 [VPoxExtPackPuel.NTamd64]
+%VPoxExtPackPuel.DrvDesc% = VPoxExtPackPuelInstall, root\VPoxExtPackPuel
+
+[VPoxExtPackPuelInstall]
+CopyFiles = VPoxExtPackPuelInstall.Files
+
+[VPoxExtPackPuelInstall.Files]
+VPoxEhciR0.r0,,,2
+VPoxNvmeR0.r0,,,2
+;VPoxPciRawR0.r0,,,2
+
+[Strings]
+ORACLE = "Oracle Corporation"
+VPoxExtPackPuel.DrvDesc = "VirtualPox PUEL ExtPack drivers"
+VPoxExtPackPuel.DskDesc = "VirtualPox PUEL ExtPack drivers"
+

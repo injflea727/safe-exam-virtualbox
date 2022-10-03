@@ -1,0 +1,50 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Shared Info Services Host Service.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include sub-makefile(s).
+include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+
+#
+# The shared folder service DLL.
+#
+DLLS += VPoxGuestPropSvc
+VPoxGuestPropSvc_TEMPLATE  = VPOXR3
+VPoxGuestPropSvc_NAME.os2  = VPoxSIS
+VPoxGuestPropSvc_DEFS      = VPOX_WITH_HGCM
+VPoxGuestPropSvc_INCS      = $(PATH_ROOT)/src/VPox/Main/include
+VPoxGuestPropSvc_INCS.win  = \
+	$(VPOX_PATH_SDK)
+
+VPoxGuestPropSvc_SOURCES = \
+	VPoxGuestPropSvc.cpp
+
+VPoxGuestPropSvc_SOURCES.win = \
+	VPoxGuestPropSvc.rc
+
+VPoxGuestPropSvc_LIBS = \
+	$(LIB_VMM) \
+	$(LIB_RUNTIME) \
+	$(LIB_REM)
+
+VPoxGuestPropSvc_LDFLAGS.darwin = \
+	-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxGuestPropSvc.dylib
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

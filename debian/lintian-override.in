@@ -1,0 +1,102 @@
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxRT.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxDD.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxDD2.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxDDU.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxKeyboard.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxSettings.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxVMM.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxXPCOM.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxXPCOMC.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxSharedFolders.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxSharedClipboard.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxGuestPropSvc.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxGuestControlSvc.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxHostChannel.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxDragAndDropSvc.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxNetDHCP.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxNetNAT.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxAuth.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/components/VPoxSVCM.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/components/VPoxC.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxHeadless.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxPython.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxSDL.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VirtualPox.so
+%VERPKG%: shlib-with-non-pic-code usr/lib/virtualpox/VPoxDbg.so
+%VERPKG%: binary-without-manpage usr/bin/VPox
+%VERPKG%: binary-without-manpage usr/bin/VPoxBalloonCtrl
+%VERPKG%: binary-without-manpage usr/bin/VPoxDTrace
+%VERPKG%: binary-without-manpage usr/bin/VPoxHeadless
+%VERPKG%: binary-without-manpage usr/bin/VPoxManage
+%VERPKG%: binary-without-manpage usr/bin/VPoxSDL
+%VERPKG%: binary-without-manpage usr/bin/VPoxTunctl
+%VERPKG%: binary-without-manpage usr/bin/VirtualPox
+%VERPKG%: binary-without-manpage usr/bin/VirtualPoxVM
+%VERPKG%: binary-without-manpage usr/bin/rdesktop-vrdp
+%VERPKG%: binary-without-manpage usr/bin/vpoxballoonctrl
+%VERPKG%: binary-without-manpage usr/bin/vpoxdtrace
+%VERPKG%: binary-without-manpage usr/bin/vpoxheadless
+%VERPKG%: binary-without-manpage usr/bin/vpoxmanage
+%VERPKG%: binary-without-manpage usr/bin/vpoxsdl
+%VERPKG%: binary-without-manpage usr/bin/vpoxwebsrv
+%VERPKG%: binary-without-manpage usr/bin/virtualpox
+%VERPKG%: binary-without-manpage usr/bin/virtualpoxvm
+%VERPKG%: unstripped-binary-or-object usr/lib/virtualpox/VPoxDDRC.rc
+%VERPKG%: unstripped-binary-or-object usr/lib/virtualpox/VPoxDDR0.r0
+%VERPKG%: unstripped-binary-or-object usr/lib/virtualpox/VMMRC.rc
+%VERPKG%: unstripped-binary-or-object usr/lib/virtualpox/VMMR0.r0
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxRT.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxDD.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxDD2.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxDDU.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxKeyboard.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxSettings.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxVMM.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxXPCOM.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxSharedFolders.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxSharedClipboard.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxGuestPropSvc.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxGuestControlSvc.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxHostChannel.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxDragAndDropSvc.so
+%VERPKG%: no-shlibs-control-file usr/lib/virtualpox/VPoxAuth.so
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/bin/rdesktop-vrdp /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxDD.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxDD2.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxDDU.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxDbg.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxDTrace /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxGuestPropSvc.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxGuestControlSvc.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxHostChannel.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxHeadless /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxHeadless.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxKeyboard.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxManage /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxPython.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxRT.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxSDL /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxSDL.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxSVC /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxSettings.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxSharedClipboard.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxSharedFolders.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxDragAndDropSvc.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxTestOGL /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxVMM.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxXPCOM.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxXPCOMIPCD /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxAuth.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VirtualPox /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VirtualPoxVM /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VirtualPox.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxExtPackHelperApp /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/components/VPoxC.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/components/VPoxSVCM.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/components/VPoxXPCOMIPCC.so /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/kchmviewer /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/VPoxBalloonCtrl /usr/lib/virtualpox
+%VERPKG%: binary-or-shlib-defines-rpath ./usr/lib/virtualpox/vpoxwebsrv /usr/lib/virtualpox
+%VERPKG%: postrm-contains-additional-updaterc.d-calls /etc/init.d/vpoxnet
+%VERPKG%: package-contains-empty-directory usr/lib/virtualpox/ExtensionPacks/
+

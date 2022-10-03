@@ -1,0 +1,18 @@
+[Unit]
+Description=VirtualPox Test Execution Service
+SourcePath=/opt/validationkit/linux/vpoxtxs
+
+[Service]
+Type=forking
+Restart=no
+TimeoutSec=5min
+IgnoreSIGPIPE=no
+KillMode=process
+GuessMainPID=no
+RemainAfterExit=yes
+ExecStart=/opt/validationkit/linux/vpoxtxs start
+ExecStop=/opt/validationkit/linux/vpoxtxs stop
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,123 @@
+# $Id: Config.kmk $
+## @file
+# kBuild Configuration file for the Devices.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+VPOX_DEVICES_CONFIG_KMK_INCLUDED = 1
+
+# Include the top-level configure file.
+ifndef VPOX_ROOT_CONFIG_KMK_INCLUDED
+ include $(PATH_ROOT)/Config.kmk
+endif
+
+# We need the VMM/Config.kmk one for the VMM_COMMON_DEFS variable.
+ifndef VPOX_VMM_CONFIG_KMK_INCLUDED
+ include $(PATH_ROOT)/src/VPox/VMM/Config.kmk
+endif
+
+VPOX_PATH_DEVICES_SRC := $(PATH_ROOT)/src/VPox/Devices
+
+#
+# VPoxBios - Template for building 16-bit BIOS code.
+#
+# Disabled linker warnings:
+#   W1014: ?
+#   W1023: ?
+#   W2120: ?
+#   W1080: file F:\tinderbox\win-rel\out\win.amd64\release\obj\VPoxVgaBios386\vberom.obj is a 32-bit object file
+TEMPLATE_VPoxBios = ROM
+TEMPLATE_VPoxBios_INSTTYPE     = none
+TEMPLATE_VPoxBios_TOOL         = OPENWATCOM-16
+TEMPLATE_VPoxBios_LDTOOL       = OPENWATCOM-WL
+TEMPLATE_VPoxBios_ASTOOL       = OPENWATCOM-16
+TEMPLATE_VPoxBios_BLD_TRG      = os-agnostic
+TEMPLATE_VPoxBios_BLD_TRG_ARCH = x86
+TEMPLATE_VPoxBios_BINSUFF      = .rom
+TEMPLATE_VPoxBios_INCS         = . $(VPOX_PATH_DEVICES_SRC)/BiosCommonCode
+TEMPLATE_VPoxBios_ASFLAGS      = -q -wx -d1 -0
+TEMPLATE_VPoxBios_CFLAGS       = -q -0 -wx -zl -zu -s -oafs -ms -hc -d1+
+TEMPLATE_VPoxBios_CXXFLAGS     = $(TEMPLATE_VPoxBios_CFLAGS)
+TEMPLATE_VPoxBios_DEPS         = $(VPOX_VERSION_HEADER)
+TEMPLATE_VPoxBios_LDFLAGS      = system dos  \
+	debug codeview all \
+	option quiet, nofarcalls, map, verbose, statics, symfile \
+	disable 1014, 1023, 2120, 1080
+TEMPLATE_VPoxBios_LNK_DEPS = $(VPOX_BIOSSUMS) $(VPOX_PATH_DEVICES_SRC)/BiosCommonCode/biosorg_check.sed
+TEMPLATE_VPoxBios_POST_CMDS = \
+ 	$(QUIET)$(SED_EXT) -n -f $(VPOX_PATH_DEVICES_SRC)/BiosCommonCode/biosorg_check.sed $(outbase).map \
+	&& $(MV_EXT) -f $(out) $(out).tmp \
+	&& $(VPOX_BIOSSUMS) $(out).tmp $(out) \
+	&& $(RM_EXT) -f $(out).tmp \
+
+#
+# VPoxBios - Template for building 32-bit BIOS code.
+#
+TEMPLATE_VPoxBios32Lib = ROM
+TEMPLATE_VPoxBios32Lib_EXTENDS    = VPoxBios
+TEMPLATE_VPoxBios32Lib_INSTTYPE   = none
+TEMPLATE_VPoxBios32Lib_TOOL       = OPENWATCOM
+TEMPLATE_VPoxBios32Lib_ASTOOL     = OPENWATCOM
+TEMPLATE_VPoxBios32Lib_CFLAGS     = -q -wx -zu -s -oas -ms -nt=BIOS32 -nd=BIOS32 -hc
+ifeq ($(KBUILD_TARGET),darwin) # The Open Watcom version we use on darwin generate trouble for the link in -d1+ mode; -d2 doesn't work anywhere.
+TEMPLATE_VPoxBios32Lib_CFLAGS    += -d1
+else
+TEMPLATE_VPoxBios32Lib_CFLAGS    += -d1+
+endif
+TEMPLATE_VPoxBios32Lib_CXXFLAGS   = $(TEMPLATE_VPoxBios32_CFLAGS)
+TEMPLATE_VPoxBios32Lib_LNK_DEPS   = $(NO_SUCH_VARIABLE)
+TEMPLATE_VPoxBios32Lib_POST_CMDS  = $(NO_SUCH_VARIABLE)
+
+
+#
+# Audio configuration.
+# This must live here because of testcase/
+#
+VPOX_AUDIO_DEFS :=
+if 0 # Not stable yet.
+ # Enable microphone-in support for HDA. Otherwise only line-in is supported.
+ VPOX_AUDIO_DEFS += VPOX_WITH_AUDIO_HDA_MIC_IN
+
+ # Enable interleavig streams support for HDA. Needed for 5.1 surround support.
+ VPOX_AUDIO_DEFS  += VPOX_WITH_AUDIO_HDA_INTERLEAVING_STREAMS_SUPPORT
+
+ # Enable 5.1 surround support (Front, Center/LFE, Rear) for HDA.
+ # Without this, only stereo output (Front) is supported.
+ VPOX_AUDIO_DEFS += VPOX_WITH_AUDIO_HDA_51_SURROUND
+endif
+
+# Enable backend-independent device enumeration support.
+VPOX_AUDIO_DEFS  += VPOX_WITH_AUDIO_ENUM
+
+# Enable backend callback support.
+VPOX_AUDIO_DEFS += VPOX_WITH_AUDIO_CALLBACKS
+
+ifdef VPOX_WITH_HP_HDA
+ VPOX_AUDIO_DEFS += VPOX_WITH_HP_HDA
+endif
+ifdef VPOX_WITH_INTEL_HDA
+ VPOX_AUDIO_DEFS += VPOX_WITH_INTEL_HDA
+endif
+ifdef VPOX_WITH_NVIDIA_HDA
+ VPOX_AUDIO_DEFS += VPOX_WITH_NVIDIA_HDA
+endif
+
+# Not yet enabled: Callbacks for the device emulation to let the backends
+#                  tell the emulation when and how to process data.
+if 0
+ VPOX_AUDIO_DEFS  += VPOX_WITH_AUDIO_SB16_CALLBACKS
+ VPOX_AUDIO_DEFS  += VPOX_WITH_AUDIO_AC97_CALLBACKS
+ VPOX_AUDIO_DEFS  += VPOX_WITH_AUDIO_HDA_CALLBACKS
+endif
+

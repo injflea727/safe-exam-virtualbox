@@ -1,0 +1,38 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the VPoxControl testcases.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+if defined(VPOX_WITH_TESTCASES) && !defined(VPOX_ONLY_ADDITIONS)
+
+#
+# Dummy CLI testcase.
+#
+PROGRAMS += tstVPoxControl
+tstVPoxControl_TEMPLATE = VPOXR3TSTEXE
+tstVPoxControl_DEFS     = VPOX_CONTROL_TEST
+tstVPoxControl_SOURCES  = tstVPoxControl.cpp ../VPoxControl.cpp
+tstVPoxControl_LIBS     = $(LIB_RUNTIME)
+tstVPoxControl_DEFS    += \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS VPOX_WITH_HGCM,)
+
+endif # VPOX_WITH_TESTCASES
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

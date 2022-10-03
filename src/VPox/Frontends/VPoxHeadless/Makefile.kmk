@@ -1,0 +1,64 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the headless frontend.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+
+#
+# Hardened VPoxHeadless.
+#
+ifdef VPOX_WITH_HARDENING
+PROGRAMS += VPoxHeadlessHardened
+VPoxHeadlessHardened_TEMPLATE = VPOXR3HARDENEDEXE
+VPoxHeadlessHardened_SOURCES = VPoxHeadlessHardened.cpp
+VPoxHeadlessHardened_NAME = VPoxHeadless
+$(call VPOX_SET_VER_INFO_DLL,VPoxHeadlessHardened,VirtualPox Headless Frontend,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+endif
+
+
+#
+# VPoxHeadless
+#
+ifdef VPOX_WITH_HARDENING
+DLLS     += VPoxHeadless
+else
+PROGRAMS += VPoxHeadless
+endif
+VPoxHeadless_TEMPLATE := $(if $(VPOX_WITH_HARDENING),VPOXMAINCLIENTDLL,VPOXMAINCLIENTEXE)
+VPoxHeadless_DEFS     += $(if $(VPOX_WITH_RECORDING),VPOX_WITH_RECORDING,)
+VPoxHeadless_INCS      = \
+	$(VPOX_GRAPHICS_INCS) \
+	../Common
+VPoxHeadless_SOURCES   = \
+	VPoxHeadless.cpp \
+	../Common/PasswordInput.cpp
+ifdef VPOX_WITH_GUEST_PROPS
+ VPoxHeadless_DEFS    += VPOX_WITH_GUEST_PROPS
+endif
+ifdef VPOX_WITH_HARDENING
+ VPoxHeadless_LDFLAGS.darwin += -install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxHeadless.dylib
+endif
+ifdef VPOX_WITH_HARDENING
+$(call VPOX_SET_VER_INFO_DLL,VPoxHeadless,VirtualPox Headless Frontend (dll),$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+else
+$(call VPOX_SET_VER_INFO_EXE,VPoxHeadless,VirtualPox Headless Frontend,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

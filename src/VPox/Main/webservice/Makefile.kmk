@@ -1,0 +1,876 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the VPox web service.
+#
+# Warning! This is a seriously complicated makefile!
+#
+
+#
+# Copyright (C) 2007-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+# Define VPOX_GSOAP_INSTALLED to something if you have gSOAP's
+# "wsdl2h" and "soapcpp2" executables on your PATH somewhere.
+
+#
+# Here's an overview how all this works. It's complicated. Essentially,
+# lots of files get generated automatically from our XML XIDL file that
+# describes the VirtualPox API (../idl/VirtualPox.xidl); as a result,
+# no manual coding is necessary when the API changes. All generated
+# web service code gets adjusted automatically.
+#
+# In more detail:
+#
+# 1) We use xsltproc and websrv-wsdl.xsl to generate a WSDL file from
+#    our XML IDL file. WSDL (Web Service Description language) is an XML
+#    industry standard that publicly describes a web service.
+#    So, the WSDL generated here describes the VirtualPox web
+#    service to third-party clients; for example, one can feed it to
+#    Java or Perl or some other toolkit that understands WSDL and thus
+#    easily write a short script that connects to the web service properly.
+#    This WSDL file ends up in $(VPOXWEB_OUT_DIR)/vpoxweb.wsdl.
+#
+# 2) We use xsltproc and websrv-wsdl2gsoapH.xsl to generate a so-called
+#    "gSoap header file": $(VPOXWEB_OUT_DIR)/gsoapH_from_xslt.h from
+#    the WSDL previously generated.
+#    This file looks like a C header file, but really isn't meant
+#    to be included by a C compiler. Instead, it just happens to be the
+#    format that gSOAP uses to specify SOAP interfaces instead of WSDL.
+#    (The reason for this appears to be that gSOAP predates WSDL and
+#    thus needed some format to describe the syntax of a web service.)
+#
+#	 Note that gSOAP now also comes with its own WSDL-to-gsoap.h converter,
+#    but the readme mentions some funny license restrictions, so instead we
+#    have our own converter in XSLT.
+#
+# 3) We then feed that pseudo-header file to gSOAP's soapcpp2 compiler,
+#    which generates a ton of files in $(VPOXWEB_OUT_DIR), most importantly:
+#
+#    SOAP_CLIENT_H = $(VPOXWEB_OUT_DIR)/soapStub.h (header file for webservice clients)
+#    SOAP_SERVER_H = $(VPOXWEB_OUT_DIR)/soapH.h (header file for webservice servers)
+#
+#    These are "real" header files that one can use to program a) a webservice client
+#    and b) a webservice server. Of course to build b) one will have to write method
+#    implementations with useful code that does something. This is where more
+#    code generation via XSLT comes in:
+#
+# 4) We use xsltproc to generate tons of C++ code directly from the XIDL that
+#    maps each SOAP method to our COM methods. This large C++ file is
+#    $(VPOXWEB_OUT_DIR)/methodmaps.cpp. The actual webservice executable (vpoxwebsrv,
+#    which acts as an HTTP server) is composed of this file, plus hard-coded
+#    method implementations in vpoxweb.cpp, plus gSOAP library code for the HTTP
+#    server.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Find the gSOAP toolkit.
+#
+# Note! We're not using the gSOAP toolkit correctly. The main issue is that
+#       compiling soapcpp2.cpp instead of using the library. So, in order
+#       to make this work with a locally installed gSOAP toolkit there are
+#       some hoops to jump thru to say the least... Shipping soapcpp2.cpp/h
+#       is out of the question without also including the two soap tools.
+#
+# Some observations on distros for OSE / configure:
+#       The proposed gentoo ebuild screws up several things in the install phase
+#       and thus fails to ship stdsoap2.cpp and relatives.
+#
+#       debian (2.7.9l-0.2) stuffs stdsoap2.cpp and a handful of the import files
+#       into /usr/include/gsoap.
+#
+#       fedora (2.7.12-fc10.x86_64) uses the default install layout and does not
+#       ship stdsoap2.cpp and friends.
+#
+ifeq ($(VPOX_GSOAP_INSTALLED),)
+ VPOX_GSOAP_INSTALLED = 1
+ VPOX_PATH_GSOAP := $(lastword $(sort $(wildcard $(KBUILD_DEVTOOLS)/common/gsoap/*)))
+ ifeq ($(VPOX_PATH_GSOAP),)
+  VPOX_PATH_GSOAP := $(lastword $(sort $(wildcard $(KBUILD_DEVTOOLS_HST)/gsoap/*)))
+ endif
+ if "$(VPOX_PATH_GSOAP)" == "" && defined(KBUILD_DEVTOOLS_HST)
+  VPOX_PATH_GSOAP := $(lastword $(sort $(wildcard $(KBUILD_DEVTOOLS_HST_ALT)/gsoap/*)))
+ endif
+ ifeq ($(VPOX_PATH_GSOAP),)
+  $(warning VPOX_PATH_GSOAP not found...)
+  VPOX_GSOAP_INSTALLED =
+ endif
+else
+ VPOX_PATH_GSOAP       := $(VPOX_PATH_GSOAP)
+endif
+VPOX_PATH_GSOAP_BIN    := $(strip $(VPOX_PATH_GSOAP_BIN))
+if "$(VPOX_PATH_GSOAP_BIN)" == ""
+ VPOX_PATH_GSOAP_BIN   := $(VPOX_PATH_GSOAP)/bin
+ if      "$(KBUILD_HOST)" == "darwin"
+  VPOX_PATH_GSOAP_BIN  := $(VPOX_PATH_GSOAP_BIN)/macosx
+ else if "$(KBUILD_HOST)" == "win"
+  VPOX_PATH_GSOAP_BIN  := $(VPOX_PATH_GSOAP_BIN)/win32
+ else
+  VPOX_PATH_GSOAP_BIN  := $(VPOX_PATH_GSOAP_BIN)/$(KBUILD_HOST).x86
+ endif
+ if !exists($(VPOX_PATH_GSOAP_BIN))
+  VPOX_PATH_GSOAP_BIN  := $(VPOX_PATH_GSOAP)/bin
+ endif
+endif
+VPOX_SOAPCPP2          := $(VPOX_PATH_GSOAP_BIN)/soapcpp2$(HOSTSUFF_EXE)
+VPOX_WSDL2H            := $(VPOX_PATH_GSOAP_BIN)/wsdl2h$(HOSTSUFF_EXE)
+VPOX_STUBMAKER          = $(firstword $(which stubmaker stubmaker.pl) stubmaker_not_found)
+# Keep in mind that Python ZSI only exists for Python 2.x, so this hardcodes
+# some things. If you want to build using Python 3.x only you need to disable
+# the creation of the Python webservice bindings anyway.
+if "$(KBUILD_HOST)" != "win"
+VPOX_WSDL2PY            = $(firstword $(which wsdl2py) wsdl2py_not_found)
+else
+VPOX_WSDL2PY            = $(firstword $(wildcard C:/Python27/Scripts/wsdl2py.exe) wsdl2py_not_found)
+endif
+
+VPOX_PATH_GSOAP_IMPORT := $(strip $(if $(VPOX_PATH_GSOAP_IMPORT),$(VPOX_PATH_GSOAP_IMPORT),$(VPOX_PATH_GSOAP)/import))
+VPOX_GSOAP_INCS        := $(strip $(if $(VPOX_GSOAP_INCS),$(VPOX_GSOAP_INCS),$(VPOX_PATH_GSOAP) $(VPOX_PATH_GSOAP_IMPORT) ))
+# note: $(if $(defined FOO)) does not work here!
+VPOX_GSOAP_CXX_SOURCES := $(strip $(if-expr "$(origin VPOX_GSOAP_CXX_SOURCES)" != "undefined",$(VPOX_GSOAP_CXX_SOURCES),$(VPOX_PATH_GSOAP)/stdsoap2.cpp))
+VPOX_GSOAP_CXX_LIBS    := $(strip $(if-expr "$(origin VPOX_GSOAP_CXX_LIBS)" != "undefined",$(VPOX_GSOAP_CXX_LIBS),))
+
+
+#
+# Globals
+#
+VPOXWEB_OUT_DIR := $(PATH_TARGET)/webservice
+BLDDIRS += $(VPOXWEB_OUT_DIR)
+
+# The webservice location
+VPOX_PATH_WEBSERVICE          := $(PATH_SUB_CURRENT)
+
+# The IDL subdirectory (contains some XSLT files)
+VPOX_PATH_IDL                 := $(abspath $(PATH_SUB_CURRENT)/../idl)
+
+# If this is set, all webservice files are considered out-of-date every time
+# this makefile is touched. Otherwise, set this to empty.
+RECOMPILE_ON_MAKEFILE_CURRENT := $(MAKEFILE_CURRENT)
+
+PATH_TARGET_SOAPDEMOXML       := $(VPOXWEB_OUT_DIR)/demo_soapxml
+PATH_TARGET_SOAPDEMOHEADERS   := $(VPOXWEB_OUT_DIR)/demo_headers
+PATH_TARGET_SOAPDEMONSMAPS    := $(VPOXWEB_OUT_DIR)/demo_namespacemaps
+PATH_TARGET_WEBTEST           := $(VPOXWEB_OUT_DIR)/webtest
+
+# the original XIDL file (has to include documentation as we need it):
+VPOXWEB_IDL_SRC_ORIG          := $(VPOX_XIDL_FILE_SRC)
+# the original XIDL file without documentation
+VPOXWEB_IDL_SRC_STRIPPED      := $(VPOX_XIDL_FILE)
+# platform-specific XIDL file generated from $(VPOXWEB_IDL_SRC_STRIPPED):
+VPOXWEB_IDL_SRC               := $(VPOXWEB_OUT_DIR)/VirtualPox.xidl
+
+VPOXWEB_WSDL                   = $(VPOXWEB_OUT_DIR)/vpoxweb.wsdl
+VPOXWEBSERVICE_WSDL            = $(VPOXWEB_OUT_DIR)/vpoxwebService.wsdl
+
+VPOXWEB_TYPEMAP               := $(VPOXWEB_OUT_DIR)/typemap.dat
+
+VPOXWEB_GSOAPH_FROM_XSLT      := $(VPOXWEB_OUT_DIR)/gsoapH_from_xslt.h
+ifdef VPOX_GSOAP_INSTALLED
+ VPOXWEB_GSOAPH_FROM_GSOAP    := $(VPOXWEB_OUT_DIR)/gsoapH_from_gsoap.h
+else
+ VPOXWEB_GSOAPH_FROM_GSOAP    :=
+endif
+VPOXWEB_SOAP_CLIENT_H         := $(VPOXWEB_OUT_DIR)/soapStub.h
+VPOXWEB_SOAP_SERVER_H         := $(VPOXWEB_OUT_DIR)/soapH.h
+
+
+ifdef VPOX_GSOAP_VERBOSE
+ VPOXWEB_XSLTPROC_VERBOSE      = --stringparam G_argDebug '1'
+ VPOXWEB_WSDL_VERBOSE          = -v
+else
+ VPOXWEB_SOAPCPP2_SKIP_FILES   = -x
+endif
+
+
+## @todo VPOXWEB_GSOAPH_FROM_XSLT should probably be a indirect dep of something.
+VPOXWEB_OTHERS += \
+	$(VPOXWEB_GSOAPH_FROM_XSLT)
+
+
+# disable -fvisibility=hidden as the SOAP stuff does not properly set the visibility attributes
+TEMPLATE_VPOXWEBR3EXE = Webservices without -fvisibility
+TEMPLATE_VPOXWEBR3EXE_EXTENDS = VPOXR3EXE
+TEMPLATE_VPOXWEBR3EXE_DEFS.win += WIN32_LEAN_AND_MEAN $(TEMPLATE_VPOXR3EXE_DEFS.win) # Makes the redefinition warnings go away.
+TEMPLATE_VPOXWEBR3EXE_CXXFLAGS = $(filter-out $(VPOX_GCC_fvisibility-hidden) $(VPOX_GCC_fvisibility-inlines-hidden),\
+				 $(TEMPLATE_VPOXR3EXE_CXXFLAGS))
+
+ifdef VPOX_GSOAP_INSTALLED
+ ifndef VPOX_ONLY_SDK
+  #
+  # vpoxsoap - Library used by both the programs (save build time).
+  #
+  LIBRARIES += vpoxsoap
+  vpoxsoap_TEMPLATE = VPOXWEBR3EXE
+  ifeq ($(KBUILD_TARGET),win)
+   vpoxsoap_USES     = vccprecomp
+   vpoxsoap_PCH_HDR := $(VPOXWEB_SOAP_SERVER_H)
+   vpoxsoap_CXXFLAGS += -Zm127
+  endif
+  vpoxsoap_CXXFLAGS += $(VPOX_C_CXX_FLAGS_NO_UNUSED_PARAMETERS)
+  vpoxsoap_CXXFLAGS.win += -bigobj
+  vpoxsoap_CXXFLAGS.win += -wd4702 # soapc-4.cpp(16) : warning C4702: unreachable code
+  ifn1of ($(KBUILD_TARGET), win)
+   vpoxsoap_CXXFLAGS += -Wno-shadow -Wno-parentheses $(VPOX_GCC_Wno-literal-suffix) \
+   	$(VPOX_GCC_Wno-stringop-overflow) $(VPOX_GCC_Wno-stringop-truncation) $(VPOX_GCC_fno-printf-return-value)
+   ifn1of ($(KBUILD_TYPE), debug) # Save time+memory by using -O0 instead of -O2.
+    vpoxsoap_CXXFLAGS += -O0 ## @todo this could be interesting for g++ (not clang++): -fcprop-registers
+   endif
+  endif
+  vpoxsoap_INCS := \
+  	$(VPOX_GSOAP_INCS) \
+  	$(VPOXWEB_OUT_DIR) \
+  	$(PATH_SUB_CURRENT)
+  ifdef VPOX_WITH_WEBSERVICES_SSL
+   vpoxsoap_DEFS += WITH_OPENSSL
+   vpoxsoap_SDKS += VPOX_OPENSSL2
+  endif
+  ifdef VPOX_WITHOUT_SPLIT_SOAPC
+   vpoxsoap_SOURCES = \
+   	$(VPOXWEB_OUT_DIR)/soapC.cpp
+  else
+   BLDPROGS += split-soapC
+   split-soapC_TEMPLATE = VPoxBldProg
+   split-soapC_SOURCES = split-soapC.cpp
+
+   vpoxsoap_SOURCES = \
+	$(VPOXWEB_OUT_DIR)/soapC-1.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-2.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-3.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-4.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-5.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-6.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-7.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-8.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-9.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-10.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-11.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-12.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-13.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-14.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-15.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-16.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-17.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-18.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-19.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-20.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-21.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-22.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-23.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-24.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-25.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-26.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-27.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-28.cpp \
+	$(VPOXWEB_OUT_DIR)/soapC-29.cpp
+  vpoxsoap_CXXFLAGS += \
+  	$(VPOX_GCC_Wno-vla) \
+	$(if-expr $(KBUILD_TARGET) == "win",,-Wno-format) \
+  	$(if-expr $(KBUILD_TARGET) == "win",,-Wno-deprecated-declarations)
+  endif
+  vpoxsoap_CLEAN := $(vpoxsoap_SOURCES) # lazy bird
+  vpoxsoap_SOURCES <= \
+  	$(VPOX_GSOAP_CXX_SOURCES)
+  vpoxsoap_ORDERDEPS = \
+  	$(VPOXWEB_IDL_SRC) \
+  	$(VPOXWEB_OUT_DIR)/gsoap_copy_all_ts
+  ifn1of ($(KBUILD_TARGET), win)
+   $(VPOX_GSOAP_CXX_SOURCES)_CXXFLAGS = \
+	-Wno-format \
+	 $(VPOX_GCC_Wno-int-in-bool-context) \
+	$(if $(VPOX_GCC_Wlogical-op),-Wno-error=logical-op,)
+   # currently necessary when compiling against OpenSSL 1.0 due to a missing
+   # typecase from 'const v3_ext_method*' to 'aka v3_ext_method*'.
+   $(VPOX_GSOAP_CXX_SOURCES)_CXXFLAGS += -fpermissive
+
+  endif
+
+  if "$(KBUILD_TARGET)" == "win" && "$(VPOX_GSOAP_CXX_SOURCES)" != ""
+   $(VPOX_GSOAP_CXX_SOURCES)_CXXFLAGS.win += -wd4668 # preprocessor / windows.h
+   $(VPOX_GSOAP_CXX_SOURCES)_CXXFLAGS.win += -wd4211 # nonstandard extension used: redefined extern to static
+   $(VPOX_GSOAP_CXX_SOURCES)_CXXFLAGS.win += -wd4310 # cast truncates constant value
+   if1of ($(VPOX_VCC_TOOL_STEM), VCC120)
+    $(VPOX_GSOAP_CXX_SOURCES)_CXXFLAGS.win += -wd4056 # v2.8.36/stdsoap2.cpp(14008) : warning C4056: overflow in floating-point constant arithmetic
+    $(VPOX_GSOAP_CXX_SOURCES)_CXXFLAGS.win += -wd4756 # v2.8.36/stdsoap2.cpp(14008) : warning C4756: overflow in constant arithmetic
+   endif
+  endif
+
+  ifdef VPOX_SOAP_PRECOMPILED_HEADER
+   # This'll save a few seconds, but the compiler invocation currently makes it impracticable. This will
+   # be addressed in a future kBuild version, by adding PCH support or/and by adding some helpers to
+   # gather the required data (DEFS,INCS,CXXTOOL,CXXFLAGS).
+   vpoxsoap_INTERMEDIATES += $(VPOXWEB_OUT_DIR)/soapH.h.gch
+   vpoxsoap_CXXFLAGS += -Winvalid-pch -H
+   vpoxsoap_CLEAN += $(VPOXWEB_OUT_DIR)/soapH.h.gch
+
+   $(VPOXWEB_OUT_DIR)/soapH.h.gch: $(VPOXWEB_OUT_DIR)/soapH.h
+	g++ -x c++-header -g -g -Wall -pedantic -Wno-long-long -Wno-trigraphs -Wno-variadic-macros -pipe -O0 -fno-omit-frame-pointer \
+		-fno-strict-aliasing -fvisibility-inlines-hidden -fvisibility=hidden -DVPOX_HAVE_VISIBILITY_HIDDEN \
+		-mmacosx-version-min=10.4 -isysroot /Developer/SDKs/MacOSX10.4u.sdk -m32 \
+		-I/Volumes/ScratchHFS/bird/vpox/svn/trunk/src/VPox/Main/webservice/gsoap \
+		-I/Volumes/ScratchHFS/bird/vpox/svn/trunk/out/darwin.x86/debug/obj/src/VPox/Main \
+		-I/Volumes/ScratchHFS/bird/vpox/svn/trunk/src/VPox/Main/webservice \
+		-I/Volumes/ScratchHFS/bird/vpox/svn/trunk/include -I/Volumes/ScratchHFS/bird/vpox/svn/trunk/out/darwin.x86/debug
+		\-DVPOX -DVPOX_WITH_DEBUGGER -DVPOX_WITH_DEBUGGER_GUI -DDEBUG -DDEBUG_bird -DDEBUG_USERNAME=bird -DRT_OS_DARWIN \
+		-D__DARWIN__ -DRT_ARCH_X86 -D__X86__ -DVPOX_WITH_HYBRID_32BIT_KERNEL -DIN_RING3 -DHC_ARCH_BITS=32 -DGC_ARCH_BITS=32 \
+		-DMAC_OS_X_VERSION_MIN_REQUIRED=1040 -DMAC_OS_X_VERSION_MAX_ALLOWED=1040 \
+		$< -o $@
+  endif
+
+  # Tweak for systems with too many CPUs compared to memory.
+  ifdef VPOX_WITH_SOAP_NOT_PARALLEL
+   .NOTPARALLEL: $$(vpoxsoap_2_OBJS)
+  endif
+ endif # !VPOX_ONLY_SDK
+
+
+ ifndef VPOX_ONLY_SDK
+ #
+ # vpoxwebsrv - webservice server process
+ #
+ PROGRAMS += vpoxwebsrv
+ vpoxwebsrv_TEMPLATE = VPOXMAINCLIENTEXE
+ vpoxwebsrv_DEFS += SOCKET_CLOSE_ON_EXEC
+ vpoxwebsrv_DEFS.win += WIN32_LEAN_AND_MEAN
+ vpoxwebsrv_INCS = \
+	$(VPOX_GSOAP_INCS) \
+	$(VPOXWEB_OUT_DIR) \
+	.
+ vpoxwebsrv_CXXFLAGS.win += -bigobj
+ ifn1of ($(KBUILD_TARGET), win)
+  vpoxwebsrv_CXXFLAGS += -Wno-shadow $(VPOX_GCC_Wno-literal-suffix)
+  ifn1of ($(KBUILD_TYPE), debug) # Save time+memory by using -O1 instead of -O2.
+   vpoxwebsrv_CXXFLAGS += -O0
+  endif
+ endif
+ vpoxwebsrv_LIBS += \
+	$(PATH_STAGE_LIB)/vpoxsoap$(VPOX_SUFF_LIB) \
+	$(VPOX_GSOAP_CXX_LIBS) \
+	$(LIB_RUNTIME)
+ vpoxwebsrv_LIBS.solaris += socket nsl
+ ifdef VPOX_WITH_WEBSERVICES_SSL
+  vpoxwebsrv_DEFS += WITH_OPENSSL
+  vpoxwebsrv_SDKS += VPOX_OPENSSL2
+ endif
+ vpoxwebsrv_SOURCES = \
+	vpoxweb.cpp \
+	$(VPOXWEB_OUT_DIR)/methodmaps.cpp \
+	$(VPOXWEB_OUT_DIR)/soapServer.cpp \
+    $(VPOXWEB_OUT_DIR)/vpoxweb-wsdl.c
+ vpoxwebsrv_SOURCES.win = \
+	VPoxWebSrv.rc
+ vpoxwebsrv_CLEAN = \
+	$(VPOXWEB_OUT_DIR)/methodmaps.cpp \
+	$(VPOXWEB_OUT_DIR)/soapServer.cpp \
+    $(VPOXWEB_OUT_DIR)/vpoxweb-wsdl.c
+ # gcc 6.2 warns about aborting misleading indentation detection (too much code)
+ vpoxweb.cpp_CXXFLAGS = \
+	$(VPOX_GCC_Wno-misleading-indentation)
+ vpoxwebsrv_ORDERDEPS = $(VPOXWEB_OUT_DIR)/gsoap_copy_all_ts
+ endif # !VPOX_ONLY_SDK
+
+ ifdef VPOX_WITH_JWS
+INSTALLS += VPoxJWs-inst-jar
+
+#
+# Java glue JAR files
+#
+VPOX_JWS_JAR     = $(VPoxJWs-inst-jar_0_OUTDIR)/vpoxjws.jar
+VPOX_JWSDOC_JAR  = $(VPoxJWs-inst-jar_0_OUTDIR)/vpoxjws-doc.jar
+VPOX_JWSSRC_JAR  = $(VPoxJWs-inst-jar_0_OUTDIR)/vpoxjws-src.jar
+VPOX_JWS_TARGET := $(PATH_TARGET)/vpoxjws-gen
+VPOX_JWS_GEN     = $(VPOX_JWS_TARGET)/jwsgen
+VPOX_JWS_GEN_RAWSRC = $(VPOX_JWS_GEN)/merged.file
+VPOX_JWS_JDEST  := $(VPOX_JWS_TARGET)/jdest
+VPOX_JWSDOC_JDEST  := $(VPOX_JWS_TARGET)/jdest-doc
+VPOX_GLUE_XSLT_DIR := $(PATH_ROOT)/src/VPox/Main/glue
+VPOX_JAXLIB_DIR    := $(PATH_ROOT)/src/VPox/Main/webservice/jaxlibs
+
+VPoxJWs-inst-jar_INST = $(INST_SDK)bindings/webservice/java/jax-ws/
+VPoxJWs-inst-jar_MODE = a+r,u+w
+VPoxJWs-inst-jar_SOURCES = \
+	$(VPOX_JWS_JAR) \
+	$(VPOX_JWSDOC_JAR) \
+	$(VPOX_JWSSRC_JAR)
+VPoxJWs-inst-jar_CLEAN = \
+	$(VPOX_JWS_JAR) \
+	$(VPOX_JWSDOC_JAR) \
+	$(VPOX_JWSSRC_JAR) \
+	$(VPOX_JWS_GEN)/jwsglue.list \
+	$(VPOX_JWSDOC_JDEST)/package-list \
+	$(wildcard \
+		$(VPOX_JWS_GEN)/java/*/*/*.java \
+		$(VPOX_JWS_GEN)/java/*/*/*/*.java \
+		$(VPOX_JWS_JDEST)/*.class \
+		$(VPOX_JWS_JDEST)/*/*.class \
+		$(VPOX_JWS_JDEST)/*/*/*.class \
+		$(VPOX_JWS_JDEST)/*/*/*/*.class \
+		$(VPOX_JWSDOC_JDEST)/*.html \
+		$(VPOX_JWSDOC_JDEST)/*.css \
+		$(VPOX_JWSDOC_JDEST)/*/*.gif \
+		$(VPOX_JWSDOC_JDEST)/*/*/*.html \
+		$(VPOX_JWSDOC_JDEST)/*/*/*/*.html \
+	)
+VPoxJWs-inst-jar_BLDDIRS += $(VPOX_JWS_GEN)/java
+VPoxJWs-inst-jar_GENERATEDSOURCES = $(addprefix $(VPoxJWs-inst-jar_BLDDIRS)/,$(VPoxJWS_VPOX_JWSGLUEFILES))
+
+VPoxJWSGlue_KMK = $(PATH_OUT)/vpoxjwsglue.kmk
+include $(VPoxJWSGlue_KMK)
+
+$(VPoxJWSGlue_KMK).ts +| $(VPoxJWSGlue_KMK): $(VPOXWEB_IDL_SRC_ORIG) $(VPOX_GLUE_XSLT_DIR)/glue-java.xsl $(VPOX_VERSION_STAMP)
+	$(call MSG_GENERATE,,$(VPoxJWSGlue_KMK))
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(VPOX_XSLTPROC) \
+              --stringparam filelistonly VPoxJWS_VPOX_JWSGLUEFILES \
+              --stringparam G_vpoxApiSuffix $(VPOX_API_SUFFIX) \
+              --stringparam G_vpoxGlueStyle jaxws              \
+              --stringparam G_vpoxDirPrefix org/virtualpox$(VPOX_API_SUFFIX)/ \
+              -o $@ $(VPOX_GLUE_XSLT_DIR)/glue-java.xsl $<
+	$(QUIET)$(CP) --changed -fv $@ $(VPoxJWSGlue_KMK)
+
+$(VPOX_JWS_GEN_RAWSRC) \
++| $(VPoxJWs-inst-jar_GENERATEDSOURCES): \
+		$(VPOXWEB_IDL_SRC_ORIG) \
+		$(VPOX_GLUE_XSLT_DIR)/glue-java.xsl \
+		$(VPOX_FILESPLIT) \
+		$(VPOX_VERSION_STAMP)
+	$(call MSG_L1,Generating JAX-WS Java glue files from XIDL)
+	$(QUIET)$(RM) -f $(filter-out $(VPoxJWs-inst-jar_GENERATEDSOURCES),$(wildcard $(VPOX_JWS_GEN)/java/*/*/*.java))
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(VPOX_XSLTPROC) \
+              --stringparam filelistonly "" \
+              --stringparam G_vpoxApiSuffix $(VPOX_API_SUFFIX) \
+              --stringparam G_vpoxGlueStyle jaxws              \
+              --stringparam G_vpoxDirPrefix org/virtualpox$(VPOX_API_SUFFIX)/ \
+              -o $(VPOX_JWS_GEN_RAWSRC) $(VPOX_GLUE_XSLT_DIR)/glue-java.xsl $<
+	$(QUIET)$(MKDIR) -p $(VPOX_JWS_GEN)/java/org/virtualpox$(VPOX_API_SUFFIX)
+	$(QUIET)$(VPOX_FILESPLIT) $(VPOX_JWS_GEN_RAWSRC) $(VPOX_JWS_GEN)/java
+
+## @todo somehow also find out the authoritative list of files generated by
+# wsimport (before running it), then we could rely on proper dependencies
+# instead of creating jwsglue.list. Would allow avoiding a lot of unnecessary
+# compilation with incremental builds, when almost nothing changed in the IDL
+# file. Currently everything is recompiled if only one file is changed.
+$(VPOX_JWS_GEN)/jwsglue.list.ts +| $(VPOX_JWS_GEN)/jwsglue.list: \
+		$(VPOXWEB_IDL_SRC) \
+		$(VPOX_FILESPLIT) \
+		$(VPOXWEBSERVICE_WSDL) \
+		$(VPOXWEB_WSDL) \
+		$(VPoxJWs-inst-jar_GENERATEDSOURCES) \
+		| $(VPOX_JWS_GEN)/java/
+	$(QUIET)$(RM) -f -- $(wildcard $(VPOX_JWS_GEN)/java/*/*/*/*.java)
+	$(call MSG_GENERATE,,$(VPOX_JWS_GEN)/jwsglue.list,JAX-WS for Java 1.6 bindings using $(VPOXWEBSERVICE_WSDL))
+	$(VPOX_WSIMPORT) -Xnocompile -p $(VPOX_JAVA_PACKAGE).jaxws -d $(VPOX_JWS_GEN)/java $(VPOXWEBSERVICE_WSDL)
+	$(QUIET)echo $(VPoxJWs-inst-jar_GENERATEDSOURCES) > $@
+	$(QUIET)echo $(VPOX_JWS_GEN)/java/*/*/*/*.java >> $@
+	$(QUIET)$(CP) --changed -fv $@ $(VPOX_JWS_GEN)/jwsglue.list
+
+$$(VPOX_JWS_JAR): $(VPOX_JWS_GEN)/jwsglue.list $(VPOXWEB_WSDL) $(VPOXWEBSERVICE_WSDL) $(VPOX_JWS_GEN)/MANIFEST.MF | $$(dir $$@)
+	$(call MSG_TOOL,javac,$(notdir $@),jwsgen.list,)
+	$(QUIET)$(RM) -Rf $(VPOX_JWS_JDEST)
+	$(QUIET)$(MKDIR) -p $(VPOX_JWS_JDEST)
+	$(call MSG_L1,Compiling bridge code)
+	$(VPOX_JAVAC) $(VPOX_JAVAC_OPTS) $(VPOX_JAVA_WS_OPTS) \
+                @$(VPOX_JWS_GEN)/jwsglue.list \
+		-d $(VPOX_JWS_JDEST) -classpath $(VPOX_JWS_JDEST)$(VPOX_SEP)$(VPOX_JAVA_WS_EXTRA_JARS)
+	$(QUIET)$(SED) -e "s/vpoxweb.wsdl/vpoxweb$(VPOX_API_SUFFIX).wsdl/" <  $(VPOXWEBSERVICE_WSDL) > $(VPOX_JWS_JDEST)/vpoxwebService$(VPOX_API_SUFFIX).wsdl
+	$(QUIET)$(CP) -f $(VPOXWEB_WSDL) $(VPOX_JWS_JDEST)/vpoxweb$(VPOX_API_SUFFIX).wsdl
+	$(call MSG_LINK,$(notdir $@),$@)
+	$(VPOX_JAR) cfm $@ $(VPOX_JWS_GEN)/MANIFEST.MF -C $(VPOX_JWS_JDEST) .
+
+$(VPOX_JWS_GEN)/MANIFEST.MF: $(VPOX_PATH_WEBSERVICE)/MANIFEST.MF.in
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(MKDIR) -p $(VPOX_JWS_GEN)
+	$(QUIET)$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/' \
+		-e 's/@VPOX_API_SUFFIX@/$(VPOX_API_SUFFIX)/' \
+		<  $< >  $@
+
+$$(VPOX_JWSDOC_JAR): $(VPOX_JWS_GEN)/jwsglue.list $$(VPoxJWs-inst-jar_GENERATEDSOURCES) $(VPOXWEB_WSDL) $(VPOXWEBSERVICE_WSDL) $$(VPOX_JWS_JAR) | $$(dir $$@)
+	$(call MSG_TOOL,javadoc,$(notdir $@),jwsgen.list,)
+	$(QUIET)$(RM) -Rf $(VPOX_JWSDOC_JDEST)
+	$(QUIET)$(MKDIR) -p $(VPOX_JWSDOC_JDEST)
+	$(call MSG_L1,Generating javadoc html documentation)
+	$(VPOX_JAVADOC) $(VPOX_JAVADOC_OPTS) $(VPOX_JAVA_WS_OPTS) -quiet \
+		-sourcepath $(VPOX_JWS_GEN)/java org.virtualpox$(VPOX_API_SUFFIX) \
+		-d $(VPOX_JWSDOC_JDEST) -classpath $(VPOX_SEP)$(VPOX_JAVA_WS_EXTRA_JARS)
+	$(call MSG_LINK,$(notdir $@),$@)
+	$(VPOX_JAR) cf $@ -C $(VPOX_JWSDOC_JDEST) .
+
+$$(VPOX_JWSSRC_JAR): $$(VPOX_JWS_JAR) | $$(dir $$@)
+	$(call MSG_LINK,$(notdir $@),$@)
+	$(VPOX_JAR) cf $@ -C $(VPOX_JWS_GEN)/java .
+
+## @todo compile ../glue/tests/TestVPox.java to have sanity checking
+
+ endif # VPOX_WITH_JWS
+
+ ifndef VPOX_ONLY_SDK
+ #
+ # webtest - webservice sample client in C++
+ #
+ PROGRAMS += webtest
+ webtest_TEMPLATE = VPOXWEBR3EXE
+ webtest_CXXFLAGS.win += -bigobj
+ ifn1of ($(KBUILD_TARGET), win)
+  webtest_CXXFLAGS += -Wno-shadow
+ endif
+ webtest_INCS := \
+	$(VPOX_GSOAP_INCS) \
+	$(VPOXWEB_OUT_DIR) \
+	.
+ webtest_LIBS += \
+	$(PATH_STAGE_LIB)/vpoxsoap$(VPOX_SUFF_LIB) \
+	$(VPOX_GSOAP_CXX_LIBS) \
+	$(LIB_RUNTIME)
+ webtest_LIBS.solaris += nsl
+ ifdef VPOX_WITH_WEBSERVICES_SSL
+  webtest_DEFS += WITH_OPENSSL
+  webtest_SDKS += VPOX_OPENSSL2
+ endif
+ webtest_SOURCES = \
+	webtest.cpp \
+	$(VPOXWEB_OUT_DIR)/soapClient.cpp
+ webtest_CLEAN = \
+	$(VPOXWEB_OUT_DIR)/soapClient.cpp
+
+ webtest_ORDERDEPS = $(VPOXWEB_OUT_DIR)/gsoap_copy_all_ts
+ endif # !VPOX_ONLY_SDK
+
+
+ #
+ # Additional mess to cleanup (applies to both webtest and vpoxwebsrv).
+ #
+ ## @todo figure out whether the SDK really needs this or not...
+ OTHER_CLEAN += \
+	$(wildcard $(VPOXWEB_OUT_DIR)/soap*.h) \
+	$(wildcard $(VPOXWEB_OUT_DIR)/soap*.cpp) \
+	$(wildcard $(VPOXWEB_OUT_DIR)/*.nsmap) \
+	$(VPOXWEB_GSOAPH_FROM_XSLT) \
+	$(VPOXWEB_GSOAPH_FROM_GSOAP) \
+	$(VPOXWEB_SOAP_CLIENT_H) \
+	$(VPOXWEB_SOAP_SERVER_H) \
+	$(VPOXWEB_OUT_DIR)/gsoap_generate_all_ts \
+	$(VPOXWEB_OUT_DIR)/gsoap_copy_all_ts \
+	$(wildcard $(PATH_TARGET_SOAPDEMOXML)/*) \
+	$(PATH_TARGET_SOAPDEMOXML)/dummy_file \
+	$(wildcard $(PATH_TARGET_SOAPDEMOHEADERS)/*) \
+	$(PATH_TARGET_SOAPDEMOHEADERS)/dummy_file \
+	$(wildcard $(PATH_TARGET_SOAPDEMONSMAPS)/*) \
+	$(PATH_TARGET_SOAPDEMONSMAPS)/dummy_file
+
+endif # VPOX_GSOAP_INSTALLED
+
+
+if defined(VPOX_ONLY_SDK) && ("$(KBUILD_TARGET)" != "win" || defined(VPOX_FORCE_SDK))
+ #
+ # Globals relevant to the SDK.
+ #
+ VPOXWEB_GLUE_PYTHON           = $(VPOX_PATH_SDK)/bindings/webservice/python/lib/VirtualPox_wrappers.py
+ # The following 3 files are generated by Python ZSI 2.1_a1 (alpha version
+ # shipped by many Linux distributions). Only the first two are actually used.
+ # The 4th and 5th file is created by ZSI 2.0 (released in 2007), and gets
+ # renamed to the 1st/2nd file for simplicity reasons.
+ # ZSI 1.x used different file names. Not worth supporting any more. If you're
+ # curious, check the VirtualPox 4.3 sources.
+ VPOXWEB_WS_PYTHON             = $(VPOX_PATH_SDK)/bindings/webservice/python/lib/VirtualPox_client.py
+ VPOXWEB_WS_PYTHON_TYPES       = $(VPOX_PATH_SDK)/bindings/webservice/python/lib/VirtualPox_types.py
+ VPOXWEB_WS_PYTHON_SERVER      = $(VPOX_PATH_SDK)/bindings/webservice/python/lib/VirtualPox_server.py
+ VPOXWEB_WS_PYTHON_ALTERNATIVE = $(VPOX_PATH_SDK)/bindings/webservice/python/lib/VirtualPox_services.py
+ VPOXWEB_WS_PERL               = $(VPOX_PATH_SDK)/bindings/webservice/perl/lib/vpoxService.pm
+ VPOXWEB_WS_PHP                = $(VPOX_PATH_SDK)/bindings/webservice/php/lib/vpoxServiceWrappers.php
+ VPOXWEB_SAMPLES_JAXWS_DIR     = $(VPOX_PATH_SDK)/bindings/webservice/java/jax-ws/samples
+ VPOXWEB_JAXWSSAMPLE           = $(VPOXWEB_SAMPLES_JAXWS_DIR)/clienttest.java
+ VPOXWEB_METRICSAMPLE          = $(VPOXWEB_SAMPLES_JAXWS_DIR)/metrictest.java
+
+ define find_java_files
+  $(shell find $(1) -name \*.java)
+ endef
+
+ VPOXWEB_OTHERS               +=  \
+	$(if $(VPOX_WITH_PYTHON),$(VPOXWEB_GLUE_PYTHON),)       \
+	$(if $(VPOX_WITH_PYTHON),$(VPOXWEB_WS_PYTHON),)         \
+	$(if $(VPOX_WITH_PYTHON),$(VPOXWEB_WS_PYTHON_TYPES),)   \
+	$(if $(VPOX_WITH_PERL),$(VPOXWEB_WS_PERL),)             \
+	$(if $(VPOX_WITH_PHP),$(VPOXWEB_WS_PHP),)               \
+	$(PATH_ROOT)
+
+
+ #
+ # Install sample code.
+ #
+ INSTALLS += vpoxwebinst
+ vpoxwebinst_INST = $(INST_SDK)bindings/webservice/
+ vpoxwebinst_MODE = a+rx,u+w
+ vpoxwebinst_SOURCES = \
+	$(if $(VPOX_WITH_PERL),samples/perl/clienttest.pl=>perl/samples/clienttest.pl,) \
+	$(if $(VPOX_WITH_PHP),samples/php/clienttest.php=>php/samples/clienttest.php,) \
+	$(if $(VPOX_WITH_PYTHON),samples/python/clienttest.py=>python/samples/clienttest.py,)
+
+ INSTALLS += vpoxwebinst_nox
+ vpoxwebinst_nox_INST = $(INST_SDK)bindings/webservice/
+ vpoxwebinst_nox_MODE = a+r,u+w
+ vpoxwebinst_nox_SOURCES = \
+	$(if $(VPOX_WITH_PYTHON),samples/python/Makefile=>python/samples/Makefile,) \
+	$(if $(VPOX_WITH_PYTHON),samples/python/Makefile.glue=>python/lib/Makefile,) \
+	$(if ($VPOX_WITH_JWS),$(PATH_ROOT)/COPYING.LIB=>java/jax-ws/COPYING.LIB,)
+
+ INSTALLS += vpoxwebinst_wsdl
+ vpoxwebinst_wsdl_INST = $(INST_SDK)bindings/webservice/
+ vpoxwebinst_wsdl_MODE = a+r,u+w
+ vpoxwebinst_wsdl_SOURCES = \
+	$(VPOXWEB_WSDL)=>vpoxweb.wsdl \
+	$(VPOXWEBSERVICE_WSDL)=>vpoxwebService.wsdl
+
+ INSTALLS += vpoxwebinst_webtest
+ vpoxwebinst_webtest_INST = $(INST_SDK)bindings/webservice/
+ vpoxwebinst_webtest_MODE = a+r,u+w
+ vpoxwebinst_webtest_SOURCES = \
+	$(VPOX_PATH_WEBSERVICE)/websrv-wsdl2gsoapH.xsl=>xsl/websrv-wsdl2gsoapH.xsl \
+	$(VPOX_PATH_WEBSERVICE)/websrv-nsmap.xsl=>xsl/websrv-nsmap.xsl \
+	$(VPOX_PATH_IDL)/typemap-shared.inc.xsl=>idl/typemap-shared.inc.xsl \
+	$(VPOX_PATH_WEBSERVICE)/split-soapC.cpp=>tools/split-soapC.cpp \
+	$(VPOX_PATH_WEBSERVICE)/webtest.cpp=>cpp/samples/webtest/webtest.cpp \
+	$(VPOX_PATH_WEBSERVICE)/Makefile.webtest=>cpp/samples/webtest/Makefile
+
+endif # VPOX_ONLY_SDK
+
+#
+# Update the OTHERS and OTHER_CLEAN lists with VPOXWEB_OTHERS and some more stuff.
+#
+# We can't just built up OTHERS and append it to OTHER_CLEAN because we're sharing
+# OTHERS with all the other VPox makefiles, thus VPOXWEB_OTHERS.
+#
+OTHERS += $(VPOXWEB_OTHERS)
+OTHER_CLEAN += \
+	$(VPOXWEB_OTHERS) \
+	$(if $(VPOX_WITH_PYTHON),$(VPOXWEB_WS_PYTHON_SERVER),)  \
+	$(VPOXWEB_WSDL) \
+	$(VPOXWEBSERVICE_WSDL) \
+	$(VPOXWEB_TYPEMAP) \
+	$(VPOXWEB_IDL_SRC)
+
+# generate platform-specific XIDL file from original XIDL file
+$(VPOXWEB_IDL_SRC): $(VPOXWEB_IDL_SRC_STRIPPED) $(VPOX_PATH_WEBSERVICE)/platform-xidl.xsl | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_IDL_SRC) using platform-xidl.xsl)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOXWEB_XSLTPROC_VERBOSE) -o $@ $(VPOX_PATH_WEBSERVICE)/platform-xidl.xsl $<
+
+# generate WSDL from main XIDL file
+$(VPOXWEB_WSDL): $(VPOXWEB_IDL_SRC) $(VPOX_PATH_WEBSERVICE)/websrv-wsdl.xsl $(VPOX_PATH_IDL)/typemap-shared.inc.xsl $(RECOMPILE_ON_MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_IDL_SRC) using websrv-wsdl.xsl)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOXWEB_XSLTPROC_VERBOSE) -o $@ $(VPOX_PATH_WEBSERVICE)/websrv-wsdl.xsl $<
+
+$(VPOXWEBSERVICE_WSDL): $(VPOXWEB_IDL_SRC) $(VPOX_PATH_WEBSERVICE)/websrv-wsdl-service.xsl $(VPOX_PATH_IDL)/typemap-shared.inc.xsl $(RECOMPILE_ON_MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_IDL_SRC) using websrv-wsdl-service.xsl)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOXWEB_XSLTPROC_VERBOSE) -o $@ $(VPOX_PATH_WEBSERVICE)/websrv-wsdl-service.xsl $<
+
+ifdef VPOX_ONLY_SDK
+
+$(VPOXWEB_GLUE_PYTHON): $(VPOXWEB_IDL_SRC) $(VPOXWEB_WSDL) $(VPOXWEBSERVICE_WSDL) $(VPOX_PATH_WEBSERVICE)/websrv-python.xsl
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_IDL_SRC) using websrv-python.xsl)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOXWEB_XSLTPROC_VERBOSE) -o $@ $(VPOX_PATH_WEBSERVICE)/websrv-python.xsl $<
+
+$(VPOXWEB_WS_PYTHON) \
++ $(VPOXWEB_WS_PYTHON_TYPES): $(VPOXWEB_WSDL) $(VPOXWEBSERVICE_WSDL)
+	$(call MSG_GENERATE,,$@, WS Python bindings)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(MKDIR) -p $(@D)
+# Change directory to the "source", as otherwise ZSI 2.0 has trouble finding
+# the 2nd WSDL file included in the main one. ZSI 2.1 is smarter, but some
+# versions floating around (especially on Linux) lack the --file option.
+if "$(KBUILD_HOST)" != "win"
+	$(QUIET)$(REDIRECT) -C $(dir $(VPOXWEBSERVICE_WSDL)) -- $(SHELL) -c "$(VPOX_WSDL2PY) -b --output-dir $(@D) $(VPOXWEBSERVICE_WSDL) || $(VPOX_WSDL2PY) -b --file $(VPOXWEBSERVICE_WSDL) --output-dir $(@D)"
+else
+	$(QUIET)$(REDIRECT) -C $(dir $(VPOXWEBSERVICE_WSDL)) -- $(VPOX_WSDL2PY) -b --file $(subst /,\\\\,$(VPOXWEBSERVICE_WSDL)) --output-dir $(@D)
+endif
+# Hack: some wsdl2py versions generate VirtualPox_client.py, some generate
+# VirtualPox_services.py. Standardize on the former.
+	-$(QUIET)$(MV) -f $(VPOXWEB_WS_PYTHON_ALTERNATIVE) $(VPOXWEB_WS_PYTHON)
+# We do not ever need the VirtualPox_server.py file. Delete it immediately
+# so that it will not get packaged in the SDK.
+	$(QUIET)$(RM) -f -- $(VPOXWEB_WS_PYTHON_SERVER)
+	$(QUIET)$(APPEND) $@ ''
+
+$(VPOXWEB_WS_PERL): $(VPOXWEB_WSDL) $(VPOXWEBSERVICE_WSDL)
+	$(call MSG_GENERATE,,$@, WS Perl bindings)
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(REDIRECT) -C $(@D) -- $(VPOX_STUBMAKER) file://$(VPOXWEBSERVICE_WSDL)
+# Ugly, ugly, ugly, make me right once
+	$(QUIET)$(SED) -e "s+http://www.virtualpox.org/Service+http://www.virtualpox.org/+" --output $(VPOXWEB_WS_PERL).tmp $(VPOXWEB_WS_PERL)
+	$(QUIET)$(MV) $(VPOXWEB_WS_PERL).tmp $(VPOXWEB_WS_PERL)
+	$(QUIET)$(APPEND) $@ ''
+
+$(VPOXWEB_WS_PHP): $(VPOXWEB_IDL_SRC) $(VPOX_PATH_WEBSERVICE)/websrv-php.xsl
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_IDL_SRC) using websrv-php.xsl)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOXWEB_XSLTPROC_VERBOSE) -o $@ $(VPOX_PATH_WEBSERVICE)/websrv-php.xsl $<
+
+endif # VPOX_ONLY_SDK
+
+# generate typemap.dat (used by wsdl2h) from main XIDL file
+$(VPOXWEB_TYPEMAP): $(VPOXWEB_IDL_SRC) $(VPOX_PATH_WEBSERVICE)/websrv-typemap.xsl $(VPOX_PATH_IDL)/typemap-shared.inc.xsl $(RECOMPILE_ON_MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_IDL_SRC) using websrv-typemap.xsl)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOXWEB_XSLTPROC_VERBOSE) -o $@ $(VPOX_PATH_WEBSERVICE)/websrv-typemap.xsl $<
+
+# generate gsoap pseudo-C header file from that WSDL; once via XSLT...
+$(VPOXWEB_GSOAPH_FROM_XSLT): $(VPOXWEB_WSDL) $(VPOX_PATH_WEBSERVICE)/websrv-wsdl2gsoapH.xsl $(VPOX_PATH_IDL)/typemap-shared.inc.xsl $(RECOMPILE_ON_MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_WSDL) using websrv-wsdl2gsoapH.xsl)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOXWEB_XSLTPROC_VERBOSE) -o $@ $(VPOX_PATH_WEBSERVICE)/websrv-wsdl2gsoapH.xsl $<
+
+VPOX_NSMAP = $(VPOXWEB_OUT_DIR)/vpoxwebsrv.nsmap
+$(VPOX_NSMAP): $(VPOXWEB_IDL_SRC) $(VPOX_PATH_WEBSERVICE)/websrv-nsmap.xsl $(VPOX_PATH_IDL)/typemap-shared.inc.xsl $(RECOMPILE_ON_MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_IDL_SRC) using websrv-nsmap.xsl)
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(VPOX_XSLTPROC) $(VPOXWEB_XSLTPROC_VERBOSE) -o $@ $(VPOX_PATH_WEBSERVICE)/websrv-nsmap.xsl $<
+
+ifdef VPOX_GSOAP_INSTALLED
+# ... and once with the gSOAP tool (just for comparison, we don't use it for licensing reasons)
+$(VPOXWEB_GSOAPH_FROM_GSOAP): $(VPOXWEB_WSDL) $(VPOXWEB_TYPEMAP) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,)
+	$(QUIET)$(RM) -f -- $@
+	$(VPOX_WSDL2H) $(VPOXWEB_WSDL_VERBOSE) -t$(VPOXWEB_TYPEMAP) -nvpox -o $@ $<
+
+# this sets the gsoap header that we use for further compilation; if stuff works, then the
+# one we generate via XSLT produces the same end result as the one from the gSOAP tool;
+# with this variable we can swap for testing, but shipped code must use VPOXWEB_GSOAPH_FROM_XSLT
+GSOAPH_RELEVANT = $(VPOXWEB_GSOAPH_FROM_XSLT)
+
+# wsdl2h -v: verbose
+# wsdl2h -e: don't qualify enum names
+# wsdl2h -n<prefix>: namespace header prefix
+
+## @todo change this to state explicitly what will be generated?
+
+# generate server and client code from gsoap pseudo-C header file
+$(VPOXWEB_OUT_DIR)/gsoap_generate_all_ts \
++ $(VPOXWEB_OUT_DIR)/soapH.h \
++ $(VPOXWEB_SOAP_CLIENT_H) \
++ $(VPOXWEB_OUT_DIR)/soapC.cpp \
++ $(VPOXWEB_OUT_DIR)/soapClient.cpp \
++ $(VPOXWEB_OUT_DIR)/soapServer.cpp \
+: $(VPOXWEB_GSOAPH_FROM_GSOAP) $(VPOXWEB_GSOAPH_FROM_XSLT) $(VPOX_NSMAP) $(VPOX_PATH_WEBSERVICE)/stdsoap2.sed \
+		$(RECOMPILE_ON_MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,,lots of files,$(GSOAPH_RELEVANT))
+	$(RM) -f $@
+	$(REDIRECT) -C $(VPOXWEB_OUT_DIR) -- $(VPOX_SOAPCPP2) $(VPOXWEB_SOAPCPP2_SKIP_FILES) -L -2 -w -I$(VPOX_PATH_GSOAP_IMPORT) $(GSOAPH_RELEVANT)
+ifeq ($(KBUILD_TARGET),win) # MSC -Wall workaround.
+	$(CP) -f "$(VPOXWEB_SOAP_CLIENT_H)" "$(VPOXWEB_SOAP_CLIENT_H).tmp"
+	$(SED) -f $(VPOX_PATH_WEBSERVICE)/stdsoap2.sed --output "$(VPOXWEB_SOAP_CLIENT_H)" "$(VPOXWEB_SOAP_CLIENT_H).tmp"
+	$(RM) -f "$(VPOXWEB_SOAP_CLIENT_H).tmp"
+endif
+	$(APPEND) $@ done
+
+# Copy the generated headers and stuff.  This was split into a separate rule
+# way back because we thought we could use $(wildcard ) and avoid the shell,
+# however we cannot as it is subject to caching.  Let the shell do the globbing.
+# GSOAP versions 2.8 and later do not generate the unneeded soapvpox*.h files
+# any more. Ignoring the exit code is the simple solution, accepting the error.
+$(VPOXWEB_OUT_DIR)/gsoap_copy_all_ts: $(VPOXWEB_OUT_DIR)/gsoap_generate_all_ts | $$(dir $$@)
+	$(RM) -f $@
+	$(MKDIR) -p $(PATH_TARGET_SOAPDEMOXML) $(PATH_TARGET_SOAPDEMOHEADERS) $(PATH_TARGET_SOAPDEMONSMAPS)
+ifdef VPOX_GSOAP_VERBOSE
+	$(MV_EXT) -f -- $(VPOXWEB_OUT_DIR)/*.req.xml $(VPOXWEB_OUT_DIR)/*.res.xml $(PATH_TARGET_SOAPDEMOXML)/
+endif
+	-$(MV_EXT) -f -- $(VPOXWEB_OUT_DIR)/soapvpox*.h $(PATH_TARGET_SOAPDEMOHEADERS)/
+	$(MV_EXT) -f -- $(VPOXWEB_OUT_DIR)/vpoxBinding.nsmap $(PATH_TARGET_SOAPDEMONSMAPS)/
+	$(APPEND) $@ done
+
+$(PATH_TARGET_SOAPDEMONSMAPS) \
+$(PATH_TARGET_SOAPDEMOHEADERS)/soapvpoxBindingProxy.h \
+$(PATH_TARGET_SOAPDEMOHEADERS)/soapvpoxBindingObject.h: $(VPOXWEB_OUT_DIR)/gsoap_copy_all_ts
+
+# soapcpp2 -2: generate SOAP 1.2 calls
+# soapcpp2 -S: server-side code only
+# soapcpp2 -L: don't generate soapClientLib/soapServerLib
+# soapcpp2 -w: don't generate WSDL and schema files
+# soapcpp2 -x: don't generate sample XML files
+
+ifndef VPOX_WITHOUT_SPLIT_SOAPC
+#
+# Split up the soapC.cpp monster into manageable bits that can be
+# built in parallel and without exhausting all available memory.
+#
+$(VPOXWEB_OUT_DIR)/soapC-1.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-2.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-3.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-4.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-5.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-6.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-7.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-8.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-9.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-10.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-11.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-12.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-13.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-14.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-15.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-16.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-17.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-18.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-19.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-20.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-21.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-22.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-23.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-24.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-25.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-26.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-27.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-28.cpp \
++ $(VPOXWEB_OUT_DIR)/soapC-29.cpp \
+: $(VPOXWEB_OUT_DIR)/soapC.cpp $$(split-soapC_1_TARGET) | $$(dir $$@)
+	$(RM) -f -- $(wildcard $(VPOXWEB_OUT_DIR)/soapC-?.cpp $(VPOXWEB_OUT_DIR)/soapC-??.cpp)
+	$(split-soapC_1_TARGET) $(VPOXWEB_OUT_DIR)/soapC.cpp $(VPOXWEB_OUT_DIR) 29
+endif # !VPOX_WITHOUT_SPLIT_SOAPC
+
+endif # VPOX_GSOAP_INSTALLED
+
+
+
+# generate method maps in server: map wsdl operations to com/xpcom method calls
+$(VPOXWEB_OUT_DIR)/methodmaps.cpp: $(VPOXWEB_IDL_SRC) $(VPOX_PATH_WEBSERVICE)/websrv-cpp.xsl $(VPOX_PATH_IDL)/typemap-shared.inc.xsl $(RECOMPILE_ON_MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,,$@,$(VPOXWEB_IDL_SRC) using websrv-cpp.xsl)
+	$(QUIET)$(VPOX_XSLTPROC) -o $@ $(VPOX_PATH_WEBSERVICE)/websrv-cpp.xsl $<
+
+# generate C file which contains vpoxweb.wsdl
+$$(VPOXWEB_OUT_DIR)/vpoxweb-wsdl.c: $(VPOXWEB_WSDL) $(VPOX_BIN2C)
+	$(call MSG_TOOL,bin2c,vpoxweb-wsdl,$<,$@)
+	$(QUIET)$(VPOX_BIN2C) -ascii VPoxWebWSDL $< $@
+
+
+ifdef VPOX_ONLY_SDK
+
+$(VPOXWEB_JAXWSSAMPLE): $(VPOX_PATH_WEBSERVICE)/samples/java/jax-ws/clienttest.java
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(MKDIR) -p $(VPOXWEB_SAMPLES_JAXWS_DIR)
+	$(QUIET)$(SED) -e 's/{VPOX_API_SUFFIX}/$(VPOX_API_SUFFIX)/' <  $< >  $@
+
+$(VPOXWEB_METRICSAMPLE): $(VPOX_PATH_WEBSERVICE)/samples/java/jax-ws/metrictest.java
+	$(QUIET)$(RM) -f -- $@
+	$(QUIET)$(MKDIR) -p $(VPOXWEB_SAMPLES_JAXWS_DIR)
+	$(QUIET)$(SED) -e 's/{VPOX_API_SUFFIX}/$(VPOX_API_SUFFIX)/' <  $< >  $@
+
+endif # VPOX_ONLY_SDK
+
+include $(FILE_KBUILD_SUB_FOOTER)

@@ -1,0 +1,351 @@
+# $Id: Config.kmk $
+## @file
+# kBuild Configuration file for the manual.
+#
+
+#
+# Copyright (C) 2010-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+ifndef VPOX_DOC_MANUAL_CONFIG_KMK_INCLUDED
+VPOX_DOC_MANUAL_CONFIG_KMK_INCLUDED = 1
+
+# Include the top-level configure file.
+ifndef VPOX_ROOT_CONFIG_KMK_INCLUDED
+ include $(PATH_ROOT)/Config.kmk
+endif
+
+
+#
+# Globals.
+#
+
+# Source location.
+VPOX_PATH_MANUAL_SRC     := $(PATH_ROOT)/doc/manual
+# Output location.
+VPOX_PATH_MANUAL_OUTBASE := $(PATH_OBJ)/manual
+
+## List of refentry files (manpages).
+VPOX_MANUAL_XML_REFENTRY_FILES := \
+	man_VPoxManage-snapshot.xml \
+	man_VPoxManage-clonevm.xml \
+	man_VPoxManage-mediumio.xml \
+	man_VPoxManage-sharedfolder.xml \
+	man_VPoxManage-dhcpserver.xml \
+	man_VPoxManage-debugvm.xml \
+	man_VPoxManage-extpack.xml \
+	man_VPoxManage-unattended.xml \
+	man_VPoxManage-cloud.xml \
+	man_VPoxManage-cloudprofile.xml
+
+## List of user manual XML files.
+VPOX_MANUAL_XML_FILES = \
+	UserManual.xml \
+	user_Preface.xml \
+	user_Introduction.xml \
+	user_Installation.xml \
+	user_BasicConcepts.xml \
+	user_GuestAdditions.xml \
+	user_Storage.xml \
+	user_Networking.xml \
+	user_Frontends.xml \
+	user_VPoxManage.xml \
+	user_AdvancedTopics.xml \
+	user_Technical.xml \
+	user_VirtualPoxAPI.xml \
+	user_Troubleshooting.xml \
+	user_Security.xml \
+	user_KnownIssues.xml \
+	user_ChangeLog.xml \
+	user_ThirdParty.xml \
+	user_PrivacyPolicy.xml \
+	user_Glossary.xml \
+	oracle-accessibility-en.xml \
+	oracle-diversity.xml \
+	oracle-support-en.xml
+
+## List of user manual XML files common for all languages.
+VPOX_MANUAL_XML_FILES_COMMON = \
+	$(VPOX_PATH_MANUAL_SRC)/user_ChangeLogImpl.xml
+
+
+# Tool locations.
+ifndef VPOX_OSE
+ # use docbook from our tools directory
+ VPOX_PATH_DOCBOOK        ?= $(PATH_DEVTOOLS)/common/DocBook/v1.69.1
+ VPOX_PATH_DOCBOOK_DTD    ?= $(PATH_DEVTOOLS)/common/docbook-xml/v4.5
+else
+ # use docbook of the build host
+ VPOX_PATH_DOCBOOK        ?= /usr/share/xml/docbook/stylesheet/docbook-xsl
+ VPOX_PATH_DOCBOOK_DTD    ?= /usr/share/xml/docbook/schema/dtd/4.5
+endif
+VPOX_XML_CATALOG          ?= $(VPOX_PATH_MANUAL_OUTBASE)/catalog
+VPOX_XML_CATALOG_DOCBOOK  ?= $(VPOX_PATH_MANUAL_OUTBASE)/docbook
+VPOX_XML_CATALOG_MANUAL   ?= $(VPOX_PATH_MANUAL_OUTBASE)/manual
+VPOX_XML_ENTITIES         ?= $(VPOX_PATH_MANUAL_OUTBASE)/all-entities.ent
+
+# xsltproc with the catalog trick if applicable (set XML_DEBUG_CATALOG to
+# non-zero value to debug file/uri resolution through the catalogs, using
+# one of them is enough, they show the same information).
+ifdef VPOX_XML_CATALOG
+ VPOX_XSLTPROC_WITH_CAT    = $(REDIRECT) -E "XML_CATALOG_FILES=$(VPOX_XML_CATALOG)" -E "XML_DEBUG_CATALOG=" $1 -- \
+	$(VPOX_XSLTPROC) --nonet --xinclude $(VPOX_XSLTPROC_OPTS) --path "$(VPOX_PATH_MANUAL_OUTBASE)"
+ VPOX_XMLLINT_WITH_CAT     = $(REDIRECT) -E "XML_CATALOG_FILES=$(VPOX_XML_CATALOG)" -E "XML_DEBUG_CATALOG=" -- \
+	$(VPOX_XMLLINT) --nonet --xinclude --noout $(VPOX_XMLLINT_OPTS) --path "$(VPOX_PATH_MANUAL_OUTBASE)"
+else
+ VPOX_XSLTPROC_WITH_CAT    = $(if $(1), $(REDIRECT) $1 --,) $(VPOX_XSLTPROC) --nonet --xinclude $(VPOX_XSLTPROC_OPTS) \
+	--path "$(VPOX_PATH_MANUAL_OUTBASE)"
+ VPOX_XMLLINT_WITH_CAT     = $(VPOX_XMLLINT) --nonet --xinclude --noout $(VPOX_XMLLINT_OPTS) --path "$(VPOX_PATH_MANUAL_OUTBASE)"
+endif
+
+
+# Location of the generate stylesheet for transformating xref elements into
+# name user manual sections.
+VPOX_XML_XREF_TO_TEXT      = $(VPOX_PATH_MANUAL_OUTBASE)/xref-to-text.xsl
+
+##
+# Emits rules for preprocessing refentry sources (applying remarks element),
+# and for producing the actual man pages.
+#
+# $(evalcall2 def_vpox_refentry_to_manpage)
+# @param    1   The output directory.
+# @param    2   The XML file name (no path).
+# @param    3   The XML file with full path.
+# @param    4   Non-empty if xrefs to replace.
+define def_vpox_refentry_preprocess_for_manpage
+$(1)/$(2): \
+		$(3) \
+		$$(VPOX_PATH_MANUAL_SRC)/docbook-refentry-to-manpage-preprocessing.xsl \
+		$(if $(4),$$(VPOX_XML_XREF_TO_TEXT),) \
+		$$(VPOX_XML_CATALOG) $$(VPOX_XML_CATALOG_DOCBOOK) $$(VPOX_XML_CATALOG_MANUAL) \
+		$$(VPOX_VERSION_STAMP) | $$$$(dir $$$$@)
+	$$(call MSG_TOOL,xsltproc $$(notdir $$(firstword $$(filter %.xsl,$$^))),,$$(firstword $$(filter %.xml,$$^)),$$@)
+	$$(QUIET)$$(RM) -f "$$@"
+	$$(QUIET)$$(call VPOX_XSLTPROC_WITH_CAT) --output $$@ \
+		"$$(VPOX_PATH_MANUAL_SRC)/docbook-refentry-to-manpage-preprocessing.xsl" $$<
+ifneq ($(4),)
+	$$(QUIET)$$(call VPOX_XSLTPROC_WITH_CAT) --output $$@.tmp $$(VPOX_XML_XREF_TO_TEXT) $$@
+	$$(QUIET)$$(MV) -f -- "$$@.tmp" "$$@"
+endif
+if defined(VPOX_HAVE_XMLLINT) && "$(USER)" == "bird" # Effing stuff happends on build servers, probably kmk related...
+	$$(VPOX_XMLLINT_WITH_CAT) --dtdvalid $$(VPOX_PATH_DOCBOOK_DTD)/docbookx.dtd $$@
+endif
+endef
+
+##
+# Generate a single header file containing everything (no C file).
+#
+# @param   1   Destination file.
+# @param   2   Full source file path.
+# @param   3   Help infix.
+define def_vpox_single_refentry_to_h
+$(1).ts +| $(1): \
+		$$(VPOX_DOCBOOK_REFENTRY_TO_C_HELP) \
+		$$(VPOX_DOCBOOK_REFENTRY_TO_H_HELP) \
+               $(2) \
+		$$(VPOX_XML_CATALOG) $$(VPOX_XML_CATALOG_DOCBOOK) $$(VPOX_XML_CATALOG_MANUAL) $(MAKEFILE) | $$$$(dir $$$$@)
+	$$(call MSG_TOOL,xsltproc $$(notdir $$(firstword $$(filter %.xsl,$$^))),,$$(filter %.xml,$$^),$$(patsubst %.ts,%,$$@))
+	$$(QUIET)$$(APPEND) -tn "$$@" \
+		'/* Autogenerated by $$(notdir $$(filter %.xsl,$$^)), do not edit! */' \
+		'' \
+		'#include <iprt/message.h>' \
+		'' \
+               'typedef enum HELP_CMD_$(3)' \
+               '{' \
+               '    HELP_CMD_INVALID = 0,'
+	$$(QUIET)$$(call VPOX_XSLTPROC_WITH_CAT, -a+to "$$@") \
+		--stringparam 'g_sMode' 'cmd' $$(VPOX_DOCBOOK_REFENTRY_TO_H_HELP) $(2)
+	$$(QUIET)$$(APPEND) -n "$$@" \
+		'    HELP_CMD_END' \
+		'} HELP_CMD_VPOXMANAGE;' \
+		''
+	$$(NLTAB)$$(QUIET)$$(call VPOX_XSLTPROC_WITH_CAT, -a+to "$$@") \
+		--stringparam 'g_sMode' 'subcmd' $$(VPOX_DOCBOOK_REFENTRY_TO_H_HELP) $(2)
+	$$(QUIET)$$(APPEND) -n "$$@" \
+		''
+	$$(NLTAB)$$(QUIET)$$(call VPOX_XSLTPROC_WITH_CAT, -a+to "$$@") $$(VPOX_DOCBOOK_REFENTRY_TO_C_HELP) $(2)
+	$$(QUIET)$$(APPEND) -n "$$@" \
+               '' \
+               '/* end of file */'
+	$$(QUIET)$$(CP) --changed -- "$$@" "$$(patsubst %.ts,%,$$@)"
+endef
+
+
+#
+# Make sure we've got a rule to make the output directory.
+#
+BLDDIRS += $(VPOX_PATH_MANUAL_OUTBASE)
+
+
+ifdef VPOX_XML_CATALOG
+ # Trickery for making sure that the file:/// URLs end up with exactly 3
+ # slashes, both on Unixy OSes (where the absolute path contributes one more,
+ # and some very picky xsltproc variants are floating around which do not work
+ # quite correctly with file:////, doing incorrect filename transformations)
+ # and on Windows (where the absolute path starts with a drive letter).
+ VPOX_FILE_URL_MAYBE_SLASH = $(if $(eq $(KBUILD_HOST),win),/,)
+ #
+ # To avoid network I/O for fetching DTDs, we generate catalogs mapping the public
+ # entity IDs to local files.  (Obviously, only done when we have local files.)
+ #
+ # Create a catalog file for xsltproc that points to docbook catalog.
+ $(VPOX_XML_CATALOG): $(VPOX_PATH_MANUAL_SRC)/Config.kmk | $$(dir $$@)
+	$(call MSG_L1,Creating catalog $@)
+	$(QUIET)$(APPEND) -tn "$@" \
+		'<?xml version="1.0"?>' \
+		'<!DOCTYPE catalog PUBLIC "-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN" "http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd">' \
+		'<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">' \
+		'  <delegatePublic publicIdStartString="-//OASIS/ENTITIES DocBook XML"      catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_DOCBOOK)"/>' \
+		'  <delegatePublic publicIdStartString="-//OASIS/DTD DocBook XML"           catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_DOCBOOK)"/>' \
+		'  <delegateSystem systemIdStartString="http://www.oasis-open.org/docbook/" catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_DOCBOOK)"/>' \
+		'  <delegateSystem systemIdStartString="http://docbook.org/"                catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_DOCBOOK)"/>' \
+		'  <delegateURI uriStartString="http://www.oasis-open.org/docbook/"         catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_DOCBOOK)"/>' \
+		'  <delegateURI uriStartString="http://docbook.org/"                        catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_DOCBOOK)"/>' \
+		'  <delegateSystem systemIdStartString="$(VPOX_PATH_MANUAL_SRC)"            catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_MANUAL)"/>' \
+		'  <delegateSystem systemIdStartString="$(VPOX_PATH_MANUAL_OUTBASE)"        catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_MANUAL)"/>' \
+		'  <delegateURI uriStartString="$(VPOX_PATH_MANUAL_SRC)"                    catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_MANUAL)"/>' \
+		'  <delegateURI uriStartString="$(VPOX_PATH_MANUAL_OUTBASE)"                catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_MANUAL)"/>' \
+		'  <delegateURI uriStartString="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_SRC)"     catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_MANUAL)"/>' \
+		'  <delegateURI uriStartString="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_OUTBASE)" catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG_MANUAL)"/>' \
+		'</catalog>'
+
+ # Create a docbook catalog file for xsltproc that points to the local docbook files.
+ $(VPOX_XML_CATALOG_DOCBOOK): $(VPOX_PATH_MANUAL_SRC)/Config.kmk | $$(dir $$@)
+	$(call MSG_L1,Creating catalog $@)
+	$(QUIET)$(APPEND) -tn "$@" \
+		'<?xml version="1.0"?>' \
+		'<!DOCTYPE catalog PUBLIC "-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN" "http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd">' \
+		'<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">' \
+		'  <public publicId="-//OASIS//ELEMENTS DocBook XML Information Pool V4.5//EN"          uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/dbpoolx.mod"/>' \
+		'  <public publicId="-//OASIS//DTD DocBook XML V4.5//EN"                                uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/docbookx.dtd"/>' \
+		'  <public publicId="-//OASIS//ENTITIES DocBook XML Character Entities V4.5//EN"        uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/dbcentx.mod"/>' \
+		'  <public publicId="-//OASIS//ENTITIES DocBook XML Notations V4.5//EN"                 uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/dbnotnx.mod"/>' \
+		'  <public publicId="-//OASIS//ENTITIES DocBook XML Additional General Entities V4.5//EN" uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/dbgenent.mod"/>' \
+		'  <public publicId="-//OASIS//ELEMENTS DocBook XML Document Hierarchy V4.5//EN"        uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/dbhierx.mod"/>' \
+		'  <public publicId="-//OASIS//DTD XML Exchange Table Model 19990315//EN"               uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/soextblx.dtd"/>' \
+		'  <public publicId="-//OASIS//DTD DocBook XML CALS Table Model V4.5//EN"               uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/calstblx.dtd"/>' \
+		'  <rewriteSystem systemIdStartString="http://www.oasis-open.org/docbook/xml/4.5" rewritePrefix="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)"/>' \
+		'  <rewriteSystem systemIdStartString="http://docbook.org/xml/4.5"                rewritePrefix="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)"/>' \
+		'  <rewriteURI         uriStartString="http://www.oasis-open.org/docbook/xml/4.5" rewritePrefix="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)"/>' \
+		'  <rewriteURI         uriStartString="http://docbook.org/xml/4.5"                rewritePrefix="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Added Math Symbols: Arrow Relations//EN"   uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-amsa.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Added Math Symbols: Binary Operators//EN"  uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-amsb.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Added Math Symbols: Delimiters//EN"        uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-amsc.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Added Math Symbols: Negated Relations//EN" uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-amsn.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Added Math Symbols: Ordinary//EN"          uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-amso.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Added Math Symbols: Relations//EN"         uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-amsr.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Box and Line Drawing//EN"                  uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-box.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Russian Cyrillic//EN"                      uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-cyr1.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Non-Russian Cyrillic//EN"                  uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-cyr2.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Diacritical Marks//EN"                     uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-dia.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Greek Letters//EN"                         uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-grk1.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Monotoniko Greek//EN"                      uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-grk2.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Greek Symbols//EN"                         uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-grk3.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Alternative Greek Symbols//EN"             uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-grk4.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Added Latin 1//EN"                         uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-lat1.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Added Latin 2//EN"                         uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-lat2.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Numeric and Special Graphic//EN"           uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-num.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES Publishing//EN"                            uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-pub.ent"/>' \
+		'  <public publicId="ISO 8879:1986//ENTITIES General Technical//EN"                     uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK_DTD)/ent/iso-tech.ent"/>' \
+		'</catalog>'
+
+ # Create a docbook catalog file for xsltproc that points to the local manual files in non-default locations
+ $(VPOX_XML_CATALOG_MANUAL): $(VPOX_PATH_MANUAL_SRC)/Config.kmk | $$(dir $$@)
+	$(call MSG_L1,Creating catalog $@)
+	$(QUIET)$(APPEND) -tn "$@" \
+		'<?xml version="1.0"?>' \
+		'<!DOCTYPE catalog PUBLIC "-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN" "http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd">' \
+		'<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/common/oracle-accessibility-en.xml"            uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_SRC)/en_US/oracle-accessibility-en.xml"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/common/oracle-diversity.xml"					uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_SRC)/en_US/oracle-diversity.xml"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/common/oracle-support-en.xml"                  uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_SRC)/en_US/oracle-support-en.xml"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/en_US/user_ChangeLogImpl.xml"                  uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_SRC)/user_ChangeLogImpl.xml"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/titlepage-htmlhelp.xsl"                        uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_OUTBASE)/titlepage-htmlhelp.xsl"/>' \
+		$(foreach x,user_VPoxManage_CommandsOverview.xml user_isomakercmd-man.xml $(addprefix user_,$(VPOX_MANUAL_XML_REFENTRY_FILES) man_VPoxHeadless.xml man_vpoximg-mount.xml)\
+		,'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/en_US/$(x)"        uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_OUTBASE)/en_US/$(x)"/>') \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/en_US/SDKRef_apiref.xml"                       uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_OUTBASE)/en_US/SDKRef_apiref.xml"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/en_US/all-entities.ent"                        uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_OUTBASE)/all-entities.ent"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/html/docbook.xsl"                              uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK)/html/docbook.xsl"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/html/chunk.xsl"                                uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK)/html/chunk.xsl"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/htmlhelp/htmlhelp.xsl"                         uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK)/htmlhelp/htmlhelp.xsl"/>' \
+		'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/manpages/docbook.xsl"                          uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_DOCBOOK)/manpages/docbook.xsl"/>' \
+		'</catalog>'
+
+endif # VPOX_XML_CATALOG
+
+
+ifdef VPOX_XML_ENTITIES
+
+ $(VPOX_XML_ENTITIES): $(VPOX_PATH_MANUAL_SRC)/Config.kmk $(VPOX_VERSION_STAMP) | $$(dir $$@)
+	$(call MSG_L1,Creating entities $@)
+	$(QUIET)$(APPEND) -tn "$@" \
+		'<!-- Entities for product names -->' \
+		'<!ENTITY product-version "$(VPOX_VERSION_STRING)">' \
+		'<!ENTITY product-name "Oracle VM VirtualPox">' \
+		'<!ENTITY oci "Oracle Cloud Infrastructure">' \
+		'' \
+		'<!-- VPox placeholder entities -->' \
+		'<!ENTITY VPOX_VERSION_MAJOR "$(VPOX_VERSION_MAJOR)" >' \
+		'<!ENTITY VPOX_VERSION_MINOR "$(VPOX_VERSION_MINOR)" >' \
+		'<!ENTITY VPOX_VERSION_BUILD "$(VPOX_VERSION_BUILD)" >' \
+		'<!ENTITY VPOX_VERSION_STRING "$(VPOX_VERSION_STRING)" >' \
+		'<!ENTITY VPOX_VENDOR "$(VPOX_VENDOR)" >' \
+		'<!ENTITY VPOX_C_YEAR "$(VPOX_C_YEAR)" >' \
+		'<!ENTITY VPOX_PRODUCT '\''<trademark class="registered">Oracle</trademark> VM <trademark class="registered">VirtualPox</trademark>'\'' >' \
+		'' \
+		'<!-- Entities for Oracle Help Center -->' \
+		'<!ENTITY ohc-base-url "https://docs.oracle.com/en">' \
+		'<!ENTITY ohc-doc-page "&ohc-base-url;/virtualization/virtualpox/index.html">'
+
+endif # VPOX_XML_ENTITIES
+
+
+## Produce stylesheet for translating cross references (xref) to user manual
+# chapters and sections in the man pages and --help output.
+#
+# Note! This requires processing UserManual.xml as a single document in order
+#       to get the correct chapter and section numbering, so we use a catalog
+#       file to replace the generated XML documents it includes with a dummy
+#       one.  This reduces the dependencies and recipies we require to build
+#       VPoxManage and the RTIsoMaker (w/ derivatives).
+$(VPOX_XML_XREF_TO_TEXT) + $(VPOX_XML_XREF_TO_TEXT).cat: \
+		$(VPOX_PATH_MANUAL_SRC)/docbook-refentry-link-replacement-xsl-gen.xsl \
+		$(addprefix $(VPOX_PATH_MANUAL_SRC)/en_US/,$(VPOX_MANUAL_XML_FILES)) \
+		$(VPOX_MANUAL_XML_FILES_COMMON) \
+		$(VPOX_XML_CATALOG) $(VPOX_XML_CATALOG_DOCBOOK) $(VPOX_XML_CATALOG_MANUAL) $(VPOX_XML_ENTITIES) \
+               | $$(dir $$@)
+	$(call MSG_L1,Creating stylesheet $@)
+	$(QUIET)$(APPEND) -nt "$(VPOX_XML_XREF_TO_TEXT).cat" \
+		'<?xml version="1.0"?>' \
+		'<!DOCTYPE catalog PUBLIC "-//OASIS//DTD Entity Resolution XML Catalog V1.0//EN" "http://www.oasis-open.org/committees/entity/release/1.0/catalog.dtd">' \
+		'<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">' \
+		$(foreach x,user_VPoxManage_CommandsOverview.xml user_isomakercmd-man.xml $(addprefix user_,$(VPOX_MANUAL_XML_REFENTRY_FILES))\
+		,'  <system systemId="$(VPOX_PATH_MANUAL_SRC)/en_US/$(x)" uri="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_PATH_MANUAL_SRC)/dummy-sect1.xml"/>') \
+		'  <nextCatalog catalog="file://$(VPOX_FILE_URL_MAYBE_SLASH)$(VPOX_XML_CATALOG)"/>' \
+		'</catalog>'
+	$(QUIET)$(call VPOX_XSLTPROC_WITH_CAT, -E "XML_CATALOG_FILES=$(VPOX_XML_XREF_TO_TEXT).cat") \
+		--output "$@" "$<" $(filter %UserManual.xml,$^)
+
+#
+# Generate rules for editing the refentry to C/H style sheets.
+#
+VPOX_DOCBOOK_REFENTRY_TO_C_HELP = $(VPOX_PATH_MANUAL_SRC)/docbook-refentry-to-C-help.xsl
+
+VPOX_DOCBOOK_REFENTRY_TO_H_HELP = $(VPOX_PATH_MANUAL_SRC)/docbook-refentry-to-H-help.xsl
+
+#
+# Manual dependency.
+#
+$(VPOX_PATH_MANUAL_OUTBASE)/docbook-refentry-to-C-help.xsl: $(VPOX_PATH_MANUAL_SRC)/common-formatcfg.xsl
+
+
+endif # !defined(VPOX_DOC_MANUAL_CONFIG_KMK_INCLUDED)
+

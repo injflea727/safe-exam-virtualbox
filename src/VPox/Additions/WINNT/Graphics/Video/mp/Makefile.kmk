@@ -1,0 +1,178 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the Windows guest miniport driver.
+#
+
+#
+# Copyright (C) 2011-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifdef VPOX_WITH_MESA3D
+ ifndef VPOX_MESA3D_CONFIG_KMK_INCLUDED
+  include $(PATH_ROOT)/src/VPox/Additions/3D/Config.kmk
+ endif
+endif
+
+#
+# VPoxVideo - Windows Guest Additions XPDM Miniport Video Driver
+#
+# Note. This has to run on NT4! (*_NT4 => *_W2K3 when targeting 64-bit.)
+#
+SYSMODS += VPoxVideo
+VPoxVideo_TEMPLATE      = VPOXGUESTR0
+VPoxVideo_SDKS          = ReorderCompilerIncs $(VPOX_WINDDK_GST_NT4)
+VPoxVideo_DEFS          = VPOX_XPDM_MINIPORT VPOX_WITH_8BPP_MODES VPOX_USING_$(VPOX_WINDDK_GST_NT4)
+VPoxVideo_DEFS         += LOG_TO_BACKDOOR #LOG_ENABLED
+VPoxVideo_DEFS         += VPOX_SVN_REV=$(VPOX_SVN_REV)
+ifdef VPOX_WITH_VIDEOHWACCEL
+ VPoxVideo_DEFS        += VPOX_WITH_VIDEOHWACCEL
+endif
+VPoxVideo_INCS          = ../../../include .. . $(VPOX_GRAPHICS_INCS)
+VPoxVideo_LDFLAGS.x86   = /Entry:DriverEntry@8
+VPoxVideo_LDFLAGS.amd64 = /Entry:DriverEntry
+VPoxVideo_SOURCES       = \
+	xpdm/VPoxMPDriver.cpp \
+	xpdm/VPoxMP.def \
+	xpdm/VPoxMP.rc \
+	xpdm/VPoxMPVideoPortAPI.cpp \
+	xpdm/VPoxMPInternal.cpp \
+	xpdm/VPoxMPRegistry.cpp \
+	xpdm/VPoxMPIOCTL.cpp \
+	common/VPoxMPUtils.cpp \
+	common/VPoxMPCommon.cpp \
+	common/VPoxMPHGSMI.cpp \
+	common/VPoxMPVidModes.cpp \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIBase.cpp \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIBuffers.cpp \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIHostCmd.cpp \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/Modesetting.cpp
+VPoxVideo_LIBS          = \
+	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/videoprt.lib \
+	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/ntoskrnl.lib \
+	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/hal.lib \
+	$(VPOX_LIB_VBGL_R0) \
+	$(VPOX_LIB_IPRT_GUEST_R0_NT4) \
+	$(VPOX_PATH_ADDITIONS_LIB)/HGSMIGuestR0Lib$(VPOX_SUFF_LIB)
+VPoxVideo_LIBS.x86      = \
+	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/exsup.lib
+
+ifdef VPOX_WITH_WDDM
+ #
+ # VPoxWddm - Windows Guest Additions WDDM Miniport Video Driver
+ #
+ SYSMODS += VPoxWddm
+ VPoxWddm_TEMPLATE         = VPOXGUESTR0
+ VPoxWddm_SDKS             = $(VPOX_WINDDK_GST_W8)
+ VPoxWddm_DEFS            += VPOX_WDDM_MINIPORT VPOX_WITH_WDDM VPOX_WITH_HGCM
+ # WIN9X_COMPAT_SPINLOCK inlines KeInitializeSpinLock in W8 DDK (Windows 7 or older ntoskrnl does not export it).
+ VPoxWddm_DEFS            += WIN9X_COMPAT_SPINLOCK
+ VPoxWddm_DEFS            += VPOX_WITH_8BPP_MODES
+ ifdef VPOX_WITH_VIDEOHWACCEL
+  VPoxWddm_DEFS           += VPOX_WITH_VIDEOHWACCEL
+ endif
+ ifdef VPOXWDDM_WITH_VBVA
+  VPoxWddm_DEFS           += VPOXWDDM_WITH_VBVA
+  VPoxWddm_DEFS           += VPOXWDDM_RENDER_FROM_SHADOW
+  ifdef VPOXVDMA_WITH_VBVA
+   VPoxWddm_DEFS          += VPOXVDMA_WITH_VBVA
+  endif
+ endif
+ VPoxWddm_DEFS            += LOG_TO_BACKDOOR
+ VPoxWddm_DEFS            += VPOX_SVN_REV=$(VPOX_SVN_REV)
+ VPoxWddm_INCS            += \
+ 	../../../include \
+ 	.. \
+ 	. \
+ 	$(VPOX_GRAPHICS_INCS)
+
+ VPoxWddm_LDFLAGS.x86     += /Entry:DriverEntry@8
+ VPoxWddm_LDFLAGS.amd64   += /Entry:DriverEntry
+
+ VPoxWddm_SOURCES          = \
+ 	wddm/VPoxMPWddm.cpp \
+ 	wddm/VPoxMPLegacy.cpp \
+	wddm/VPoxMPVidPn.cpp \
+	wddm/VPoxMPVdma.cpp \
+	wddm/VPoxMPShgsmi.cpp \
+ 	wddm/VPoxMPCm.cpp \
+ 	wddm/VPoxMPSa.cpp \
+ 	wddm/VPoxMPMisc.cpp \
+ 	wddm/VPoxWddm.rc \
+ 	wddm/VPoxMPRegistry.cpp \
+ 	wddm/VPoxMPVModes.cpp \
+ 	common/VPoxMPUtils.cpp \
+ 	common/VPoxMPCommon.cpp \
+ 	common/VPoxMPHGSMI.cpp \
+ 	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIBase.cpp \
+ 	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIBuffers.cpp \
+ 	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIHostCmd.cpp \
+ 	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/VBVABase.cpp \
+ 	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/Modesetting.cpp
+
+ ifdef VPOXWDDM_WITH_VBVA
+  VPoxWddm_SOURCES        += \
+    wddm/VPoxMPVbva.cpp
+ endif
+ ifdef VPOX_WITH_VIDEOHWACCEL
+  VPoxWddm_SOURCES        += \
+    wddm/VPoxMPVhwa.cpp
+ endif
+
+ VPoxWddm_LIBS             = \
+ 	$(PATH_SDK_$(VPOX_WINDDK_GST_W8)_LIB)/BufferOverflowK.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_GST_W8)_LIB)/ntoskrnl.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_GST_W8)_LIB)/hal.lib \
+ 	$(PATH_SDK_$(VPOX_WINDDK_GST_W8)_LIB)/displib.lib \
+ 	$(VPOX_LIB_VBGL_R0) \
+ 	$(VPOX_LIB_IPRT_GUEST_R0) \
+ 	$(VPOX_PATH_ADDITIONS_LIB)/HGSMIGuestR0Lib$(VPOX_SUFF_LIB)
+
+ VPoxWddm_LIBS.x86         = \
+ 	$(PATH_SDK_$(VPOX_WINDDK_GST_W8)_LIB)/memcmp.lib
+
+ ifdef VPOX_WITH_MESA3D
+  VPoxWddm_DEFS           += VPOX_WITH_MESA3D
+  VPoxWddm_DEFS           += __STDC_VERSION__=0    # for mesa include/c99_compat.h
+  VPoxWddm_DEFS           += WIN9X_COMPAT_SPINLOCK # to avoid multiple KeInitializeSpinLock on amd64
+  VPoxWddm_INCS           += \
+  	$(VPOX_PATH_3D)/win/include \
+  	$(VPOX_PATH_VMSVGA_INC)
+  VPoxWddm_SOURCES        += \
+  	wddm/gallium/Svga.cpp \
+  	wddm/gallium/SvgaCmd.cpp \
+  	wddm/gallium/SvgaFifo.cpp \
+  	wddm/gallium/SvgaHostObjects.cpp \
+  	wddm/gallium/SvgaHw.cpp \
+  	wddm/gallium/VPoxMPGaFence.cpp \
+  	wddm/gallium/VPoxMPGaUtils.cpp \
+  	wddm/gallium/VPoxMPGaWddm.cpp
+ endif
+
+endif # VPOX_WITH_WDDM
+
+#
+# Signing requires both miniport and display drivers
+# so it'd be dealt with in the parent makefile.
+#
+ifdef VPOX_SIGN_ADDITIONS
+ VPoxVideo_INSTTYPE            = none
+ VPoxVideo_DEBUG_INSTTYPE      = both
+ ifdef VPOX_WITH_WDDM
+  VPoxWddm_INSTTYPE            = none
+  VPoxWddm_DEBUG_INSTTYPE      = both
+ endif
+endif # VPOX_SIGN_ADDITIONS
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

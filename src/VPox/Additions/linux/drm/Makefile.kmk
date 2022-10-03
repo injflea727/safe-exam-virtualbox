@@ -1,0 +1,42 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the vpoxvideo DRM module (linux kernel OpenGL module).
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Populate FILES_VPOXVIDEO_DRM_NOBIN
+#
+INSTALLS += vpoxvideo-src
+include $(PATH_SUB_CURRENT)/files_vpoxvideo_drv
+vpoxvideo-src_DEPS         = \
+	$(PATH_ROOT)/src/VPox/Additions/linux/drm/files_vpoxvideo_drv \
+	$(PATH_ROOT)/src/VPox/Additions/linux/drm/indent.sed
+vpoxvideo-src_INST         = $(INST_ADDITIONS)src/vpoxvideo/
+vpoxvideo-src_SOURCES      = \
+	$(subst $(DQUOTE),,$(FILES_VPOXVIDEO_DRM_NOBIN))
+vpoxvideo-src_EXEC_SOURCES = \
+	$(subst $(DQUOTE),,$(FILES_VPOXVIDEO_DRM_BIN))
+vpoxvideo-src_INSTALLER = $(RM_EXT) -f -- "$2" && \
+    $(if $(filter %.c %.h,$2),$(SED) -f $(PATH_ROOT)/src/VPox/Additions/linux/drm/indent.sed \
+    --output "$2" "$1",$(CP_EXT) "$1" "$2") && \
+    $(CHMOD_EXT) "$(if $(mode),$(mode),0644)" "$2"
+
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

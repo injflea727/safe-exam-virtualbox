@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=vpoxtxs
+Exec=sudo sh -c "/opt/validationkit/linux/vpoxtxs-runvm start"
+

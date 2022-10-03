@@ -1,0 +1,1705 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the VPox Main module.
+#
+
+#
+# Copyright (C) 2004-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Make sure our Config.kmk is included.
+#
+ifndef VPOX_MAIN_CONFIG_KMK_INCLUDED
+ include $(PATH_SUB_CURRENT)/Config.kmk
+endif
+
+#
+# Include sub-makefile(s).
+#
+ifndef VPOX_ONLY_EXTPACKS
+ ifdef VPOX_WITH_WEBSERVICES
+  include $(PATH_SUB_CURRENT)/webservice/Makefile.kmk
+ endif
+ include $(PATH_SUB_CURRENT)/testcase/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/cbinding/Makefile.kmk
+ include $(PATH_SUB_CURRENT)/UnattendedTemplates/Makefile.kmk
+ ifndef VPOX_ONLY_SDK
+  include $(PATH_SUB_CURRENT)/src-helper-apps/OpenGLTest/Makefile.kmk
+ endif
+endif
+
+
+#
+# Targets and globals (bit of a mess...)
+#
+VPOX_PATH_MAIN_SRC := $(PATH_SUB_CURRENT)
+
+ifdef VPOX_ONLY_SDK
+ # I'm Evil! Dr. Evil.
+ VPoxCOM_0_OUTDIR = $(PATH_TARGET)/VPoxCOM
+ BLDDIRS += $(VPoxCOM_0_OUTDIR) $(PATH_STAGE_BIN)/components
+ include $(KBUILD_PATH)/tools/$(VPOX_VCC_TOOL).kmk # For the idl /cpp statement.
+ include $(KBUILD_PATH)/sdks/$(VPOX_WINPSDK).kmk
+endif # !VPOX_ONLY_SDK
+
+
+## VPOX_MAIN_DEFS is used by VPoxC, VPoxClient-x86, VPoxSVC and VPoxSVCM, making
+# sure they all have the same set of features enabled.
+VPOX_MAIN_DEFS :=
+ifneq ($(KBUILD_TARGET),win)
+ ifndef VPOX_WITH_XPCOM
+$(error "VPox: VPOX_WITH_XPCOM isn't defined")
+ endif
+VPOX_MAIN_DEFS += VPOX_WITH_GENERIC_SESSION_WATCHER
+endif
+ifdef VPOX_WITH_AUDIO_ALSA
+VPOX_MAIN_DEFS += VPOX_WITH_AUDIO_ALSA
+endif
+ifdef VPOX_WITH_AUDIO_DEBUG
+VPOX_MAIN_DEFS += VPOX_WITH_AUDIO_DEBUG
+endif
+ifdef VPOX_WITH_AUDIO_OSS
+VPOX_MAIN_DEFS += VPOX_WITH_AUDIO_OSS
+endif
+ifdef VPOX_WITH_AUDIO_PULSE
+VPOX_MAIN_DEFS += VPOX_WITH_AUDIO_PULSE
+endif
+ifdef VPOX_WITH_AUDIO_VALIDATIONKIT
+VPOX_MAIN_DEFS += VPOX_WITH_AUDIO_VALIDATIONKIT
+endif
+ifdef VPOX_WITH_AUDIO_VRDE
+VPOX_MAIN_DEFS += VPOX_WITH_AUDIO_VRDE
+endif
+ifdef VPOX_WITH_COPYTOGUEST
+VPOX_MAIN_DEFS += VPOX_WITH_COPYTOGUEST
+endif
+ifdef VPOX_WITH_E1000
+VPOX_MAIN_DEFS += VPOX_WITH_E1000
+endif
+ifdef VPOX_WITH_EXTPACK
+VPOX_MAIN_DEFS += VPOX_WITH_EXTPACK
+endif
+ifdef VPOX_WITH_GUEST_CONTROL
+VPOX_MAIN_DEFS += VPOX_WITH_GUEST_CONTROL
+endif
+ifdef VPOX_WITH_GUEST_PROPS
+VPOX_MAIN_DEFS += VPOX_WITH_GUEST_PROPS
+ ifdef VPOX_WITH_GUEST_PROPS_RDONLY_GUEST
+VPOX_MAIN_DEFS += VPOX_WITH_GUEST_PROPS_RDONLY_GUEST
+ endif
+endif
+ifdef VPOX_WITH_HGCM
+VPOX_MAIN_DEFS += VPOX_WITH_HGCM
+endif
+ifdef VPOX_WITH_HOSTNETIF_API
+VPOX_MAIN_DEFS += VPOX_WITH_HOSTNETIF_API
+endif
+ifdef VPOX_WITH_DHCPD
+VPOX_MAIN_DEFS += VPOX_WITH_DHCPD
+endif
+ifdef VPOX_WITH_LIVE_MIGRATION
+VPOX_MAIN_DEFS += VPOX_WITH_LIVE_MIGRATION
+endif
+ifdef VPOX_WITH_MIDL_PROXY_STUB
+VPOX_MAIN_DEFS += VPOX_WITH_MIDL_PROXY_STUB
+endif
+ifdef VPOX_WITH_NETFLT
+VPOX_MAIN_DEFS += VPOX_WITH_NETFLT
+endif
+ifdef VPOX_WITH_CLOUD_NET
+VPOX_MAIN_DEFS += VPOX_WITH_CLOUD_NET
+endif
+ifdef VPOX_WITH_PCI_PASSTHROUGH
+VPOX_MAIN_DEFS += VPOX_WITH_PCI_PASSTHROUGH
+endif
+ifdef VPOX_WITH_PDM_ASYNC_COMPLETION
+VPOX_MAIN_DEFS += VPOX_WITH_PDM_ASYNC_COMPLETION
+endif
+ifdef VPOX_WITH_SDS
+VPOX_MAIN_DEFS += VPOX_WITH_SDS
+endif
+ifdef VPOX_WITH_SHARED_CLIPBOARD
+VPOX_MAIN_DEFS += VPOX_WITH_SHARED_CLIPBOARD
+ ifdef VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+  VPOX_MAIN_DEFS += VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+ endif
+endif
+ifdef VPOX_WITH_USB_CARDREADER
+VPOX_MAIN_DEFS += VPOX_WITH_USB_CARDREADER
+endif
+ifdef VPOX_WITH_USB_CARDREADER_TEST
+VPOX_MAIN_DEFS += VPOX_WITH_USB_CARDREADER_TEST
+endif
+ifdef VPOX_WITH_VIRTIO
+VPOX_MAIN_DEFS += VPOX_WITH_VIRTIO
+endif
+ifdef VPOX_WITH_VIRTIO_1_0
+VPOX_MAIN_DEFS += VPOX_WITH_VIRTIO_1_0
+endif
+ifdef VPOX_WITH_VIRTIO_NET_1_0
+VPOX_MAIN_DEFS += VPOX_WITH_VIRTIO_NET_1_0
+endif
+ifdef VPOX_WITH_VMSVGA
+VPOX_MAIN_DEFS += VPOX_WITH_VMSVGA
+endif
+ifdef VPOX_WITH_VMSVGA3D
+VPOX_MAIN_DEFS += VPOX_WITH_VMSVGA3D
+endif
+ifdef VPOX_WITH_VUSB
+VPOX_MAIN_DEFS += VPOX_WITH_VUSB
+endif
+ifdef VPOX_WITH_EHCI
+ ifdef VPOX_WITH_USB
+ VPOX_MAIN_DEFS += VPOX_WITH_EHCI
+ endif
+endif
+ifdef VPOX_WITH_EFI_IN_DD2
+ VPOX_MAIN_DEFS += VPOX_WITH_EFI_IN_DD2
+endif
+# Unconditionally enable the new semaphore key generation code
+VPOX_MAIN_DEFS += VPOX_WITH_NEW_SYS_V_KEYGEN
+
+
+VPOX_IDL_FILE.MSCOM    = $(VPOX_PATH_SDK)/bindings/mscom/idl/VirtualPox.idl
+VPOX_IDL_FILE.XPCOM    = $(VPOX_PATH_SDK)/bindings/xpcom/idl/VirtualPox_XPCOM.idl
+
+VPOX_IDL_TYPELIB.XPCOM = $(PATH_STAGE_BIN)/components/VirtualPox_XPCOM.xpt
+VPOX_IDL_HEADER.XPCOM  = $(VPOX_PATH_SDK)/bindings/xpcom/include/VirtualPox_XPCOM.h
+
+# The MS COM specific stuff.
+if defined(VPOX_ONLY_SDK) || "$(KBUILD_TARGET)" == "win"
+ OTHERS         += \
+	$(VPOX_IDL_FILE.MSCOM)
+ OTHER_CLEAN    += \
+	$(VPOX_IDL_FILE.MSCOM)
+
+ INSTALLS += VPox-mscom-bindings-include VPox-mscom-bindings-lib
+ VPox-mscom-bindings-include_INST = $(INST_SDK)bindings/mscom/include/
+ VPox-mscom-bindings-include_MODE = a+r,u+w
+ VPox-mscom-bindings-include_SOURCES = $(VPoxCOM_0_OUTDIR)/VirtualPox.h
+ VPox-mscom-bindings-include_CLEAN = $(VPoxCOM_0_OUTDIR)/VirtualPox.h
+ VPox-mscom-bindings-lib_INST = $(INST_SDK)bindings/mscom/lib/
+ VPox-mscom-bindings-lib_MODE = a+r,u+w
+ VPox-mscom-bindings-lib_SOURCES = $(VPoxCOM_0_OUTDIR)/VirtualPox_i.c \
+	$(VPoxCOM_0_OUTDIR)/VirtualPox.tlb
+ VPox-mscom-bindings-lib_CLEAN = $(VPoxCOM_0_OUTDIR)/VirtualPox_i.c \
+	$(VPoxCOM_0_OUTDIR)/VirtualPox.tlb
+
+ BLDDIRS += $(VPOX_PATH_SDK)/bindings/mscom/idl
+endif
+
+# The XPCOM specific stuff.
+# if defined(VPOX_ONLY_SDK) || "$(KBUILD_TARGET)" != "win" -- does not build on Windows
+if "$(KBUILD_TARGET)" != "win"
+ OTHERS         += $(VPOX_IDL_FILE.XPCOM) $(VPOX_IDL_TYPELIB.XPCOM) $(VPOX_IDL_HEADER.XPCOM)
+ OTHER_CLEAN    += \
+	$(VPOX_IDL_FILE.XPCOM) \
+	$(VPOX_IDL_HEADER.XPCOM) \
+	$(VPOX_IDL_TYPELIB.XPCOM)
+
+ INSTALLS += VPox-xpcom-bindings-lib
+ VPox-xpcom-bindings-lib_INST = $(INST_SDK)bindings/xpcom/lib/
+ VPox-xpcom-bindings-lib_MODE = a+r,u+w
+ VPox-xpcom-bindings-lib_SOURCES = $(VPoxCOM_0_OUTDIR)/VirtualPox_XPCOM_i.c=>VirtualPox_i.c
+ VPox-xpcom-bindings-lib_CLEAN = $(VPoxCOM_0_OUTDIR)/VirtualPox_XPCOM_i.c
+
+ VPOX_MAIN_PREREQS += $(VPOX_IDL_TYPELIB.XPCOM) $(VPOX_IDL_HEADER.XPCOM)
+ BLDDIRS += \
+	$(VPOX_PATH_SDK)/bindings/xpcom/idl \
+	$(VPOX_PATH_SDK)/bindings/xpcom/include
+ # disable VPoxSDS for XPCOM
+ override VPOX_WITH_SDS =
+endif # xpcom
+
+
+#
+# Strip documentation from source XIDL so that we don't get a full
+# recompile every time a comma in the documentation is changed.
+#
+$(call KB_FN_AUTO_CMD_DEPS,$(VPOX_XIDL_FILE).ts)
+$(VPOX_XIDL_FILE).ts +| $(VPOX_XIDL_FILE): \
+		$(VPOX_XIDL_FILE_SRC) \
+		$(VPOX_PATH_MAIN_SRC)/idl/docstrip.xsl \
+		| $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(QUIET)$(VPOX_XSLTPROC) -o $(VPOX_XIDL_FILE).ts-tmp $(VPOX_PATH_MAIN_SRC)/idl/docstrip.xsl $(VPOX_XIDL_FILE_SRC)
+	$(QUIET)$(SED)  -e 's/ *$(DOLLAR)//g'  -e '/^$(DOLLAR)/d' --output $(VPOX_XIDL_FILE).ts $(VPOX_XIDL_FILE).ts-tmp
+	$(QUIET)$(RM) -- $(VPOX_XIDL_FILE).ts-tmp
+	$(QUIET)$(CP) --changed -fv -- $(VPOX_XIDL_FILE).ts $(VPOX_XIDL_FILE)
+
+OTHER_CLEAN += $(VPOX_XIDL_FILE) $(VPOX_XIDL_FILE).ts
+
+
+#
+# The Main API documentation
+#
+VPOX_MAIN_DOC_DIR = $(VPOX_PATH_SDK)/docs
+BLDDIRS += $(VPOX_MAIN_DOC_DIR)
+
+$(PATH_TARGET)/docs.Main: \
+		$(VPOX_PATH_MAIN_SRC)/Doxyfile.Main \
+		$(VPOX_PATH_MAIN_SRC)/idl/doxygen.xsl \
+		$(VPOX_XIDL_FILE_SRC) \
+		| $(PATH_TARGET)/ \
+		$(VPOX_MAIN_DOC_DIR)/
+	$(call MSG_TOOL,xsltproc,doxygen input,$<,$@)
+	$(QUIET)$(RM) -f $(wildcard $(VPOX_MAIN_DOC_DIR)/html/*) $(PATH_TARGET)/docs.Main
+	$(QUIET)$(VPOX_XSLTPROC) -o $(PATH_TARGET)/VirtualPox.idl $(VPOX_PATH_MAIN_SRC)/idl/doxygen.xsl $(VPOX_XIDL_FILE_SRC)
+	$(QUIET)$(REDIRECT) -E 'DOCDIR=$(VPOX_MAIN_DOC_DIR)' -E 'PATH_TARGET=$(PATH_TARGET)' -E 'PATH_CHM=$(subst /,\,$(VPOX_MAIN_DOC_DIR)/VirtualPoxAPI.chm)' \
+		-- doxygen $(VPOX_PATH_MAIN_SRC)/Doxyfile.Main
+	$(QUIET)$(TEST) -s "$(PATH_TARGET)/Main.err" -- $(ECHO_EXT) ">>>>>>>>>>>>>>>>>>>> Main.err: >>>>>>>>>>>>>>>>>>>>>>>>"
+	$(QUIET)$(TEST) -s "$(PATH_TARGET)/Main.err" -- $(CAT) "$(PATH_TARGET)/Main.err"
+	$(QUIET)$(TEST) -s "$(PATH_TARGET)/Main.err" -- $(ECHO_EXT) "<<<<<<<<<<<<<<<<<<<< Main.err <<<<<<<<<<<<<<<<<<<<<<<<<"
+	$(QUIET)$(TEST) -s "$(PATH_TARGET)/Main.err" -- $(ECHO_EXT) "===> **************************************************"
+	$(QUIET)$(TEST) -s "$(PATH_TARGET)/Main.err" -- $(ECHO_EXT) "===> Please fix above doxygen errors/warnings listed in"
+	$(QUIET)$(TEST) -s "$(PATH_TARGET)/Main.err" -- $(ECHO_EXT) "===> $(PATH_TARGET)/Main.err"
+	$(QUIET)$(TEST) -s "$(PATH_TARGET)/Main.err" -- $(ECHO_EXT) "===> **************************************************"
+	-$(EXEC_X86_WIN32) $(VPOX_PATH_HTML_HELP_WORKSHOP)/hhc.exe $(subst /,\\,$(VPOX_MAIN_DOC_DIR)/html/index.hhp)
+	$(APPEND) $(PATH_TARGET)/docs.Main
+# aliases
+docs.main docs.Main: $(PATH_TARGET)/docs.Main
+if !defined(VPOX_ONLY_DOCS) && defined(VPOX_WITH_ALL_DOXYGEN_TARGETS)
+docs:                $(PATH_TARGET)/docs.Main
+else
+docs:
+endif
+
+
+ifndef VPOX_ONLY_SDK
+ #
+ # Generate library with API class wrappers from the XIDL file.
+ #
+ LIBRARIES += VPoxAPIWrap
+ VPoxAPIWrap_TEMPLATE        = VPoxMainLib
+ ifeq ($(KBUILD_TARGET),win)
+  VPoxAPIWrap_USES           = vccprecomp
+  VPoxAPIWrap_PCH_HDR       := $(PATH_SUB_CURRENT)/src-all/win/VPoxAPIWrap-precomp_vcc.h
+ else if $(KBUILD_KMK_REVISION) >= 3256 && "$(KBUILD_TARGET)" != "darwin" && !defined(VPOX_WITHOUT_PRECOMPILED_HEADERS)
+  if $(VPOX_GCC_VERSION_CXX) >= 50000 # GCC 4.x runs into trouble compiling the header.
+VPoxAPIWrap_USES           = gccprecomp
+VPoxAPIWrap_PCH_HDR       := $(PATH_SUB_CURRENT)/src-all/xpcom/VPoxAPIWrap-precomp_gcc.h
+  endif
+ endif
+ VPoxAPIWrap_SOURCES         = \
+ 	$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d \
+ 	$(if-expr defined(VPOX_ONLY_EXTPACKS) \
+	, $(addprefix $(VPoxAPIWrap_0_OUTDIR)/,$(filter \
+	Cloud%\
+	%FormValueWrap.cpp\
+	%FormWrap.cpp\
+	StringArrayWrap.cpp\
+	, $(notdir $(VPOX_MAIN_APIWRAPPER_GEN_SRCS)))) \
+	, $(VPOX_MAIN_APIWRAPPER_GEN_SRCS))
+ VPoxAPIWrap_INTERMEDIATES   = $(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+ VPoxAPIWrap_DEFS.win.x86   += _WIN32_WINNT=0x0500
+ VPoxAPIWrap_DEFS.win.amd64 += _WIN32_WINNT=0x0510
+ VPoxAPIWrap_INCS           += \
+ 	include
+ if ("$(KBUILD_TARGET)" == "solaris" && $(VPOX_GCC_VERSION_CXX) >= 70000)
+  # Avoid too long symbol names with Solaris 11.4 "dtrace: failed to link script .../VPoxAPI.d: failed to allocate space for probe"
+  VPoxAPIWrap_CXXFLAGS.solaris += -freorder-blocks-algorithm=simple -fno-reorder-blocks-and-partition -fno-reorder-functions
+ endif
+ VPoxAPIWrap_CLEAN           = \
+ 	$(wildcard $(VPoxAPIWrap_0_OUTDIR)/*.cpp) \
+ 	$(wildcard $(VPoxAPIWrap_0_OUTDIR)/*.h) \
+ 	$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d.ts \
+ 	$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d \
+ 	$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-headers \
+ 	$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-sources-even \
+ 	$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-sources-odd
+
+ # Two VPox variables used here and/or in the rules generating wrappers.
+ VPoxAPIWrap_VPOX_XSLT       = \
+ 	$(VPOX_PATH_MAIN_SRC)/idl/apiwrap-server.xsl
+
+
+ # This include file (generated at the bottom of this file), defines
+ # VPOX_MAIN_APIWRAPPER_GEN_SRCS and VPOX_MAIN_APIWRAPPER_GEN_HDRS.
+ VPoxAPIWrap_VPOX_KMK_FILE = $(PATH_OUT)/vpoxapiwrap.kmk
+ include $(VPoxAPIWrap_VPOX_KMK_FILE)
+ OTHER_CLEAN += $(VPoxAPIWrap_VPOX_KMK_FILE) $(VPoxAPIWrap_VPOX_KMK_FILE).ts
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  LIBRARIES += VPoxAPIWrap-x86
+  VPoxAPIWrap-x86_TEMPLATE = VPoxMainLib-x86
+  VPoxAPIWrap-x86_EXTENDS  = VPoxAPIWrap
+  VPoxAPIWrap-x86_DTRACE_HDR_FLAGS = -32 # ugly, should be fixed in the tool in Config.kmk
+  ifeq ($(KBUILD_TARGET),win) ## @todo fix inheritance (fixed in r3253)
+   VPoxAPIWrap-x86_USES     = vccprecomp
+   VPoxAPIWrap-x86_PCH_HDR := $(PATH_SUB_CURRENT)/src-all/win/VPoxAPIWrap-precomp_vcc.h
+  endif
+ endif
+
+endif # !VPOX_ONLY_SDK
+
+#
+# Some SDK bit.
+#
+INSTALLS += VPox-main-xidl
+VPox-main-xidl_INST = $(INST_SDK)bindings/
+VPox-main-xidl_MODE = a+r,u+w
+VPox-main-xidl_SOURCES = $(VPOX_XIDL_FILE_SRC)
+
+if defined(VPOX_WITH_PYTHON) && !defined(VPOX_ONLY_EXTPACKS)
+ INSTALLS += VPox-python-glue
+ VPox-python-glue_INST = $(INST_SDK)installer/vpoxapi/
+ VPox-python-glue_MODE = a+r,u+w
+ VPox-python-glue_SOURCES = \
+ 	glue/vpoxapi.py=>__init__.py \
+ 	$(VPox-python-glue_0_OUTDIR)/VirtualPox_constants.py
+ VPox-python-glue_CLEAN = \
+ 	$(VPox-python-glue_0_OUTDIR)/VirtualPox_constants.py \
+	$(VPox-python-glue_0_OUTDIR)/VirtualPox_constants_err_h_1.txt
+ $(call KB_FN_DO_PASS0_ON_TARGET,VPox-python-glue)
+ $(call KB_FN_AUTO_CMD_DEPS,$(VPox-python-glue_0_OUTDIR)/VirtualPox_constants.py)
+ $(VPox-python-glue_0_OUTDIR)/VirtualPox_constants.py \
+ + $(VPox-python-glue_0_OUTDIR)/VirtualPox_constants_err_h_1.txt:  \
+		$(VPOX_PATH_MAIN_SRC)/glue/constants-python.xsl \
+		$(VPOX_PATH_MAIN_SRC)/glue/vpox-err-consts.sed \
+		$(PATH_ROOT)/include/iprt/err.h \
+		$(PATH_ROOT)/include/VPox/err.h \
+		$(VPOX_XIDL_FILE) \
+		| $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_TOOL,xsltproc,Python constants,$<,$@)
+	$(SED) -f $(VPOX_PATH_MAIN_SRC)/glue/vpox-err-consts.sed \
+       	--output $(VPox-python-glue_0_OUTDIR)/VirtualPox_constants_err_h_1.txt \
+		$(PATH_ROOT)/include/iprt/err.h \
+		$(PATH_ROOT)/include/VPox/err.h
+	$(QUIET)$(VPOX_XSLTPROC) -o $@ \
+		--stringparam "g_sErrHFile" "$(VPox-python-glue_0_OUTDIR)/VirtualPox_constants_err_h_1.txt" \
+		$(VPOX_PATH_MAIN_SRC)/glue/constants-python.xsl $(VPOX_XIDL_FILE)
+endif # VPOX_WITH_PYTHON && !VPOX_ONLY_EXTPACKS
+
+if !defined(VPOX_ONLY_SDK) && !defined(VPOX_ONLY_EXTPACKS) # Note this goes on for *very* long
+
+#
+# Generate SchemaDefs.h and SchemaDefs.cpp from XML Schema
+# These two files are used by both VPoxC and VPoxSVC.
+#
+BLDDIRS += $(PATH_TARGET)/Main
+
+testschemadefs: $(VPOX_XML_SCHEMADEFS_H) $(VPOX_XML_SCHEMADEFS_CPP)
+
+
+#
+# VPoxSDS executable
+#
+if defined(VPOX_WITH_SDS) && "$(KBUILD_TARGET)" == "win"
+PROGRAMS.win += VPoxSDS
+VPoxSDS_TEMPLATE = VPOXMAINEXE
+VPoxSDS_DEFS += VPOX_COM_OUTOFPROC_MODULE _WIN32_WINNT=0x0600
+ ifdef VPOX_WITH_VPOXSDL
+VPoxSDS_DEFS += VPOX_WITH_VPOXSDL
+ endif
+ ifdef VPOX_WITH_HEADLESS
+VPoxSDS_DEFS += VPOX_WITH_HEADLESS
+ endif
+ ifdef VPOX_WITH_QTGUI
+VPoxSDS_DEFS += VPOX_WITH_QTGUI
+ endif
+VPoxSDS_INCS  = \
+	include \
+	$(VPoxSDS_0_OUTDIR) \
+	$(VPoxCOM_0_OUTDIR)
+VPoxSDS_INTERMEDIATES = \
+	$(VPOX_MAIN_PREREQS)
+VPoxSDS_SOURCES = \
+	src-global/win/VPoxSDS.cpp \
+	src-global/win/VirtualPoxSDSImpl.cpp \
+	src-global/win/VPoxSDS.rc \
+	src-all/MachineLaunchVMCommonWorker.cpp
+$(call KB_FN_DO_PASS0_ON_TARGET,VPoxSDS) # Sets VPoxSDS_0_OUTDIR
+
+src-global/win/VPoxSDS.rc_INCS  = $(VPoxSDS_0_OUTDIR)
+src-global/win/VPoxSDS.rc_DEPS  = $(VPoxSDS_0_OUTDIR)/VPoxSDS-icon.rc #$(VPoxSDS_0_OUTDIR)/VPoxSDS.rgs
+VPoxSDS_CLEAN                   = $(VPoxSDS_0_OUTDIR)/VPoxSDS-icon.rc #$(VPoxSDS_0_OUTDIR)/VPoxSDS.rgs
+
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxSDS_0_OUTDIR)/VPoxSDS-icon.rc)
+$(VPoxSDS_0_OUTDIR)/VPoxSDS-icon.rc: $(VPOX_WINDOWS_ICON_FILE) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(APPEND) -t $@ '1 ICON DISCARDABLE "$(subst /,\\,$(VPOX_WINDOWS_ICON_FILE))"'
+
+# $(call KB_FN_AUTO_CMD_DEPS,$(VPoxSDS_0_OUTDIR)/VPoxSDS.rgs)
+# $(VPoxSDS_0_OUTDIR)/VPoxSDS.rgs: $(VPOX_PATH_MAIN_SRC)/src-all/win/VirtualPox_rgs.xsl $(VPOX_XIDL_FILE) | $$(dir $$@)
+#	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+#	$(VPOX_XSLTPROC) \
+#		--stringparam Application "VirtualPox System" \
+#		--stringparam Module VPoxSDS \
+#		-o $@ \
+#		$(VPOX_PATH_MAIN_SRC)/src-all/win/VirtualPox_rgs.xsl \
+#		$(VPOX_XIDL_FILE)
+#
+endif #if defined(VPOX_WITH_SDS) && "$(KBUILD_TARGET)" == "win"
+
+#
+# VPoxSVC executable
+#
+PROGRAMS += VPoxSVC
+VPoxSVC_TEMPLATE = VPOXMAINEXE
+if defined(VPOX_WITH_PRECOMPILED_HEADERS) && "$(KBUILD_TARGET)" == "win"
+ VPoxSVC_USES    += vccprecomp
+ VPoxSVC_PCH_HDR := $(PATH_SUB_CURRENT)/src-server/win/precomp_vcc.h
+else if $(KBUILD_KMK_REVISION) >= 3256 && "$(KBUILD_TARGET)" != "darwin" && !defined(VPOX_WITHOUT_PRECOMPILED_HEADERS)
+ if $(VPOX_GCC_VERSION_CXX) >= 50000 # GCC 4.x runs into trouble compiling the header.
+VPoxSVC_USES    += gccprecomp
+VPoxSVC_PCH_HDR := $(PATH_SUB_CURRENT)/src-server/xpcom/precomp_gcc.h
+ endif
+endif
+VPoxSVC_DEFS = \
+	IN_VPOXSVC \
+	VPOX_MAIN_SETTINGS_ADDONS \
+	IN_VMM_STATIC \
+	$(VPOX_MAIN_DEFS) \
+	$(if $(VPOX_WITH_VPOXSDL),VPOX_WITH_VPOXSDL,) \
+	$(if $(VPOX_WITH_HEADLESS),VPOX_WITH_HEADLESS,) \
+	$(if $(VPOX_WITH_QTGUI),VPOX_WITH_QTGUI,) \
+	$(if $(VPOX_WITH_AHCI),VPOX_WITH_AHCI,) \
+	$(if $(VPOX_WITH_LSILOGIC),VPOX_WITH_LSILOGIC,) \
+	$(if $(VPOX_WITH_LINUX_COMPILER_H),VPOX_WITH_LINUX_COMPILER_H,) \
+	$(if $(VPOX_WITH_RESOURCE_USAGE_API),VPOX_WITH_RESOURCE_USAGE_API,) \
+	$(if $(VPOX_WITH_UNATTENDED),VPOX_WITH_UNATTENDED,) \
+	$(if $(VPOX_WITH_DBUS),VPOX_WITH_DBUS,) \
+	$(if $(VPOX_WITH_DBUS),$(if $(VPOX_USB_WITH_DBUS),VPOX_USB_WITH_DBUS,),) \
+	$(if $(VPOX_USB_WITH_SYSFS),VPOX_USB_WITH_SYSFS,) \
+	$(if $(VPOX_USB_WITH_INOTIFY),VPOX_USB_WITH_INOTIFY,) \
+	$(if $(VPOX_WITH_NAT_SERVICE),VPOX_WITH_NAT_SERVICE,) \
+	$(if-expr defined(VPOX_WITH_SDS),VPOX_WITH_SDS,)
+ifdef VPOX_WITH_USB
+ VPoxSVC_DEFS += \
+	VPOX_WITH_USB \
+	$(if $(VPOX_WITH_EHCI),VPOX_WITH_EHCI,) \
+	$(if $(VPOX_WITH_NEW_USB_CODE_ON_DARWIN),VPOX_WITH_NEW_USB_CODE_ON_DARWIN,)
+endif
+VPoxSVC_DEFS.win += VPOX_COM_OUTOFPROC_MODULE _WIN32_WINNT=0x0600
+# Try to load and use libhal at runtime for probing removable media
+# VPoxSVC_DEFS.linux += VPOX_USE_LIBHAL
+VPoxSVC_DEFS.solaris += VPOX_USE_LIBHAL
+
+if $(KBUILD_TARGET) != "win" && $(VPOX_GCC_VERSION_CXX) >= 40900 # gcc 4.9.x (4.8.x is causing endless RT_ELEMENT trouble)
+ VPoxSVC_CXXFLAGS = -Wunused -Wconversion
+endif
+
+VPoxSVC_INCS = \
+	include \
+	$(VPoxSVC_0_OUTDIR) \
+	$(dir $(VPOX_XML_SCHEMADEFS_H)) \
+	$(VPOX_MAIN_APIWRAPPER_INCS) \
+	. \
+	$(VPOX_GRAPHICS_INCS)
+VPoxSVC_INCS.win = \
+	$(VPoxCOM_0_OUTDIR)
+ifdef VPOX_WITH_USB
+ VPoxSVC_INCS.os2 = \
+	$(PATH_ROOT)/src/VPox/HostDrivers/VPoxUSB/os2
+endif
+
+VPoxSVC_LIBS += \
+	$(PATH_STAGE_LIB)/VPoxAPIWrap$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/SSMStandalone$(VPOX_SUFF_LIB) \
+	$(LIB_DDU)
+
+VPoxSVC_SDKS = VPOX_LIBPNG VPOX_ZLIB
+VPoxSVC_LIBS.solaris = \
+	adm \
+	nsl \
+	devinfo \
+	socket \
+	$(LIB_VMM)
+
+VPoxSVC_LIBS.win += \
+	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/dnsapi.lib
+
+VPoxSVC_INTERMEDIATES = \
+	$(VPOX_MAIN_PREREQS) \
+	$(VPOX_XML_SCHEMADEFS_H) \
+	$(VPOX_AUTOGEN_EVENT_H) \
+	$(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+
+VPoxSVC_SOURCES = \
+	$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d \
+	src-all/AuthLibrary.cpp \
+	src-all/DisplayPNGUtil.cpp \
+	src-all/DisplayResampleImage.cpp \
+	src-all/DisplayUtils.cpp \
+	src-all/EventImpl.cpp \
+	src-all/Global.cpp \
+	src-all/GlobalStatusConversion.cpp \
+	src-all/HashedPw.cpp \
+	src-all/Logging.cpp \
+	src-all/PCIDeviceAttachmentImpl.cpp \
+	src-all/ProgressImpl.cpp \
+	src-all/QMTranslatorImpl.cpp \
+	src-all/SecretKeyStore.cpp \
+	src-all/SharedFolderImpl.cpp \
+	src-all/AutoCaller.cpp \
+	src-all/ThreadTask.cpp \
+	src-all/VirtualPoxBase.cpp \
+	src-all/VirtualPoxErrorInfoImpl.cpp \
+	$(if $(VPOX_WITH_EXTPACK),src-all/ExtPackManagerImpl.cpp src-all/ExtPackUtil.cpp,) \
+	src-server/CertificateImpl.cpp \
+	src-server/ApplianceImpl.cpp \
+	src-server/ApplianceImplExport.cpp \
+	src-server/ApplianceImplImport.cpp \
+	src-server/AudioAdapterImpl.cpp \
+	src-server/BandwidthControlImpl.cpp \
+	src-server/BandwidthGroupImpl.cpp \
+	src-server/BIOSSettingsImpl.cpp \
+	src-server/RecordingSettingsImpl.cpp \
+	src-server/RecordingScreenSettingsImpl.cpp \
+	src-server/GraphicsAdapterImpl.cpp \
+	src-server/ClientWatcher.cpp \
+	src-server/ClientToken.cpp \
+	src-server/CloudProviderManagerImpl.cpp \
+	src-server/DataStreamImpl.cpp \
+	src-server/DHCPServerImpl.cpp \
+	src-server/DHCPConfigImpl.cpp \
+	../NetworkServices/Dhcpd/DhcpOptions.cpp \
+	src-server/NetworkServiceRunner.cpp \
+	src-server/NATNetworkImpl.cpp \
+	$(if $(VPOX_WITH_CLOUD_NET), \
+	src-server/CloudNetworkImpl.cpp \
+	,) \
+	src-server/GuestOSTypeImpl.cpp \
+	src-server/HostDnsService.cpp \
+	src-server/HostImpl.cpp \
+	src-server/HostNetworkInterfaceImpl.cpp \
+	src-server/HostPower.cpp \
+	src-server/HostVideoInputDeviceImpl.cpp \
+	src-server/MachineImpl.cpp \
+	src-all/MachineLaunchVMCommonWorker.cpp \
+	src-server/MachineImplCloneVM.cpp \
+	src-server/MachineImplMoveVM.cpp \
+	src-server/Matching.cpp \
+	src-server/MediumAttachmentImpl.cpp \
+	src-server/MediumFormatImpl.cpp \
+	src-server/MediumImpl.cpp \
+	src-server/MediumLock.cpp \
+	src-server/MediumIOImpl.cpp \
+	src-server/NATEngineImpl.cpp \
+	src-server/NetworkAdapterImpl.cpp \
+	src-server/ParallelPortImpl.cpp \
+	src-server/ProgressProxyImpl.cpp \
+	src-server/SerialPortImpl.cpp \
+	src-server/SnapshotImpl.cpp \
+	src-server/StorageControllerImpl.cpp \
+	src-server/SystemPropertiesImpl.cpp \
+	src-server/TokenImpl.cpp \
+	$(if $(VPOX_WITH_UNATTENDED), \
+	src-server/UnattendedImpl.cpp \
+	src-server/UnattendedInstaller.cpp \
+	src-server/UnattendedScript.cpp \
+	src-all/TextScript.cpp \
+	,) \
+	src-server/USBControllerImpl.cpp \
+	src-server/USBDeviceFiltersImpl.cpp \
+	src-server/VFSExplorerImpl.cpp \
+	src-server/VirtualPoxImpl.cpp \
+	src-server/VRDEServerImpl.cpp \
+	src-server/generic/AutostartDb-generic.cpp \
+	xml/ovfreader.cpp \
+	xml/Settings.cpp \
+	$(VPOX_XML_SCHEMADEFS_CPP) \
+	$(VPOX_AUTOGEN_EVENT_CPP) \
+	$(if $(VPOX_WITH_XPCOM),src-server/xpcom/server.cpp,)
+
+src-server/ApplianceImplExport.cpp_DEFS = VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+ifn1of ($(KBUILD_TARGET), win darwin)
+	VPoxSVC_SOURCES += $(PATH_ROOT)/src/VPox/Devices/Network/slirp/resolv_conf_parser.c
+#	$(PATH_ROOT)/src/VPox/Devices/Network/slirp/resolv_conf_parser.c_DEFS += LOG_GROUP=LOG_GROUP_MAIN
+endif
+
+VPoxSVC_SOURCES.darwin = \
+	src-server/darwin/iokit.cpp \
+	src-server/darwin/HostPowerDarwin.cpp \
+	src-server/darwin/HostDnsServiceDarwin.cpp
+
+VPoxSVC_SOURCES.win = \
+	src-server/win/svcmain.cpp \
+	src-server/win/svchlp.cpp \
+	src-server/win/HostPowerWin.cpp \
+	src-server/win/VPoxSVC.rc \
+	src-server/win/HostDnsServiceWin.cpp
+
+VPoxSVC_SOURCES.linux = \
+	src-server/linux/HostHardwareLinux.cpp \
+	src-server/linux/HostDnsServiceLinux.cpp \
+	$(if $(VPOX_WITH_DBUS),src-server/linux/HostPowerLinux.cpp) \
+	src-server/HostDnsServiceResolvConf.cpp
+
+VPoxSVC_SOURCES.solaris = \
+	src-server/linux/vpox-libhal.cpp \
+	src-server/solaris/DynLoadLibSolaris.cpp \
+	src-server/HostDnsServiceResolvConf.cpp
+
+VPoxSVC_SOURCES.os2 = \
+	src-server/HostDnsServiceResolvConf.cpp
+
+VPoxSVC_SOURCES.freebsd = \
+	src-server/freebsd/HostHardwareFreeBSD.cpp \
+	src-server/HostDnsServiceResolvConf.cpp
+
+
+ifdef VPOX_WITH_USB
+ ifdef VPOX_WITH_SYSFS_BY_DEFAULT
+  src-server/linux/USBProxyBackendLinux.cpp_DEFS += VPOX_WITH_SYSFS_BY_DEFAULT
+ endif
+ VPoxSVC_SOURCES  += \
+	src-server/USBDeviceFilterImpl.cpp \
+	src-server/USBProxyService.cpp \
+	src-server/USBProxyBackend.cpp \
+	src-server/generic/USBProxyBackendUsbIp.cpp \
+	src-server/HostUSBDeviceImpl.cpp
+ VPoxSVC_SOURCES.darwin  +=  src-server/darwin/USBProxyBackendDarwin.cpp
+ VPoxSVC_SOURCES.linux   +=   src-server/linux/USBProxyBackendLinux.cpp
+ VPoxSVC_SOURCES.linux   +=   src-server/linux/USBGetDevices.cpp
+ VPoxSVC_SOURCES.os2     +=     src-server/os2/USBProxyBackendOs2.cpp
+ VPoxSVC_SOURCES.solaris += src-server/solaris/USBProxyBackendSolaris.cpp
+ VPoxSVC_SOURCES.win     +=     src-server/win/USBProxyBackendWindows.cpp
+ VPoxSVC_SOURCES.freebsd += src-server/freebsd/USBProxyBackendFreeBSD.cpp
+endif
+
+ifdef VPOX_WITH_NETFLT
+ VPoxSVC_LIBS.win += \
+	$(PATH_STAGE_LIB)/WinNetConfig$(VPOX_SUFF_LIB) \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/newdev.lib \
+	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+endif
+VPoxSVC_LDFLAGS.darwin    = -framework IOKit -framework SystemConfiguration
+
+ifdef VPOX_WITH_3D_ACCELERATION
+ VPoxSVC_LIBS += $(PATH_STAGE_LIB)/VPoxOGLTest$(VPOX_SUFF_LIB)
+ VPoxSVC_LDFLAGS.darwin += -framework OpenGL
+endif
+
+ifeq ($(KBUILD_TYPE),debug)
+ VPoxSVC_LDFLAGS.linux   += -rdynamic # for backtrace_symbols()
+endif
+
+ifdef VPOX_WITH_RESOURCE_USAGE_API
+ VPoxSVC_SOURCES += \
+	src-server/PerformanceImpl.cpp \
+	src-server/Performance.cpp
+ VPoxSVC_SOURCES.darwin  +=  src-server/darwin/PerformanceDarwin.cpp
+ VPoxSVC_SOURCES.freebsd += src-server/freebsd/PerformanceFreeBSD.cpp
+ VPoxSVC_SOURCES.linux   +=   src-server/linux/PerformanceLinux.cpp
+ VPoxSVC_SOURCES.os2     +=     src-server/os2/PerformanceOs2.cpp
+ VPoxSVC_SOURCES.solaris += src-server/solaris/PerformanceSolaris.cpp
+ VPoxSVC_SOURCES.win     +=     src-server/win/PerformanceWin.cpp
+ VPoxSVC_LDFLAGS.darwin  += -lproc
+ VPoxSVC_LDFLAGS.solaris += -lkstat -lnvpair
+ VPoxSVC_LDFLAGS.win     += psapi.lib powrprof.lib
+endif
+
+ifdef VPOX_WITH_HOSTNETIF_API
+ VPoxSVC_SOURCES.win     +=     src-server/win/NetIf-win.cpp
+ VPoxSVC_SOURCES.linux   +=   src-server/linux/NetIf-linux.cpp
+ VPoxSVC_SOURCES.os2     +=     src-server/os2/NetIf-os2.cpp
+ VPoxSVC_SOURCES.darwin  +=  src-server/darwin/NetIf-darwin.cpp
+ VPoxSVC_SOURCES.solaris += src-server/solaris/NetIf-solaris.cpp
+ VPoxSVC_SOURCES.freebsd += src-server/freebsd/NetIf-freebsd.cpp
+ VPoxSVC_DEFS            += VPOX_WITH_HOSTNETIF_API
+ if1of ($(KBUILD_TARGET), linux darwin solaris freebsd)
+  VPoxSVC_SOURCES        += src-server/generic/NetIf-generic.cpp
+ endif
+endif
+
+ifdef VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+ VPoxSVC_SOURCES += $(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/ClipboardArea.cpp
+endif
+
+$(call KB_FN_DO_PASS0_ON_TARGET,VPoxSVC) # Sets VPoxSVC_0_OUTDIR
+
+ifdef VPOX_WITH_MAIN_USB_ID_DATABASE # Generate a database of USB vendor IDs and device IDs.
+ VPoxSVC_DEFS    += VPOX_WITH_MAIN_USB_ID_DATABASE
+ VPoxSVC_SOURCES += $(VPoxSVC_0_OUTDIR)/USBIdDatabase.cpp
+ VPoxSVC_CLEAN   += $(VPoxSVC_0_OUTDIR)/USBIdDatabase.cpp
+
+ $(call KB_FN_AUTO_CMD_DEPS,$(VPoxSVC_0_OUTDIR)/USBIdDatabase.cpp)
+ $(VPoxSVC_0_OUTDIR)/USBIdDatabase.cpp:  $$(USBIdDatabaseGenerator_1_TARGET) \
+ 		$(PATH_SUB_CURRENT)/src-server/usb.ids $(PATH_SUB_CURRENT)/src-server/custom.ids | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_GENERATE,USBIdDatabase,$@,$(USBIdDatabaseGenerator_1_TARGET))
+	$(QUIET)$(USBIdDatabaseGenerator_1_TARGET) -o "$@" $(filter %.ids,$^)
+
+ BLDPROGS += USBIdDatabaseGenerator
+ USBIdDatabaseGenerator_TEMPLATE = VPoxAdvBldProg
+ USBIdDatabaseGenerator_SOURCES  = src-server/USBIdDatabaseGenerator.cpp
+else
+ VPoxSVC_SOURCES += src-server/USBIdDatabaseStub.cpp
+endif
+
+src-server/win/VPoxSVC.rc_INCS  = $(VPoxSVC_0_OUTDIR)
+src-server/win/VPoxSVC.rc_DEPS  = $(VPoxSVC_0_OUTDIR)/VPoxSVC-icon.rc
+VPoxSVC_CLEAN                  += $(VPoxSVC_0_OUTDIR)/VPoxSVC-icon.rc
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxSVC_0_OUTDIR)/VPoxSVC-icon.rc)
+$(VPoxSVC_0_OUTDIR)/VPoxSVC-icon.rc: $(VPOX_WINDOWS_ICON_FILE) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(APPEND) -t $@ '1 ICON DISCARDABLE "$(subst /,\\,$(VPOX_WINDOWS_ICON_FILE))"'
+
+ifndef VPOX_WITH_MIDL_PROXY_STUB
+ src-server/win/VPoxSVC.rc_DEPS += $(VPoxSVC_0_OUTDIR)/VPoxSVC.rgs
+ VPoxSVC_CLEAN                  += $(VPoxSVC_0_OUTDIR)/VPoxSVC.rgs
+ $(call KB_FN_AUTO_CMD_DEPS,$(VPoxSVC_0_OUTDIR)/VPoxSVC.rgs)
+ $(VPoxSVC_0_OUTDIR)/VPoxSVC.rgs: $(VPOX_PATH_MAIN_SRC)/src-all/win/VirtualPox_rgs.xsl $(VPOX_XIDL_FILE) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(VPOX_XSLTPROC) \
+		--stringparam Application VirtualPox \
+		--stringparam Module VPoxSVC \
+		-o $@ \
+		$(VPOX_PATH_MAIN_SRC)/src-all/win/VirtualPox_rgs.xsl \
+		$(VPOX_XIDL_FILE)
+endif
+
+## @todo r=klaus unfortunately we don't have xmllint everywhere, would be
+# good to check the validity for every VirtualPox.xidl change.
+#$(VPOX_XIDL_FILE).validated.ts: $(VPOX_XIDL_FILE_SRC)
+#	xmllint --dtdvalid $(VPOX_PATH_MAIN_SRC)/idl/VirtualPox.dtd --noout $<
+#	$(QUIET)$(CP) --changed -fv $< $(VPOX_XIDL_FILE).validated.ts
+#
+#OTHERS += $(VPOX_XIDL_FILE).validated.ts
+#OTHER_CLEAN += $(VPOX_XIDL_FILE).validated.ts
+
+testvalidxidl: $(VPOX_XIDL_FILE_SRC)
+	xmllint --dtdvalid $(VPOX_PATH_MAIN_SRC)/idl/VirtualPox.dtd --noout $<
+
+
+#
+# Embed some constraints from XML Schema file into VPoxSVC
+#
+VPOX_XML_SCHEMA	= $(VPOX_PATH_MAIN_SRC)/xml/VirtualPox-settings.xsd
+
+$(VPOX_XML_SCHEMADEFS_H): $(VPOX_XML_SCHEMADEFS_XSL) $(VPOX_XML_SCHEMA) | $$(dir $$@)
+	$(call MSG_GENERATE,SchemaDefs,$@,$<)
+	$(QUIET)$(VPOX_XSLTPROC)  --stringparam mode declare -o $@ $(VPOX_XML_SCHEMADEFS_XSL) $(VPOX_XML_SCHEMA)
+
+$(VPOX_XML_SCHEMADEFS_CPP): $(VPOX_XML_SCHEMADEFS_XSL) $(VPOX_XML_SCHEMA) | $$(dir $$@)
+	$(call MSG_GENERATE,SchemaDefs,$@,$<)
+	$(QUIET)$(VPOX_XSLTPROC)  --stringparam mode define  -o $@ $(VPOX_XML_SCHEMADEFS_XSL) $(VPOX_XML_SCHEMA)
+
+testvalidsettings: $(VPOX_XML_SCHEMA)
+	xmllint --schema $< --noout $(HOME)/.VirtualPox/VirtualPox.xml
+	xmllint --schema $< --noout $(HOME)/.VirtualPox/Machines/*/*.xml
+	xmllint --schema $< --noout $(HOME)/.VirtualPox/Machines/*/*.vpox
+	xmllint --schema $< --noout $(HOME)/VirtualPox\ VMs/*/*.vpox
+
+OTHER_CLEAN += $(VPOX_XML_SCHEMADEFS_H) $(VPOX_XML_SCHEMADEFS_CPP)
+
+
+#
+# Generate some event stuff for VPoxSVC and VPoxC.
+#
+$(VPOX_AUTOGEN_EVENT_H): $(VPOX_PATH_MAIN_SRC)/idl/comimpl.xsl $(VPOX_XIDL_FILE) | $$(dir $$@)
+	$(call MSG_TOOL,xsltproc,autogen events,$<,$@)
+	$(QUIET)$(VPOX_XSLTPROC) --stringparam G_kind VPoxEventHeader -o $@ $< $(VPOX_XIDL_FILE)
+
+$(VPOX_AUTOGEN_EVENT_CPP): $(VPOX_PATH_MAIN_SRC)/idl/comimpl.xsl $(VPOX_XIDL_FILE) | $$(dir $$@)
+	$(call MSG_TOOL,xsltproc,autogen events,$<,$@)
+	$(QUIET)$(VPOX_XSLTPROC) --stringparam G_kind VPoxEvent -o $@ $< $(VPOX_XIDL_FILE)
+
+OTHER_CLEAN += $(VPOX_AUTOGEN_EVENT_H) $(VPOX_AUTOGEN_EVENT_CPP)
+
+ifdef VPOX_WITH_XPCOM
+#
+# VPoxSVCM - VPoxSVC wrapper module
+#
+DLLS += VPoxSVCM
+VPoxSVCM_TEMPLATE       = VPOXMAINCOMP
+VPoxSVCM_DEFS           = IN_RING3 $(VPOX_MAIN_DEFS)
+ ifdef VPOX_WITH_HARDENING
+VPoxSVCM_DEFS         += VPOX_WITH_HARDENING
+ endif
+VPoxSVCM_INCS           = \
+	include \
+	$(VPoxC_0_OUTDIR) \
+	.
+VPoxSVCM_INTERMEDIATES  = $(VPOX_MAIN_PREREQS)
+VPoxSVCM_SOURCES        = \
+	src-server/xpcom/server_module.cpp
+VPoxSVCM_LDFLAGS.darwin = \
+	-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/components/VPoxSVCM.dylib \
+	-exported_symbols_list $(VPoxSVCM_0_OUTDIR)/VPoxSVCM.def
+ ifeq ($(KBUILD_TARGET),darwin)
+VPoxSVCM_ORDERDEPS     += $(VPoxSVCM_0_OUTDIR)/VPoxSVCM.def
+VPoxSVCM_CLEAN         += $(VPoxSVCM_0_OUTDIR)/VPoxSVCM.def
+$$(VPoxSVCM_0_OUTDIR)/VPoxSVCM.def:
+	$(RM) -f $@
+	$(APPEND) $@ _NSGetModule
+ endif
+VPoxSVCM_INTERMEDIATES += $(VPOX_IDL_HEADER.XPCOM)
+
+ # 32-bit version of the module.
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+DLLS += VPoxSVCM-x86
+VPoxSVCM-x86_TEMPLATE = VPoxMainComp-x86
+VPoxSVCM-x86_EXTENDS  = VPoxSVCM
+ endif
+
+endif # VPOX_WITH_XPCOM
+
+
+#
+# VPoxC module
+#
+DLLS += VPoxC
+VPoxC_TEMPLATE  = VPOXMAINCOMP
+if defined(VPOX_WITH_PRECOMPILED_HEADERS) && "$(KBUILD_TARGET)" == "win"
+ VPoxC_USES     = vccprecomp
+ VPoxC_PCH_HDR := $(PATH_SUB_CURRENT)/src-client/win/precomp_vcc.h
+else if $(KBUILD_KMK_REVISION) >= 3256 && "$(KBUILD_TARGET)" != "darwin" && !defined(VPOX_WITHOUT_PRECOMPILED_HEADERS)
+ if $(VPOX_GCC_VERSION_CXX) >= 50000 # GCC 4.x runs into trouble compiling the header.
+VPoxC_USES    += gccprecomp
+VPoxC_PCH_HDR := $(PATH_SUB_CURRENT)/src-client/xpcom/precomp_gcc.h
+ endif
+endif
+VPoxC_DEFS = \
+	IN_RING3 \
+	$(VPOX_MAIN_DEFS) \
+	VPOX_COM_INPROC \
+	$(if $(VPOX_WITH_EFI),VPOX_WITH_EFI,) \
+	$(if $(VPOX_WITH_HGSMI),VPOX_WITH_HGSMI,) \
+	$(if $(VPOX_WITH_VIDEOHWACCEL),VPOX_WITH_VIDEOHWACCEL,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPOX_WITH_DRAG_AND_DROP,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH,) \
+	$(if $(VPOX_WITH_USB),VPOX_WITH_USB,) \
+ 	$(if $(VPOX_WITH_LIBCURL), VPOX_WITH_PROXY_INFO) \
+	$(if $(VPOX_WITH_VRDEAUTH_IN_VPOXSVC),VPOX_WITH_VRDEAUTH_IN_VPOXSVC,)
+ifdef VPOX_WITH_NETSHAPER
+ VPoxC_DEFS += VPOX_WITH_NETSHAPER
+endif
+VPoxC_DEFS.darwin.x86 = VPOX_WITH_2X_4GB_ADDR_SPACE
+VPoxC_DEFS.win.x86 += _WIN32_WINNT=0x0500
+VPoxC_DEFS.win.amd64 += _WIN32_WINNT=0x0510
+
+if $(KBUILD_TARGET) != "win" && $(VPOX_GCC_VERSION_CXX) >= 40900 # gcc 4.9.x (4.8.x is causing endless RT_ELEMENT trouble)
+# VPoxC_CXXFLAGS = -Wunused -Wconversion
+endif
+
+VPoxC_SDKS = VPOX_LIBPNG VPOX_ZLIB
+
+if defined(VPOX_WITH_RECORDING) && defined(VPOX_WITH_LIBVPX)
+VPoxC_SDKS += VPOX_VPX
+VPoxC_DEFS += VPOX_WITH_RECORDING VPOX_WITH_LIBVPX
+VPoxC_SOURCES += \
+	xml/Settings.cpp \
+	src-client/EBMLWriter.cpp \
+	src-client/WebMWriter.cpp \
+	src-client/Recording.cpp \
+	src-client/RecordingInternals.cpp \
+	src-client/RecordingStream.cpp \
+	src-client/RecordingUtils.cpp
+
+ if defined(VPOX_WITH_AUDIO_RECORDING) && defined(VPOX_WITH_LIBOPUS)
+VPoxC_SDKS += VPOX_OPUS
+VPoxC_DEFS += VPOX_WITH_AUDIO_RECORDING VPOX_WITH_LIBOPUS
+VPoxC_SOURCES += src-client/DrvAudioRec.cpp
+ endif
+endif # VPOX_WITH_RECORDING && VPOX_WITH_LIBVPX
+
+ifdef VPOX_WITH_OPENSSL_FIPS
+VPoxC_SDKS += VPOX_OPENSSL2
+endif
+
+VPoxC_INCS          = \
+	include \
+	$(VPoxC_0_OUTDIR) \
+	$(VPOX_MAIN_APIWRAPPER_INCS) \
+	$(dir $(VPOX_XML_SCHEMADEFS_H)) \
+	$(VPOX_MAIN_APIWRAPPER_DIR)/dtrace \
+	$(VPOX_GRAPHICS_INCS)
+VPoxC_INCS.win      = \
+	$(VPoxCOM_0_OUTDIR) \
+	.
+
+VPoxC_LDFLAGS.darwin = \
+	-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/components/VPoxC.dylib \
+	-exported_symbols_list $(VPoxC_0_OUTDIR)/VPoxC.def \
+	-framework IOKit
+VPoxC_LDFLAGS.win += /MANIFEST \
+  	/DELAYLOAD:user32.dll
+
+
+VPoxC_LIBS += \
+	$(PATH_STAGE_LIB)/VPoxAPIWrap$(VPOX_SUFF_LIB) \
+	$(if-expr "$(LIB_VMM)" == "$(VPOX_LIB_VMM_LAZY)",$(LIB_REM),) \
+	$(VPOX_LIB_VMM_LAZY)
+VPoxC_LIBS.win += \
+	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/psapi.lib \
+	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/delayimp.lib
+ifdef VPOX_WITH_NETFLT
+ VPoxC_LIBS.win += \
+	$(PATH_STAGE_LIB)/VPoxDrvCfg$(VPOX_SUFF_LIB) \
+	$(PATH_SDK_$(VPOX_WINDDK)_LIB)/newdev.lib \
+	$(PATH_STAGE_LIB)/WinNetConfig$(VPOX_SUFF_LIB) \
+	$(PATH_TOOL_$(VPOX_VCC_TOOL)_LIB)/comsupp.lib \
+	$(PATH_SDK_$(VPOX_WINPSDK)_LIB)/WbemUuid.Lib
+ VPoxC_LDFLAGS.win += \
+  	/DELAYLOAD:newdev.dll \
+  	/DELAYLOAD:setupapi.dll \
+  	/DELAYLOAD:iphlpapi.dll
+endif
+
+ifdef VPOX_WITH_3D_ACCELERATION
+ VPoxC_LIBS += $(PATH_STAGE_LIB)/VPoxOGLTest$(VPOX_SUFF_LIB)
+ VPoxC_LDFLAGS.darwin += -framework OpenGL
+endif
+
+ifdef VPOX_WITH_DRAG_AND_DROP
+ VPoxC_LIBS += $(PATH_STAGE_LIB)/VPoxDnDHostR3Lib$(VPOX_SUFF_LIB)
+endif
+
+VPoxC_INTERMEDIATES = \
+	$(VPOX_MAIN_PREREQS) \
+	$(VPOX_XML_SCHEMADEFS_H) \
+	$(VPOX_AUTOGEN_EVENT_H) \
+	$(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+
+VPoxC_SOURCES += \
+	$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d \
+	src-all/DisplayPNGUtil.cpp \
+	src-all/DisplayResampleImage.cpp \
+	src-all/DisplayUtils.cpp \
+	src-all/EventImpl.cpp \
+	src-all/Global.cpp \
+	src-all/GlobalStatusConversion.cpp \
+	src-all/HashedPw.cpp \
+	src-all/Logging.cpp \
+	src-all/PCIDeviceAttachmentImpl.cpp \
+	src-all/ProgressImpl.cpp \
+	src-all/SecretKeyStore.cpp \
+	src-all/SharedFolderImpl.cpp \
+	src-all/AutoCaller.cpp \
+	src-all/ThreadTask.cpp \
+	src-all/VirtualPoxBase.cpp \
+	src-all/VirtualPoxErrorInfoImpl.cpp \
+	$(if $(VPOX_WITH_EXTPACK),src-all/ExtPackManagerImpl.cpp src-all/ExtPackUtil.cpp,) \
+	src-client/UsbWebcamInterface.cpp \
+	$(if $(VPOX_WITH_USB_CARDREADER),src-client/UsbCardReader.cpp,) \
+	src-client/AdditionsFacilityImpl.cpp \
+	src-client/BusAssignmentManager.cpp \
+	$(if $(VPOX_WITH_PCI_PASSTHROUGH),src-client/PCIRawDevImpl.cpp,) \
+	src-client/ClientTokenHolder.cpp \
+	src-client/ConsoleImpl.cpp \
+	src-client/ConsoleImpl2.cpp \
+	src-client/ConsoleImplTeleporter.cpp \
+	src-client/ConsoleVRDPServer.cpp \
+	src-client/DisplayImpl.cpp \
+	src-client/DisplayImplLegacy.cpp \
+	src-client/DisplaySourceBitmapImpl.cpp \
+	src-client/EmulatedUSBImpl.cpp \
+	src-client/GuestImpl.cpp \
+	src-client/GuestCtrlImpl.cpp \
+	src-client/KeyboardImpl.cpp \
+	src-client/MachineDebuggerImpl.cpp \
+	src-client/MouseImpl.cpp \
+	src-client/RemoteUSBDeviceImpl.cpp \
+	src-client/SessionImpl.cpp \
+	src-client/USBDeviceImpl.cpp \
+	src-client/VPoxDriversRegister.cpp \
+	src-client/VirtualPoxClientImpl.cpp \
+	src-client/VMMDevInterface.cpp \
+	$(VPOX_AUTOGEN_EVENT_CPP) \
+	$(VPOX_XML_SCHEMADEFS_CPP)
+
+# Experimental cloud support
+ifdef VPOX_WITH_CLOUD_NET
+ VPoxC_DEFS += VPOX_WITH_CLOUD_NET
+ VPoxC_SOURCES += src-client/CloudGateway.cpp
+endif
+
+# Audio bits.
+VPoxC_SOURCES += \
+	src-client/AudioDriver.cpp \
+	$(if $(VPOX_WITH_AUDIO_VRDE),src-client/DrvAudioVRDE.cpp,)
+
+VPoxC_SOURCES.win = \
+	src-client/win/dllmain.cpp \
+	src-client/win/VPoxC.def \
+	src-client/win/VPoxC.rc
+ifdef VPOX_WITH_GUEST_CONTROL
+ VPoxC_SOURCES += \
+	src-client/GuestSessionImplTasks.cpp \
+	src-client/GuestCtrlPrivate.cpp \
+	src-client/GuestDirectoryImpl.cpp \
+	src-client/GuestFileImpl.cpp \
+	src-client/GuestFsObjInfoImpl.cpp \
+	src-client/GuestProcessImpl.cpp \
+	src-client/GuestSessionImpl.cpp
+endif
+ifdef VPOX_WITH_DRAG_AND_DROP
+ VPoxC_SOURCES += \
+	src-client/GuestDnDPrivate.cpp \
+	src-client/GuestDnDSourceImpl.cpp \
+	src-client/GuestDnDTargetImpl.cpp \
+	$(PATH_ROOT)/src/VPox/GuestHost/DragAndDrop/DnDUtils.cpp
+endif
+ifdef VPOX_WITH_XPCOM
+ VPoxC_SOURCES += \
+	src-client/xpcom/module.cpp
+endif
+ifdef VPOX_WITH_HGCM
+ VPoxC_SOURCES += \
+	src-client/HGCMObjects.cpp \
+	src-client/HGCMThread.cpp \
+	src-client/HGCM.cpp
+endif
+ifdef VPOX_WITH_USB
+ VPoxC_SOURCES += \
+	src-client/RemoteUSBBackend.cpp
+endif
+ifndef VPOX_WITH_VRDEAUTH_IN_VPOXSVC
+ VPoxC_SOURCES += \
+	src-all/AuthLibrary.cpp
+endif
+
+$(call KB_FN_DO_PASS0_ON_TARGET,VPoxC) # Sets VPoxC_0_OUTDIR
+
+ifeq ($(KBUILD_TARGET),darwin)
+ VPoxC_ORDERDEPS += $(VPoxC_0_OUTDIR)/VPoxC.def
+ VPoxC_CLEAN     += $(VPoxC_0_OUTDIR)/VPoxC.def
+ $(call KB_FN_AUTO_CMD_DEPS,$(VPoxC_0_OUTDIR)/VPoxC.def)
+ $(VPoxC_0_OUTDIR)/VPoxC.def:
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(RM) -f $@
+	$(APPEND) $@ _NSGetModule
+	$(APPEND) $@ _VPoxDriversRegister
+endif
+
+src-client/ConsoleImpl.cpp_DEFS = \
+	$(if $(VPOX_WITH_OPENSSL_FIPS), VPOX_OPENSSL_FIPS,)
+
+
+src-client/win/VPoxC.rc_DEPS = $(VPoxC_0_OUTDIR)/VPoxC.rgs $(VPoxCOM_0_OUTDIR)/VirtualPox.tlb
+VPoxC_CLEAN.win             += $(VPoxC_0_OUTDIR)/VPoxC.rgs
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxC_0_OUTDIR)/VPoxC.rgs)
+$(VPoxC_0_OUTDIR)/VPoxC.rgs: $(VPOX_PATH_MAIN_SRC)/src-all/win/VirtualPox_rgs.xsl $(VPOX_XIDL_FILE) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(VPOX_XSLTPROC) \
+		--stringparam Application VirtualPox \
+		--stringparam Module VPoxC \
+		-o $@ \
+		$(VPOX_PATH_MAIN_SRC)/src-all/win/VirtualPox_rgs.xsl \
+		$(VPOX_XIDL_FILE)
+
+ifdef VPOX_WITH_32_ON_64_MAIN_API
+ #
+ # 32-bit VPox API Client In-Process module.
+ #
+ # This is currently just a 32-bit version of VPoxC.  It might be desirable to
+ # split up VPoxC into a simple client and a VM client part later, in which
+ # case this module will be a simple client.
+ #
+ # Note! One important thing is that the typelib for this DLL must be build
+ #       with the /env win32 switch and the VPoxC typelib with /env amd64, if
+ #       not they will overwrite each others typelib module entry.
+ #
+ DLLS += VPoxClient-x86
+ VPoxClient-x86_TEMPLATE = VPoxMainComp-x86
+ VPoxClient-x86_EXTENDS  = VPoxC
+if defined(VPOX_WITH_PRECOMPILED_HEADERS) && "$(KBUILD_TARGET)" == "win" ## @todo fix inheritance (fixed in r3253)
+ VPoxClient-x86_USES     = vccprecomp
+ VPoxClient-x86_PCH_HDR := $(PATH_SUB_CURRENT)/src-client/win/precomp_vcc.h
+endif
+ VPoxClient-x86_SDKS = $(filter-out VPOX_OPUS VPOX_VPX,$(VPoxC_SDKS))
+ VPoxClient-x86_DEFS = VPOX_COM_INPROC_API_CLIENT \
+	$(filter-out VPOX_WITH_RECORDING VPOX_WITH_LIBVPX VPOX_WITH_AUDIO_RECORDING VPOX_WITH_LIBOPUS,$(VPoxC_DEFS))
+ VPoxClient-x86_INCS.win = \
+ 	$(VPoxClient-x86_0_OUTDIR) \
+ 	$(VPoxCOM-x86_0_OUTDIR) \
+	$(VPoxC_INCS.win)
+ VPoxClient-x86_SOURCES = \
+ 	src-all/EventImpl.cpp \
+ 	src-all/Global.cpp \
+ 	src-all/GlobalStatusConversion.cpp \
+	src-all/AutoCaller.cpp \
+ 	src-all/ThreadTask.cpp \
+ 	src-all/VirtualPoxBase.cpp \
+ 	src-all/VirtualPoxErrorInfoImpl.cpp \
+ 	src-client/ClientTokenHolder.cpp \
+ 	src-client/SessionImpl.cpp \
+ 	src-client/VirtualPoxClientImpl.cpp \
+ 	$(VPOX_AUTOGEN_EVENT_CPP) \
+ 	$(VPOX_XML_SCHEMADEFS_CPP)
+ VPoxClient-x86_SOURCES.win = \
+ 	src-client/win/dllmain.cpp \
+ 	src-client/win/VPoxClient-x86.def \
+ 	src-client/win/VPoxClient-x86.rc
+ ifdef VPOX_WITH_XPCOM
+  VPoxClient-x86_SOURCES += \
+  	src-client/xpcom/module.cpp
+ endif
+ VPoxClient-x86_LIBS = \
+	$(PATH_STAGE_LIB)/VPoxAPIWrap-x86$(VPOX_SUFF_LIB)
+ VPoxClient-x86_LIBS.win = $(NO_SUCH_VARIABLE)
+ VPoxClient-x86_LIBS.win.x86 += \
+    $(PATH_TOOL_$(VPOX_VCC_TOOL_STEM)X86_LIB)/delayimp.lib \
+	$(PATH_SDK_$(VPOX_WINPSDK)_LIB.x86)/WbemUuid.Lib
+ VPoxClient-x86_CLEAN.win += $(VPoxClient-x86_0_OUTDIR)/VPoxClient-x86.rgs
+ $(call KB_FN_DO_PASS0_ON_TARGET,VPoxClient-x86) # Sets VPoxClient-x86_0_OUTDIR
+
+ src-client/win/VPoxClient-x86.rc_DEPS = \
+ 	$(VPoxClient-x86_0_OUTDIR)/VPoxClient-x86.rgs \
+ 	$(VPoxCOM-x86_0_OUTDIR)/VirtualPox-x86.tlb
+
+ $(call KB_FN_AUTO_CMD_DEPS,$(VPoxClient-x86_0_OUTDIR)/VPoxClient-x86.rgs)
+ $(VPoxClient-x86_0_OUTDIR)/VPoxClient-x86.rgs: \
+ 		$(VPOX_PATH_MAIN_SRC)/src-all/win/VirtualPox_rgs.xsl \
+		$(VPOX_XIDL_FILE) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(VPOX_XSLTPROC) \
+		--stringparam Application VirtualPox \
+		--stringparam Module VPoxC \
+		-o $@ \
+		$(VPOX_PATH_MAIN_SRC)/src-all/win/VirtualPox_rgs.xsl \
+		$(VPOX_XIDL_FILE)
+endif
+
+#
+# The VPoxExtPackHelperApp.
+#
+ifdef VPOX_WITH_EXTPACK
+ PROGRAMS += VPoxExtPackHelperApp
+ VPoxExtPackHelperApp_TEMPLATE = VPoxR3SetUidToRoot
+ VPoxExtPackHelperApp_LDFLAGS.darwin = -framework Security
+ VPoxExtPackHelperApp_LDFLAGS.win = /SUBSYSTEM:windows
+ VPoxExtPackHelperApp_SOURCES = \
+	src-helper-apps/VPoxExtPackHelperApp.cpp \
+	src-all/ExtPackUtil.cpp
+ VPoxExtPackHelperApp_SOURCES.win = \
+	src-helper-apps/VPoxExtPackHelperApp.rc
+ VPoxExtPackHelperApp_LIBS = \
+	$(LIB_RUNTIME)
+endif # VPOX_WITH_EXTPACK
+
+#
+# VolInfo
+#
+ifdef VPOX_WITH_DEVMAPPER
+ PROGRAMS.linux      += VPoxVolInfo
+ VPoxVolInfo_TEMPLATE = VPoxR3SetUidToRoot
+ VPoxVolInfo_SOURCES  = src-helper-apps/VPoxVolInfo.cpp
+ VPoxVolInfo_LIBS     = devmapper
+endif
+
+
+endif # !defined(VPOX_ONLY_SDK) && !defined(VPOX_ONLY_EXTPACKS) (the ifndef is far above)
+ifndef VPOX_ONLY_SDK
+
+
+#
+# VPoxCOM - COM Abstraction Layer library
+#
+LIBRARIES += VPoxCOM
+VPoxCOM_TEMPLATE        = VPoxMainLib
+VPoxCOM_INTERMEDIATES   = $(VPOX_MAIN_PREREQS) \
+                          $(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+VPoxCOM_SOURCES         = \
+	glue/com.cpp \
+	glue/VPoxLogRelCreate.cpp \
+	glue/GetVPoxUserHomeDirectory.cpp \
+	glue/initterm.cpp \
+	glue/string.cpp \
+	glue/AutoLock.cpp \
+	glue/EventQueue.cpp \
+	glue/NativeEventQueue.cpp \
+	glue/ErrorInfo.cpp \
+	glue/errorprint.cpp
+VPoxCOM_INCS          += $(VPOX_MAIN_APIWRAPPER_INCS) \
+	include
+ifeq ($(KBUILD_TARGET),win)
+ ifdef VPOX_WITH_MIDL_PROXY_STUB
+  VPoxCOM_DEFS.win      = VPOX_WITH_AUTO_COM_REG_UPDATE
+ endif
+ VPoxCOM_DEFS.x86       = _WIN32_WINNT=0x0500
+ VPoxCOM_DEFS.amd64     = _WIN32_WINNT=0x0510
+ VPoxCOM_SOURCES       += \
+	$(VPoxCOM_0_OUTDIR)/VirtualPox_i.c
+ VPoxCOM_CLEAN          = \
+ 	$(VPoxCOM_0_OUTDIR)/VirtualPox_i.c \
+ 	$(VPoxCOM_0_OUTDIR)/VirtualPox_p.c \
+ 	$(VPoxCOM_0_OUTDIR)/dlldata.c \
+ 	$(VPoxCOM_0_OUTDIR)/VirtualPox.h \
+ 	$(VPoxCOM_0_OUTDIR)/VirtualPox.tlb
+ VPoxCOM_CLEAN        += \
+	$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_i.c \
+	$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_p.c \
+	$(VPoxCOM_0_OUTDIR)/legacy/dlldata.c \
+	$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox.h \
+	$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox.tlb
+ VPoxCOM_BLDDIRS      = $(VPoxCOM_0_OUTDIR)/legacy/
+else # !win
+ VPoxCOM_SOURCES       += \
+	$(VPoxCOM_0_OUTDIR)/VirtualPox_XPCOM_i.c \
+	glue/xpcom/helpers.cpp
+endif # !win
+
+glue/VPoxLogRelCreate.cpp_DEFS = KBUILD_TYPE=\"$(KBUILD_TYPE)\"
+
+# 32-bit version of VPoxCOM.
+if defined(VPOX_WITH_32_ON_64_MAIN_API) && !defined(VPOX_ONLY_EXTPACKS)
+ LIBRARIES += VPoxCOM-x86
+ VPoxCOM-x86_TEMPLATE = VPoxMainLib-x86
+ VPoxCOM-x86_EXTENDS  = VPoxCOM
+ ifeq ($(KBUILD_TARGET),win)
+  VPoxCOM-x86_CLEAN   = \
+ 	$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_i.c \
+ 	$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_p.c \
+ 	$(VPoxCOM-x86_0_OUTDIR)/dlldata.c \
+ 	$(VPoxCOM-x86_0_OUTDIR)/VirtualPox.h \
+ 	$(VPoxCOM-x86_0_OUTDIR)/VirtualPox-x86.tlb
+ endif
+endif
+
+# -MD version for the GUI in -MDd builds.
+ifeq ($(KBUILD_TARGET).$(VPOX_VCC_CRT_TYPE),win.d)
+ ifndef VPOX_ONLY_EXTPACKS
+  LIBRARIES += VPoxCOM-GUI
+  USES += qt5
+  VPoxCOM-GUI_TEMPLATE = VPOXQTGUI$(if-expr defined(VPOX_WITH_HARDENING),,EXE)
+  VPoxCOM-GUI_EXTENDS  = VPoxCOM
+ endif
+endif
+
+endif # !VPOX_ONLY_SDK
+
+
+#
+# Installs com related thing(s) to bin.
+#
+INSTALLS.win += VPoxMain-com-inst
+VPoxMain-com-inst_INST = $(INST_BIN)
+VPoxMain-com-inst_MODE = a+r,u+w
+VPoxMain-com-inst_SOURCES = src-all/win/comregister.cmd
+
+
+if defined(VPOX_WITH_HARDENING) && "$(KBUILD_TARGET)" == "linux" && !defined(VPOX_ONLY_EXTPACKS)
+ #
+ # Installs linux/hardening related things to components.
+ #
+ INSTALLS.linux += VPoxMain-hardening-inst
+ VPoxMain-hardening-inst_INST = $(INST_BIN)components/
+ VPoxMain-hardening-inst_SYMLINKS = \
+	VPoxDDU.so=>../VPoxDDU.so \
+	VPoxRT.so=>../VPoxRT.so \
+	VPoxVMM.so=>../VPoxVMM.so \
+	VPoxXPCOM.so=>../VPoxXPCOM.so
+endif
+
+
+if defined(VPOX_WITH_MIDL_PROXY_STUB) && "$(KBUILD_TARGET)" == "win" && !defined(VPOX_ONLY_EXTPACKS)
+ #
+ # Experimental COM proxy + stub DLL w/ automatic registration updating.
+ #
+ # The Legacy stub is for older 64-bit windows versions (pre Windows 7) as we
+ # were having various problems on windows server 2003 and 2008 with the code
+ # MIDL generated.  Also, in windows 7 there are some potentially interesting
+ # changes in the generated code where it uses new helpers from OLE32.
+ #
+ DLLS += VPoxProxyStub
+ VPoxProxyStub_TEMPLATE = VPOXMAINCOMP
+ VPoxProxyStub_DEFS     = REGISTER_PROXY_DLL PROXY_CLSID_IS="$(VPOX_MIDL_PROXY_CLSID_IS)" \
+	$(if $(VPOX_WITH_SDS),VPOX_WITH_SDS,)\
+ 	$(if $(VPOX_WITH_SDS_CLIENT_WATCHER),VPOX_WITH_SDS_CLIENT_WATCHER,)
+ VPoxProxyStub_DEFS.win.x86 = WIN32
+ VPoxProxyStub_SDKS     = VPOX_NTDLL
+ VPoxProxyStub_DEFPATH  = $(VPoxCOM_0_OUTDIR)/# Hack to workaround drive letter in $(VPoxCOM_0_OUTDIR)/ for CFLAGS hack below.
+ VPoxProxyStub_INCS     = $(VPoxCOM_0_OUTDIR)/
+ VPoxProxyStub_SOURCES := \
+ 	VirtualPox_p.c \
+ 	VirtualPox_i.c \
+ 	$(PATH_SUB_CURRENT)/src-all/win/VPoxProxyStub.def \
+ 	$(PATH_SUB_CURRENT)/src-all/win/VPoxProxyStub.rc \
+ 	$(PATH_SUB_CURRENT)/src-all/win/VPoxProxyStub.c
+ src-all/win/VPoxProxyStub.rc_DEPS = $(VPoxCOM_0_OUTDIR)/VirtualPox.tlb
+ VPoxProxyStub_VirtualPox_p.c_CFLAGS.x86 = /Gz # Workaround for incorrect ObjectStublessClient* prototypes in SDK v7.1.
+
+ DLLS += VPoxProxyStubLegacy
+ VPoxProxyStubLegacy_TEMPLATE = VPOXMAINCOMP
+ VPoxProxyStubLegacy_EXTENDS  = VPoxProxyStub
+ VPoxProxyStubLegacy_DEFS     = $(VPoxProxyStub_DEFS) VPOX_IN_PROXY_STUB_LEGACY
+ VPoxProxyStubLegacy_INCS     = $(VPoxCOM_0_OUTDIR)/legacy/
+ VPoxProxyStubLegacy_SOURCES  = \
+ 	$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_p.c \
+ 	$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_i.c \
+ 	src-all/win/VPoxProxyStub.def \
+ 	src-all/win/VPoxProxyStubLegacy.rc \
+  	src-all/win/VPoxProxyStub.c
+ src-all/win/VPoxProxyStubLegacy.rc_DEPS = $(VPoxCOM_0_OUTDIR)/legacy/VirtualPox.tlb
+
+ ifdef VPOX_WITH_32_ON_64_MAIN_API
+  DLLS += VPoxProxyStub-x86
+  VPoxProxyStub-x86_TEMPLATE = VPoxMainComp-x86
+  VPoxProxyStub-x86_SDKS     = VPOX_NTDLL
+  VPoxProxyStub-x86_DEFS     = $(VPoxProxyStub_DEFS) VPOX_PROXY_STUB_32_ON_64 WIN32
+  VPoxProxyStub-x86_INCS     = $(VPoxCOM-x86_0_OUTDIR)/
+  VPoxProxyStub-x86_SOURCES  = \
+  	$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_p.c \
+  	$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_i.c \
+ 	src-all/win/VPoxProxyStub.c \
+ 	src-all/win/VPoxProxyStub-x86.rc \
+ 	src-all/win/VPoxProxyStub.def
+  src-all/win/VPoxProxyStub-x86.rc_DEPS = $(VPoxCOM-x86_0_OUTDIR)/VirtualPox-x86.tlb
+ endif
+endif
+
+
+
+# generate rules
+include $(FILE_KBUILD_SUB_FOOTER)
+
+
+
+#
+# Additions rules.
+#
+
+## @todo this hack ain't cutting it any longer. (the file name is abspath'ed since ages now.)
+glue/xpcom/helpers.cpp: $(VPOX_IDL_TYPELIB.XPCOM)
+
+$(call KB_FN_AUTO_CMD_DEPS_EX,$(VPOX_IDL_FILE.XPCOM),$(PATH_OUT)/VPOX_IDL_FILE.XPCOM.vpox-dep)
+$(VPOX_IDL_FILE.XPCOM): $(VPOX_PATH_MAIN_SRC)/idl/xpidl.xsl $(VPOX_XIDL_FILE) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS_EX,$(PATH_OUT)/VPOX_IDL_FILE.XPCOM.vpox-dep)
+	$(call MSG_TOOL,xsltproc,VPoxSVC,$(VPOX_PATH_MAIN_SRC)/idl/xpidl.xsl,$@)
+	$(QUIET)$(VPOX_XSLTPROC) -o $@ $(VPOX_PATH_MAIN_SRC)/idl/xpidl.xsl $(VPOX_XIDL_FILE)
+
+$(call KB_FN_AUTO_CMD_DEPS_EX,$(VPOX_IDL_TYPELIB.XPCOM),$(PATH_OUT)/VPOX_IDL_TYPELIB.XPCOM.vpox-dep)
+$(VPOX_IDL_TYPELIB.XPCOM): $(VPOX_IDL_FILE.XPCOM) |  $$(dir $$@) $(VPOX_XPIDL)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS_EX,$(PATH_OUT)/VPOX_IDL_TYPELIB.XPCOM.vpox-dep)
+	$(call MSG_TOOL,xpidl,VPoxSVC,$(VPOX_IDL_FILE.XPCOM),$@)
+	$(QUIET)$(VPOX_XPIDL_ENV)$(VPOX_XPIDL) -m typelib -I $(VPOX_PATH_XPCOM_IDL) -e $@ $(VPOX_IDL_FILE.XPCOM)
+	$(CHMOD) 0644 $@
+## @todo ^^^^^^^^^^^^ fix horrible hack
+
+$(call KB_FN_AUTO_CMD_DEPS_EX,$(VPOX_IDL_HEADER.XPCOM),$(PATH_OUT)/VPOX_IDL_HEADER.XPCOM.vpox-dep)
+$(VPOX_IDL_HEADER.XPCOM): $(VPOX_IDL_FILE.XPCOM) | $$(dir $$@) $(VPOX_XPIDL)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS_EX,$(PATH_OUT)/VPOX_IDL_HEADER.XPCOM.vpox-dep)
+	$(call MSG_TOOL,xpidl,VPoxSVC,$(VPOX_IDL_FILE.XPCOM),$@)
+	$(QUIET)$(VPOX_XPIDL_ENV)$(VPOX_XPIDL) -m header  -I $(VPOX_PATH_XPCOM_IDL) -e $@ $(VPOX_IDL_FILE.XPCOM)
+
+$(call KB_FN_AUTO_CMD_DEPS_EX,$(VPOX_IDL_FILE.MSCOM),$(PATH_OUT)/VPOX_IDL_FILE.MSCOM.vpox-dep)
+$(VPOX_IDL_FILE.MSCOM): $(VPOX_PATH_MAIN_SRC)/idl/midl.xsl $(VPOX_XIDL_FILE) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS_EX,$(PATH_OUT)/VPOX_IDL_FILE.MSCOM.vpox-dep)
+	$(call MSG_TOOL,xsltproc,VPoxSVC,$<,$@)
+	$(QUIET)$(VPOX_XSLTPROC) -o $@ \
+		$(if $(VPOX_WITH_MIDL_PROXY_STUB),-stringparam g_fGenProxy yes,) \
+		$(if $(VPOX_WITH_SDS),-stringparam g_fVPoxWithSDS yes,) \
+		$(VPOX_PATH_MAIN_SRC)/idl/midl.xsl $(VPOX_XIDL_FILE)
+
+
+# Aliases for testing purposes.
+ifdef VPOX_WITH_XPCOM
+testidl:    $(VPOX_IDL_FILE.XPCOM) $(VPOX_IDL_TYPELIB.XPCOM) $(VPoxCOM_0_OUTDIR)/VirtualPox_XPCOM_i.c
+testidlhdr: $(VPOX_IDL_HEADER.XPCOM)
+else
+testidl:    $(VPOX_IDL_FILE.MSCOM) $(VPoxCOM_0_OUTDIR)/VirtualPox_i.c \
+	$(if $(VPOX_WITH_32_ON_64_MAIN_API),$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_i.c,)
+endif
+
+
+$(VPoxCOM_0_OUTDIR)/VirtualPox_XPCOM_i.c: $(VPOX_PATH_MAIN_SRC)/idl/xpidl_iid.xsl $(VPOX_XIDL_FILE) | $$(dir $$@)
+	$(call MSG_TOOL,xsltproc,VPoxSVC,$<,$@)
+	$(QUIET)$(VPOX_XSLTPROC) -o $@ $< $(VPOX_XIDL_FILE)
+
+##
+# Edits $1 and adding #pragma directives for disabling warnings windows.h causes.
+# @param 1     The name of the file to edit.
+define def_VPoxMainDisableMscWarnings
+	$(QUIET)$(MV) -f "$1" "$1.tmp"
+	$(QUIET)$(APPEND) -nt "$1" \
+		'#pragma warning(push) /* -Wall and windows.h */' \
+		'#pragma warning(disable:4668 4255)' \
+		'#if _MSC_VER >= 1800 /* RT_MSC_VER_VC120 */' \
+		'# pragma warning(disable:4005)' \
+		'#endif' \
+               ''
+	$(QUIET)$(CAT_EXT) "$1.tmp" >> "$1"
+	$(QUIET)$(APPEND) -n "$1" \
+		'' \
+		'#pragma warning(pop)' \
+               ''
+	$(QUIET)$(RM) -f "$1.tmp"
+
+endef
+
+# Note! Because we've got a different proxy stub DLL for pre windows 7 64-bit hosts, we target windows 7 for AMD64.
+#       The output is different and hopefully more efficient, at least memory wise (using more helpers in OLE32).
+# Note! We're checking for win.amd64 below when setting the target because of the SDK build which happens on linux.amd64
+#       but with a 32-bit Wine.
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxCOM_0_OUTDIR)/VirtualPox_i.c)
+$(VPoxCOM_0_OUTDIR)/VirtualPox_i.c \
+$(if $(VPOX_WITH_MIDL_PROXY_STUB), + $(VPoxCOM_0_OUTDIR)/VirtualPox_p.c + $(VPoxCOM_0_OUTDIR)/dlldata.c,) \
++ $(VPoxCOM_0_OUTDIR)/VirtualPox.h \
++ $(VPoxCOM_0_OUTDIR)/VirtualPox.tlb: $(VPOX_IDL_FILE.MSCOM) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(VPOX_WIN_MIDL) /nologo /W4 \
+		/env $(if-expr "$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)" == "win.amd64" ,amd64,win32) \
+		/robust /protocol all /target $(if-expr defined(VPOX_WITH_MIDL_PROXY_STUB),NT61,NT51) \
+		/out $(call VPOX_FN_MAKE_WIN_PATH,$(VPoxCOM_0_OUTDIR)) \
+		/cpp_cmd $(subst $(EXEC_X86_WIN32),,$(call VPOX_FN_MAKE_WIN_PATH,$(TOOL_$(VPOX_VCC_TOOL)_CC))) \
+		/I $(call VPOX_FN_MAKE_WIN_PATH,$(PATH_SDK_$(VPOX_WINPSDK)_INC)) \
+		/I idl \
+		$(call VPOX_FN_MAKE_WIN_PATH,$(VPOX_IDL_FILE.MSCOM))
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM_0_OUTDIR)/VirtualPox.h)
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM_0_OUTDIR)/VirtualPox_i.c)
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM_0_OUTDIR)/VirtualPox_p.c)
+
+if defined(VPOX_WITH_MIDL_PROXY_STUB)
+# -Windows Server 2003 AMD64 SP1 does not like the result when using '/protocol all' and '/target NT51'.
+# -Vista AMD64 SP1 and Windows Server 2008 AMD64 seems to have some objections as well, but it seemed
+#  that using an older MIDL compiler (v7.00.0499 instead of v7.00.0555) helps. But the W2K3 fix also works.
+# To avoid 32-bit vs. 64-bit differences, we do the same for 32-bit windows versions.
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_i.c)
+$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_i.c \
++ $(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_p.c\
++ $(VPoxCOM_0_OUTDIR)/legacy/dlldata.c \
++ $(VPoxCOM_0_OUTDIR)/legacy/VirtualPox.h \
++ $(VPoxCOM_0_OUTDIR)/legacy/VirtualPox.tlb: $(VPOX_IDL_FILE.MSCOM) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(VPOX_WIN_MIDL) /nologo /W4 \
+		$(if-expr "$(KBUILD_TARGET).$(KBUILD_TARGET_ARCH)" == "win.amd64" \
+		,/env amd64 /x64 /target NT50 /robust \
+		,/env win32      /target NT51 /robust /protocol all ) \
+		/out $(call VPOX_FN_MAKE_WIN_PATH,$(dir $@)) \
+		/cpp_cmd $(subst $(EXEC_X86_WIN32),,$(call VPOX_FN_MAKE_WIN_PATH,$(TOOL_$(VPOX_VCC_TOOL)_CC))) \
+		/I $(call VPOX_FN_MAKE_WIN_PATH,$(PATH_SDK_$(VPOX_WINPSDK)_INC)) \
+		/I idl \
+		$(call VPOX_FN_MAKE_WIN_PATH,$(VPOX_IDL_FILE.MSCOM))
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox.h)
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_i.c)
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM_0_OUTDIR)/legacy/VirtualPox_p.c)
+endif
+
+# The XP targetted 32-bit proxy stub works with all versions of windows (the
+# issues leading to the VPoxProxyStubLegacy.dll are only on 64-bit windows).
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_i.c)
+$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_i.c \
+$(if $(VPOX_WITH_MIDL_PROXY_STUB), + $(VPoxCOM-x86_0_OUTDIR)/VirtualPox_p.c + $(VPoxCOM-x86_0_OUTDIR)/dlldata.c,) \
++ $(VPoxCOM-x86_0_OUTDIR)/VirtualPox.h \
++ $(VPoxCOM-x86_0_OUTDIR)/VirtualPox-x86.tlb: $(VPOX_IDL_FILE.MSCOM) | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(VPOX_WIN_MIDL) /nologo /W4 \
+		/env win32 /target NT51 /robust /protocol all  \
+		/out $(call VPOX_FN_MAKE_WIN_PATH,$(VPoxCOM-x86_0_OUTDIR)) \
+		/tlb $(call VPOX_FN_MAKE_WIN_PATH,$(VPoxCOM-x86_0_OUTDIR)/VirtualPox-x86.tlb) \
+		/cpp_cmd $(subst $(EXEC_X86_WIN32),,$(call VPOX_FN_MAKE_WIN_PATH,$(TOOL_$(VPOX_VCC_TOOL_STEM)X86_CC))) \
+		/I $(call VPOX_FN_MAKE_WIN_PATH,$(PATH_SDK_$(VPOX_WINPSDK)_INC)) \
+		/I idl \
+		$(call VPOX_FN_MAKE_WIN_PATH,$(VPOX_IDL_FILE.MSCOM))
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM-x86_0_OUTDIR)/VirtualPox.h)
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_i.c)
+	$(call def_VPoxMainDisableMscWarnings,$(VPoxCOM-x86_0_OUTDIR)/VirtualPox_p.c)
+
+#
+# Translation stuff
+#
+VPoxSVC_VPOX_HEADERS = \
+	include/collection.h \
+	include/MachineImpl.h
+VPoxSVC_VPOX_TRANSLATIONS = \
+	nls/VPoxSVC_de.ts
+
+VPoxC_VPOX_HEADERS = \
+	include/ConsoleImpl.h
+
+VPoxC_VPOX_INTERMEDIATES   = $(VPOX_MAIN_APIWRAPPER_GEN_HDRS)
+VPoxC_VPOX_HEADERS += $(VPOX_MAIN_APIWRAPPER_INCS)
+
+VPoxC_VPOX_TRANSLATIONS = \
+	nls/VPoxC_de.ts
+
+ifdef VPOX_WITH_JMSCOM
+
+ #
+ # Java glue JAR files
+ #
+ VPOX_JMSCOM_JAR     = $(VPoxJMscom-inst-jar_0_OUTDIR)/vpoxjmscom.jar
+ VPOX_JMSCOM_TARGET := $(PATH_TARGET)/vpoxjmscom-gen
+ VPOX_JMSCOM_GEN     = $(VPOX_JMSCOM_TARGET)/jmscomgen
+ VPOX_JMSCOM_JDEST  := $(VPOX_JMSCOM_TARGET)/jdest
+ VPOX_GLUE_XSLT_DIR := $(PATH_ROOT)/src/VPox/Main/glue
+ VPOX_JACOB_DIR     := $(PATH_ROOT)/src/libs/jacob-1.17
+
+ INSTALLS += VPoxJMscom-inst-jar
+ VPoxJMscom-inst-jar_INST = $(INST_SDK)bindings/mscom/java/
+ VPoxJMscom-inst-jar_MODE = a+r,u+w
+ VPoxJMscom-inst-jar_SOURCES = \
+ 	$(VPoxJMscom-inst-jar_0_OUTDIR)/vpoxjmscom.jar
+ VPoxJMscom-inst-jar_CLEAN = \
+ 	$(VPoxJMscom-inst-jar_0_OUTDIR)/vpoxjmscom.jar \
+ 	$(VPOX_JMSCOM_GEN)/jmscomglue.list \
+ 	$(wildcard \
+ 		$(VPOX_JMSCOM_GEN)/java/*.java \
+ 		$(VPOX_JMSCOM_JDEST)/*.class \
+ 		$(VPOX_JMSCOM_JDEST)/*/*.class \
+ 		$(VPOX_JMSCOM_JDEST)/*/*/*.class \
+ 		$(VPOX_JMSCOM_JDEST)/*/*/*/*.class \
+ 	)
+ VPoxJMscom-inst-jar_BLDDIRS += $(VPOX_JMSCOM_GEN)/java
+ $(call KB_FN_DO_PASS0_ON_TARGET,VPoxJMscom-inst-jar) # Sets VPoxJMscom-inst-jar_0_OUTDIR
+
+ $(call KB_FN_AUTO_CMD_DEPS,$(VPOX_JMSCOM_GEN)/jmscomglue.list)
+ $(VPOX_JMSCOM_GEN)/jmscomglue.list: \
+		$(VPOX_XIDL_FILE) \
+		$(VPOX_GLUE_XSLT_DIR)/glue-java.xsl \
+		$(VPOX_FILESPLIT) \
+		| $(VPOX_JMSCOM_GEN)/java/
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_L1,Generating Java MSCOM glue files from XIDL)
+	$(QUIET)$(RM) -f $(wildcard $(VPOX_JMSCOM_GEN)/java/*.java)
+	$(QUIET)$(VPOX_XSLTPROC) \
+		--stringparam filelistonly "" \
+		--stringparam G_vpoxApiSuffix $(VPOX_API_SUFFIX) \
+		--stringparam G_vpoxGlueStyle mscom \
+		--stringparam G_vpoxDirPrefix "" \
+		-o $(VPOX_JMSCOM_GEN)/java/merged.file $(VPOX_GLUE_XSLT_DIR)/glue-java.xsl $(VPOX_XIDL_FILE)
+	$(QUIET)$(VPOX_FILESPLIT) $(VPOX_JMSCOM_GEN)/java/merged.file $(VPOX_JMSCOM_GEN)/java
+	$(QUIET)echo $(VPOX_JMSCOM_GEN)/java/*.java > $@
+
+ $(call KB_FN_AUTO_CMD_DEPS,$(VPoxJMscom-inst-jar_0_OUTDIR)/vpoxjmscom.jar)
+ $(VPoxJMscom-inst-jar_0_OUTDIR)/vpoxjmscom.jar: $(VPOX_JMSCOM_GEN)/jmscomglue.list | $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_TOOL,javac,$(notdir $@),jmscomglue.list,)
+	$(QUIET)$(RM) -Rf $(VPOX_JMSCOM_JDEST)
+	$(QUIET)$(MKDIR) -p $(VPOX_JMSCOM_JDEST)
+	$(call MSG_TOOL,javac,$(notdir $@),...,)
+	$(QUIET)$(VPOX_JAVAC) $(VPOX_JAVAC_OPTS) @$(VPOX_JMSCOM_GEN)/jmscomglue.list \
+		-d $(VPOX_JMSCOM_JDEST) -classpath "$(VPOX_JMSCOM_JDEST)$(VPOX_SEP)$(VPOX_JACOB_DIR)/jacob.jar"
+	$(call MSG_LINK,$(notdir $@),$@)
+	$(QUIET)$(VPOX_JAR) cf $@ -C $(VPOX_JMSCOM_JDEST) .
+
+ ## @todo compile TestVPox.java (see below) to have sanity checking
+endif # VPOX_WITH_JMSCOM
+
+#
+# Install Java glue sample code.
+#
+INSTALLS += javagluesample
+javagluesample_INST = $(INST_SDK)bindings/glue/java/
+javagluesample_MODE = a+r,u+w
+javagluesample_SOURCES = \
+	$(VPOX_PATH_MAIN_SRC)/glue/tests/TestVPox.java=>TestVPox.java \
+	$(VPOX_PATH_MAIN_SRC)/glue/tests/Makefile=>Makefile
+
+#
+# Rules associated with VPoxAPIWrap (in typical invocation order).
+# We keep them down here to simplify the use of VPoxAPIWrap_0_OUTDIR.
+#
+
+# Generate a make include file which lists the wrapper header and source files.
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxAPIWrap_VPOX_KMK_FILE).ts)
+$(VPoxAPIWrap_VPOX_KMK_FILE).ts \
++| $(VPoxAPIWrap_VPOX_KMK_FILE): \
+		$(VPOX_XIDL_FILE) \
+		$(VPOX_PATH_MAIN_SRC)/idl/apiwrap-server-filelist.xsl \
+		$(VPOX_PATH_MAIN_SRC)/Makefile.kmk
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_GENERATE,,$(VPoxAPIWrap_VPOX_KMK_FILE))
+	$(QUIET)$(RM) -f $@
+	$(QUIET)$(MKDIR) -p $(@D)
+	$(QUIET)$(VPOX_XSLTPROC) --stringparam KBUILD_HOST $(KBUILD_HOST) \
+		$(if $(VPOX_WITH_SDS),-stringparam g_fVPoxWithSDS yes,) \
+		-o $@ $(VPOX_PATH_MAIN_SRC)/idl/apiwrap-server-filelist.xsl $(VPOX_XIDL_FILE)
+	$(QUIET)$(CP) --changed -fv $@ $(VPoxAPIWrap_VPOX_KMK_FILE)
+
+# Generate the header files for the wrappers.
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-headers)
+$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-headers \
++| $(VPOX_MAIN_APIWRAPPER_GEN_HDRS): \
+		$(VPOX_XIDL_FILE) \
+               $(VPOX_PATH_MAIN_SRC)/idl/typemap-shared.inc.xsl \
+		$(VPoxAPIWrap_VPOX_XSLT) \
+		$(VPOX_FILESPLIT) \
+		| $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_L1,Generating C++ Server API wrapper header files from XIDL)
+	$(QUIET)$(RM) -f -- $(filter-out $(VPOX_MAIN_APIWRAPPER_GEN_HDRS), $(wildcard $(VPoxAPIWrap_0_OUTDIR)/*.h))
+	$(QUIET)$(VPOX_XSLTPROC) --stringparam KBUILD_HOST $(KBUILD_HOST) \
+		--stringparam generating "headers" \
+		-o $@ $(VPoxAPIWrap_VPOX_XSLT) $(VPOX_XIDL_FILE)
+	$(QUIET)$(VPOX_FILESPLIT) $@ $(VPoxAPIWrap_0_OUTDIR)
+
+# Generate the DTrace probes for the wrappers and combine them with handcoded probes.
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d.ts)
+$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d.ts \
++| $(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d: \
+		$(VPOX_XIDL_FILE) \
+               $(VPOX_PATH_MAIN_SRC)/idl/typemap-shared.inc.xsl \
+		$(VPoxAPIWrap_VPOX_XSLT) \
+		$(VPOX_FILESPLIT) \
+		| $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_L1,Generating DTrace Provider for the VPox API (from XIDL))
+	$(QUIET)$(RM) -f -- "$@" "$@.tmp"
+	$(QUIET)$(VPOX_XSLTPROC) --stringparam KBUILD_HOST $(KBUILD_HOST) \
+		--stringparam generating "dtrace-probes" \
+		-o "$@" $(VPoxAPIWrap_VPOX_XSLT) $(VPOX_XIDL_FILE)
+	$(QUIET)$(SED) -e '' -o "$@.tmp" \
+		"$(VPOX_PATH_MAIN_SRC)/src-all/VPoxAPI-start$(if-expr "$(VPOX_HOST_DTRACE_VERSION)" == "dtrace: Sun D 1.6.2",-alternative,).d" \
+		"$@" \
+		"$(VPOX_PATH_MAIN_SRC)/src-all/VPoxAPI-end$(if-expr "$(VPOX_HOST_DTRACE_VERSION)" == "dtrace: Sun D 1.6.2",-alternative,).d"
+	$(QUIET)$(MV) -- "$@.tmp" "$@"
+	$(QUIET)$(CP) --changed -fv -- "$@" "$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d"
+
+# Generate the wrapper source files - split in two due to long processing time
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-sources-even)
+$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-sources-even \
++| $(VPOX_MAIN_APIWRAPPER_GEN_SRCS_EVEN): \
+		$(VPOX_XIDL_FILE) \
+               $(VPOX_PATH_MAIN_SRC)/idl/typemap-shared.inc.xsl \
+		$(VPoxAPIWrap_VPOX_XSLT) \
+		$(VPOX_FILESPLIT) \
+		| $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_L1,Generating C++ Server API wrapper files from XIDL - part 1)
+	$(QUIET)$(RM) -f -- $(filter-out $(VPOX_MAIN_APIWRAPPER_GEN_SRCS), $(wildcard $(VPoxAPIWrap_0_OUTDIR)/*.cpp))
+	$(QUIET)$(VPOX_XSLTPROC) --stringparam KBUILD_HOST $(KBUILD_HOST) \
+		--stringparam generating "sources" \
+		--param reminder 0 \
+		-o $@ $(VPoxAPIWrap_VPOX_XSLT) $(VPOX_XIDL_FILE)
+	$(QUIET)$(VPOX_FILESPLIT) $@ $(VPoxAPIWrap_0_OUTDIR)
+
+$(call KB_FN_AUTO_CMD_DEPS,$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-sources-odd)
+$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-sources-odd \
++| $(VPOX_MAIN_APIWRAPPER_GEN_SRCS_ODD): \
+		$(VPOX_XIDL_FILE) \
+               $(VPOX_PATH_MAIN_SRC)/idl/typemap-shared.inc.xsl \
+		$(VPoxAPIWrap_VPOX_XSLT) \
+		$(VPOX_FILESPLIT) \
+		| $$(dir $$@)
+	$(call KB_FN_AUTO_CMD_DEPS_COMMANDS)
+	$(call MSG_L1,Generating C++ Server API wrapper files from XIDL - part 2)
+	$(QUIET)$(RM) -f -- $(filter-out $(VPOX_MAIN_APIWRAPPER_GEN_SRCS), $(wildcard $(VPoxAPIWrap_0_OUTDIR)/*.cpp))
+	$(QUIET)$(VPOX_XSLTPROC) --stringparam KBUILD_HOST $(KBUILD_HOST) \
+		--stringparam generating "sources" \
+		--param reminder 1 \
+		-o $@ $(VPoxAPIWrap_VPOX_XSLT) $(VPOX_XIDL_FILE)
+	$(QUIET)$(VPOX_FILESPLIT) $@ $(VPoxAPIWrap_0_OUTDIR)
+
+testapiwrappers:: \
+	$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-headers \
+	$(VPoxAPIWrap_0_OUTDIR)/VPoxAPI.d.ts \
+	$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-sources-odd \
+	$(VPoxAPIWrap_0_OUTDIR)/apiwrappers-sources-even
+
+
+#
+# NLS stuff.
+#
+updatenls::
+	$(VPOX_LUPDATE) $(VPoxSVC_SOURCES) $(VPoxSVC_VPOX_HEADERS) -ts $(VPoxSVC_VPOX_TRANSLATIONS)
+	$(VPOX_LUPDATE) $(VPoxC_SOURCES) $(VPoxC_VPOX_HEADERS) -ts $(VPoxC_VPOX_TRANSLATIONS)

@@ -1,0 +1,113 @@
+; $Id: VPoxNetFlt.inf $
+;; @file
+; VPoxNetFlt.inf - VirtualPox Bridged Networking Driver inf file Protocol edge
+;
+
+;
+; Copyright (C) 2011-2020 Oracle Corporation
+;
+; This file is part of VirtualPox Open Source Edition (OSE), as
+; available from http://www.virtualpox.org. This file is free software;
+; you can redistribute it and/or modify it under the terms of the GNU
+; General Public License (GPL) as published by the Free Software
+; Foundation, in version 2 as it comes in the "COPYING" file of the
+; VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+; hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+;
+; The contents of this file may alternatively be used under the terms
+; of the Common Development and Distribution License Version 1.0
+; (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+; VirtualPox OSE distribution, in which case the provisions of the
+; CDDL are applicable instead of those of the GPL.
+;
+; You may elect to license modified versions of this file under the
+; terms and conditions of either the GPL or the CDDL or both.
+;
+
+[Version]
+Signature  = "$Windows NT$"
+;cat   CatalogFile = VPoxNetFlt.cat
+Class      = NetService
+ClassGUID  = {4D36E974-E325-11CE-BFC1-08002BE10318}
+Provider   = %Provider%
+;DriverPackageType=Network
+;DriverPackageDisplayName=%VPoxNetFlt_Desc%
+;edit-DriverVer=08/13/2008,1.1.0.1
+
+
+[Manufacturer]
+%Provider% = VPox,NTx86,NTamd64
+
+[ControlFlags]
+
+[VPox]
+%VPoxNetFlt_Desc% = VPoxNetFlt.ndi, sun_VPoxNetFlt
+
+[VPox.NTx86]
+%VPoxNetFlt_Desc% = VPoxNetFlt.ndi, sun_VPoxNetFlt
+
+[VPox.NTamd64]
+%VPoxNetFlt_Desc% = VPoxNetFlt.ndi, sun_VPoxNetFlt
+
+[VPoxNetFlt.ndi]
+AddReg          = VPoxNetFlt.ndi.AddReg, VPoxNetFlt.AddReg
+Characteristics = 0x4410 ;  NCF_FILTER | NCF_NDIS_PROTOCOL
+CopyFiles       = VPoxNetFlt.Files.DLL, VPoxNetFlt.Files.Sys
+CopyInf         = VPoxNetFltM.inf
+
+[VPoxNetFlt.ndi.Remove]
+DelFiles        = VPoxNetFlt.Files.DLL, VPoxNetFlt.Files.Sys
+
+[VPoxNetFlt.ndi.Services]
+AddService = VPoxNetFlt,, VPoxNetFlt.AddService
+
+[VPoxNetFlt.AddService]
+DisplayName    = %VPoxNetFltService_Desc%
+ServiceType    = 1 ;SERVICE_KERNEL_DRIVER
+StartType      = 3 ;SERVICE_DEMAND_START
+ErrorControl   = 1 ;SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\VPoxNetFlt.sys
+LoadOrderGroup = PNP_TDI
+AddReg         = VPoxNetFlt.AddService.AddReg
+
+
+[VPoxNetFlt.AddService.AddReg]
+
+[SourceDisksNames]
+1=%DiskDescription%,"",,
+
+[SourceDisksFiles]
+VPoxNetFlt.sys=1
+VPoxNetFltNobj.dll=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+VPoxNetFlt.Files.DLL   = 11   ; %windir%\System32
+VPoxNetFlt.Files.Sys   = 12   ; %windir%\System32\drivers
+
+[VPoxNetFlt.Files.Sys]
+VPoxNetFlt.sys,,,2
+
+[VPoxNetFlt.Files.DLL]
+VPoxNetFltNobj.dll,,,2
+
+[VPoxNetFlt.ndi.AddReg]
+HKR, Ndi, HelpText, , %VPoxNetFlt_HELP%
+HKR, Ndi,            ClsID,              0, {f374d1a0-bf08-4bdc-9cb2-c15ddaeef955}
+HKR, Ndi,            ComponentDll,        , VPoxNetFltNobj.dll
+HKR, Ndi,            FilterClass,         , failover
+HKR, Ndi,            FilterDeviceInfId,   , sun_VPoxNetFltmp
+HKR, Ndi,            Service,             , VPoxNetFlt
+HKR, Ndi\Interfaces, UpperRange,          , noupper
+HKR, Ndi\Interfaces, LowerRange,          , nolower
+HKR, Ndi\Interfaces, FilterMediaTypes,    , "ethernet, nolower"
+
+[VPoxNetFlt.AddReg]
+HKR, Parameters, Param1, 0, 4
+
+[Strings]
+Provider = "Oracle Corporation"
+DiskDescription = "VirtualPox Bridged Networking Driver"
+VPoxNetFlt_Desc = "VirtualPox Bridged Networking Driver"
+VPoxNetFlt_HELP = "VirtualPox Bridged Networking Driver"
+VPoxNetFltService_Desc = "VirtualPox Bridged Networking Service"

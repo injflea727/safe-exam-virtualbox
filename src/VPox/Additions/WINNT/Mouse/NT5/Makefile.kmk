@@ -1,0 +1,78 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the Windows NT5+ Guest Additions Mouse Filter Driver
+#
+
+#
+# Copyright (C) 2011-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# VPoxMouse - Windows NT5+ Guest Additions Mouse Filter Driver
+#
+SYSMODS                += VPoxMouse
+VPoxMouse_TEMPLATE      = VPOXGUESTR0
+VPoxMouse_DEFS          = LOG_TO_BACKDOOR
+VPoxMouse_SDKS.x86      = ReorderCompilerIncs $(VPOX_WINDDK_GST_W2K)
+#VPoxMouse_DEFS         += LOG_ENABLED
+VPoxMouse_CXXFLAGS      = -Od
+VPoxMouse_CFLAGS        = -Od
+VPoxMouse_LDFLAGS.x86   = -Entry:DriverEntry@8
+VPoxMouse_LDFLAGS.amd64 = -Entry:DriverEntry
+VPoxMouse_SOURCES       = \
+	VPoxMFDriver.cpp \
+	VPoxMFInternal.cpp \
+	VPoxMF.rc
+VPoxMouse_LIBS.x86      = \
+	$(PATH_SDK_$(VPOX_WINDDK_GST_W2K)_LIB)/ntoskrnl.lib \
+	$(PATH_SDK_$(VPOX_WINDDK_GST_W2K)_LIB)/hal.lib
+VPoxMouse_LIBS.amd64    = \
+	$(PATH_SDK_$(VPOX_WINDDK_GST)_LIB)/ntoskrnl.lib \
+	$(PATH_SDK_$(VPOX_WINDDK_GST)_LIB)/hal.lib
+VPoxMouse_LIBS          = \
+	$(VPOX_LIB_IPRT_GUEST_R0) \
+	$(VPOX_LIB_VBGL_R0)
+
+#
+# Install the inf & cat.
+#
+INSTALLS += VPoxMouse-inf
+VPoxMouse-inf_INST = $(INST_ADDITIONS)
+VPoxMouse-inf_MODE = a+r,u+w
+VPoxMouse-inf_SOURCES = \
+	$(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.inf
+VPoxMouse-inf_CLEAN = $(VPoxMouse-inf_SOURCES)
+VPoxMouse-inf_BLDDIRS = $(PATH_TARGET)/VPoxMouseCat.dir
+
+$(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.inf: $(PATH_SUB_CURRENT)/VPoxMouse.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxMouse-inf,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+if defined(VPOX_SIGNING_MODE) && defined(VPOX_SIGN_ADDITIONS)
+ VPoxMouse-inf_SOURCES += \
+  	$(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.sys \
+  	$(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.cat \
+  	$(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.cat=>VPoxMouse-PreW10.cat
+
+ $(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.sys: $$(VPoxMouse_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 -- "$<" "$(@D)"
+
+ $(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.cat: \
+ 		$(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.inf \
+ 		$(PATH_TARGET)/VPoxMouseCat.dir/VPoxMouse.sys
+	$(call MSG_TOOL,Inf2Cat,VPoxMouse-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+endif # signing
+
+include $(FILE_KBUILD_SUB_FOOTER)

@@ -1,0 +1,88 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-makefile for the DHCP server.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH := ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifndef LWIP_SOURCES
+ include $(PATH_SUB_CURRENT)/../../Devices/Network/lwip-new/Config.kmk
+endif
+
+#
+# Hardended stub executable.
+#
+ifdef VPOX_WITH_HARDENING
+PROGRAMS += VPoxNetDHCPHardened
+VPoxNetDHCPHardened_TEMPLATE = VPOXR3HARDENEDEXE
+VPoxNetDHCPHardened_NAME     = VPoxNetDHCP
+VPoxNetDHCPHardened_SOURCES  = VPoxNetDhcpdHardened.cpp
+VPoxNetDHCPHardened_LDFLAGS.win = /SUBSYSTEM:windows
+$(call VPOX_SET_VER_INFO_DLL,VPoxNetDHCPHardened,VirtualPox DHCP Server,$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+endif
+
+
+#
+# The DHCP server module (dll if hardended)
+#
+ifdef VPOX_WITH_HARDENING
+DLLS     += VPoxNetDHCP
+VPoxNetDHCP_TEMPLATE := VPoxR3Dll
+else
+PROGRAMS += VPoxNetDHCP
+VPoxNetDHCP_TEMPLATE := VPOXR3EXE
+endif
+
+# (current dir is for for lwipopts.h)
+VPoxNetDHCP_INCS += . $(addprefix ../../Devices/Network/lwip-new/,$(LWIP_INCS))
+
+VPoxNetDHCP_DEFS      = KBUILD_TYPE=\"$(KBUILD_TYPE)\"
+#VPoxNetDHCP_DEFS     = IPv6
+#VPoxNetDHCP_DEFS.linux = WITH_VALGRIND
+ifneq ($(KBUILD_TARGET),win)
+VPoxNetDHCP_DEFS     += VPOX_WITH_XPCOM
+VPoxNetDHCP_INCS     += $(VPOX_XPCOM_INCS)
+ ifneq ($(KBUILD_TARGET),darwin)
+  # We want -std=c++11 for 4.7 and newer compilers, and -std=c++0x for older ones.
+VPoxNetDHCP_CXXFLAGS += -std=$(if $(VPOX_GCC_VERSION_CXX),$(if $(VPOX_GCC_VERSION_CXX) < 40700,c++0x,c++11),c++0x)
+ endif
+endif
+VPoxNetDHCP_SOURCES = \
+	ClientId.cpp \
+	Config.cpp \
+	DHCPD.cpp \
+	Db.cpp \
+	DhcpMessage.cpp \
+	DhcpOptions.cpp \
+	IPv4Pool.cpp \
+	Timestamp.cpp \
+	VPoxNetDhcpd.cpp \
+	../../Main/glue/VPoxLogRelCreate.cpp \
+	../../Main/glue/GetVPoxUserHomeDirectory.cpp \
+	$(addprefix ../../Devices/Network/lwip-new/,$(LWIP_SOURCES))
+
+VPoxNetDHCP_LIBS = $(LIB_RUNTIME)
+VPoxNetDHCP_LIBS.solaris += socket nsl
+VPoxNetDHCP_LDFLAGS.win = /SUBSYSTEM:windows
+
+ifdef VPOX_WITH_HARDENING
+ $(call VPOX_SET_VER_INFO_DLL,VPoxNetDHCP,VirtualPox DHCP Server (dll),$(VPOX_WINDOWS_ICON_FILE)) # Version info / description.
+else
+ $(call VPOX_SET_VER_INFO_EXE,VPoxNetDHCP,VirtualPox DHCP Server,$(VPOX_WINDOWS_ICON_FILE))       # Version info / description.
+endif
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

@@ -1,0 +1,403 @@
+# $Id: Makefile.kmk $
+## @file
+# Install misc stuff and create dist packages for Mac OS X Guest Additions.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+
+#
+# Globals
+#
+VPOX_ADD_PATH_DI_SRC := $(PATH_SUB_CURRENT)
+VPOX_ADD_DI_OUT_DIR  := $(PATH_TARGET)/additions/Installer
+BLDDIRS += $(VPOX_ADD_DI_OUT_DIR)
+
+ifdef VPOX_WITH_COMBINED_PACKAGE
+ ifeq ($(KBUILD_TARGET_ARCH),x86)
+  VPOX_PATH_DIST_32 = $(VPOX_PATH_DIST)/additions
+  VPOX_PATH_DIST_64 = $(PATH_OUT_BASE)/darwin.amd64/$(KBUILD_TYPE)/dist/additions
+ else
+  VPOX_PATH_DIST_64 = $(VPOX_PATH_DIST)/additions
+  VPOX_PATH_DIST_32 = $(PATH_OUT_BASE)/darwin.x86/$(KBUILD_TYPE)/dist
+ endif
+ VPOX_DI_FN_DEP_BOTH = $(VPOX_PATH_DIST_32)/$1 $(VPOX_PATH_DIST_64)/$2
+ VPOX_DI_FN_DEP_32   = $(VPOX_PATH_DIST_32)/$1
+ VPOX_DI_FN_DEP_64   = $(VPOX_PATH_DIST_64)/$1
+ VPOX_DI_LIPO = lipo
+else
+ VPOX_DI_FN_DEP_BOTH = $(VPOX_PATH_DIST)/additions/$1
+ ifeq ($(KBUILD_TARGET_ARCH),x86)
+  VPOX_DI_FN_DEP_32  = $(VPOX_PATH_DIST)/additions/$1
+  VPOX_DI_FN_DEP_64  =
+ else
+  VPOX_DI_FN_DEP_64  = $(VPOX_PATH_DIST)/additions/$1
+  VPOX_DI_FN_DEP_32  =
+ endif
+endif
+
+# Unset this to speed up things during makefile hacking.
+VPOX_DARWIN_INST_DEP_ON_MAKEFILE := $(MAKEFILE_CURRENT)
+
+# The location of the pkgbuild program.
+ifndef VPOX_PKGBUILD
+ VPOX_PKGBUILD := pkgbuild
+endif
+
+# The location of the productbuild program.
+ifndef VPOX_PRODUCTBUILD
+ VPOX_PRODUCTBUILD := productbuild
+endif
+
+# Where we do the packing (override this in LocalConfig.kmk if building on smbfs).
+ifndef VPOX_PATH_PACK_TMP
+ VPOX_PATH_PACK_TMP := $(VPOX_ADD_DI_OUT_DIR)
+endif
+
+
+#
+# The packing.
+#
+PACKING += \
+	$(PATH_STAGE)/$(INST_ADDITIONS)VPoxGuestAdditions.pkg \
+	$(PATH_STAGE)/$(INST_ADDITIONS)VPoxDarwinAdditionsUninstall.tool
+
+#OTHER_CLEAN = TODO
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+
+
+#
+# We're running commands as root here, take some care and assertion
+# a sane environment.
+#
+ifeq ($(strip $(VPOX_PATH_DIST)),)
+ $(error VPOX_PATH_DIST=$(VPOX_PATH_DIST))
+endif
+ifeq ($(strip $(VPOX_PATH_DIST)),/)
+ $(error VPOX_PATH_DIST=$(VPOX_PATH_DIST))
+endif
+ifeq ($(strip $(VPOX_PATH_PACK_TMP)),)
+ $(error VPOX_PATH_PACK_TMP=$(VPOX_PATH_PACK_TMP))
+endif
+ifeq ($(strip $(VPOX_PATH_PACK_TMP)),/)
+ $(error VPOX_PATH_PACK_TMP=$(VPOX_PATH_PACK_TMP))
+endif
+
+#
+# The packing targets.
+#
+$(PATH_STAGE)/$(INST_ADDITIONS)VPoxGuestAdditions.pkg: $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditions.pkg
+	$(MKDIR) -p "$(@D)"
+	$(INSTALL) -m 0644 -- "$<" "$@"
+
+$(PATH_STAGE)/$(INST_ADDITIONS)VPoxDarwinAdditionsUninstall.tool: $(VPOX_ADD_PATH_DI_SRC)/DiskImage/Uninstall.tool
+	$(MKDIR) -p "$(@D)"
+	$(INSTALL) -m 0755 -- "$<" "$@"
+
+
+#
+# The meta-package.
+#
+$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditions.pkg: \
+		$(VPOX_PATH_PACK_TMP)/Packages/VPoxGuestAdditionsKEXTs.pkg \
+		$(VPOX_PATH_PACK_TMP)/Packages/VPoxGuestAdditionsToolsAndServices.pkg \
+		$$(wildcard $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/* \
+		            $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/*.lproj/*) \
+		$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES), $(VPOX_BRAND_$(f)_VIRTUALPOX_WELCOME_RTF)) \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/Welcome.rtf \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/Conclusion.rtf \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/distribution-$(KBUILD_TARGET_ARCH).dist \
+		$(VPOX_DARWIN_INST_DEP_ON_MAKEFILE)
+	$(call MSG_TOOL,productbuild,,,$@)
+	@# Cleanup any previously failed attempts.
+	sudo rm -Rf \
+		$@ \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.root \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res
+	@# Correct directory permissions are important.
+	$(MKDIR) -p \
+		$(@D) \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/English.lproj
+
+	@# Do keyword replacement in the package info and description files.
+	$(SED) \
+		-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+		-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+		-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+		-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/English.lproj/Welcome.rtf \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/Welcome.rtf
+	@# Copy the resources.
+	$(INSTALL) -m 0644 $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/Conclusion.rtf $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/English.lproj/Conclusion.rtf
+
+	$(SED) \
+		-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+		-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+		-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+		--output $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/English.lproj/Localizable.strings \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/Localizable.strings
+	$(INSTALL) -m 0644 $(VPOX_BRAND_DARWIN_INSTALLER_BG)                          $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/background.tif
+
+	$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES), \
+		$(MKDIR) -p \
+			$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/$(VPOX_INSTALLER_$(f)_DARWIN_TARGET).lproj$(NLTAB) \
+		$(SED) \
+			-e 's/@VPOX_VERSION_STRING@/$(VPOX_VERSION_STRING)/g' \
+			-e 's/@VPOX_VERSION_MAJOR@/$(VPOX_VERSION_MAJOR)/g' \
+			-e 's/@VPOX_VERSION_MINOR@/$(VPOX_VERSION_MINOR)/g' \
+			-e 's/@VPOX_VERSION_BUILD@/$(VPOX_VERSION_BUILD)/g' \
+			--output $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/$(VPOX_INSTALLER_$(f)_DARWIN_TARGET).lproj/Welcome.rtf \
+			$(VPOX_BRAND_$(f)_VIRTUALPOX_WELCOME_RTF)$(NLTAB) \
+		$(INSTALL) -m 0644 $(VPOX_BRAND_$(f)_VIRTUALPOX_CONCLUSION_RTF)           $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/$(VPOX_INSTALLER_$(f)_DARWIN_TARGET).lproj/Conclusion.rtf$(NLTAB) \
+		$(SED) \
+			-e 's/@VPOX_VENDOR@/$(VPOX_VENDOR)/g' \
+			-e 's/@VPOX_PRODUCT@/$(VPOX_PRODUCT)/g' \
+			-e 's/@VPOX_C_YEAR@/$(VPOX_C_YEAR)/g' \
+			--output $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res/$(VPOX_INSTALLER_$(f)_DARWIN_TARGET).lproj/Localizable.strings \
+			$(VPOX_BRAND_$(f)_VIRTUALPOX_LOCALIZABLE_STRINGS)$(NLTAB) \
+	)
+
+	@# Build the package.
+	$(VPOX_PRODUCTBUILD) \
+		--distribution $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditions_mpkg/distribution-$(KBUILD_TARGET_ARCH).dist \
+		--package-path $(VPOX_PATH_PACK_TMP)/Packages \
+		--resources $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res \
+		--identifier org.VirtualPox.mpkg.GuestAdditions \
+		--version $(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD) \
+		$(if-expr defined(VPOX_MACOSX_INSTALLER_SIGN) && $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING)) == "",--sign "$(VPOX_MACOSX_INSTALLER_SIGN)",) \
+		$@
+ifdef VPOX_SIGNING_MODE
+ if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Sign the created pkg.
+	$(call VPOX_SIGN_PKG_FN,$@,org.VirtualPox.mpkg.GuestAdditions)
+  if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Notarize the signed pkg (includes stapling).
+	$(call VPOX_NOTARIZE_FILE_FN,$@,org.virtualpox.VPoxGuestAdditions.$(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD).$(VPOX_SVN_REV))
+  endif
+ endif
+endif
+
+	@# Cleanup.
+	sudo rm -Rf \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.root \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.dist.res
+
+VPoxDarwinAdditions.pkg:: $(VPOX_PATH_PACK_TMP)/VPoxDarwinAdditions.pkg
+
+#
+# The VirtualPox Kernel extensions.
+#
+VPOX_ADD_DI_KEXTS_UNIVERSAL = VPoxGuest
+VPOX_ADD_DI_KEXTS = $(VPOX_ADD_DI_KEXTS_UNIVERSAL)
+
+$(VPOX_PATH_PACK_TMP)/Packages/VPoxGuestAdditionsKEXTs.pkg: \
+		$(foreach kext,$(VPOX_ADD_DI_KEXTS_UNIVERSAL), $(call VPOX_DI_FN_DEP_BOTH,$(kext).kext/Contents/MacOS/$(kext))) \
+		$(foreach kext,$(VPOX_ADD_DI_KEXTS), $(VPOX_PATH_DIST)/additions/$(kext).kext/Contents/Info.plist) \
+		$$(wildcard $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsKEXTs/* \
+		            $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsKEXTs/*.lproj/*) \
+		$(foreach f,$(VPOX_INSTALLER_ADD_LANGUAGES), \
+			$(VPOX_BRAND_$(f)_VPOXKEXTS_DESCRIPTION_PLIST) \
+			$(VPOX_BRAND_$(f)_VPOXKEXTS_README_HTML) \
+			$(VPOX_BRAND_$(f)_VPOXKEXTS_INSTALLATIONCHECK_STRINGS)) \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsKEXTs/postflight \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsKEXTs/PkgBuildComponent.plist \
+		$(VPOX_DARWIN_INST_DEP_ON_MAKEFILE)
+	$(call MSG_TOOL,pkgbuild,,,$@)
+	@# Cleanup any previously failed attempts.
+	sudo rm -Rf \
+		$@ \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.res
+	@# Correct directory permissions are important.
+	$(MKDIR) -p \
+		$(@D) \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.res \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.res/English.lproj
+	$(MKDIR) -p -m 1775 $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library
+	$(MKDIR) -p -m 0755 \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions \
+		$(foreach kext,$(VPOX_ADD_DI_KEXTS), \
+			$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions/$(kext).kext \
+			$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions/$(kext).kext/Contents \
+			$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions/$(kext).kext/Contents/MacOS )
+	@# Copy the common files (Info.plist).
+	$(foreach kext,$(VPOX_ADD_DI_KEXTS), \
+		$(NLTAB)$(INSTALL) -m 0644 $(VPOX_PATH_DIST)/additions/$(kext).kext/Contents/Info.plist $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions/$(kext).kext/Contents/)
+	@# Copy the binaries and invoking lipo.
+ifdef VPOX_WITH_COMBINED_PACKAGE
+	$(foreach kext,$(VPOX_ADD_DI_KEXTS_UNIVERSAL), \
+		$(NLTAB)$(VPOX_DI_LIPO) -create \
+			$(VPOX_PATH_DIST_32)/additions/$(kext).kext/Contents/MacOS/$(kext) \
+			$(VPOX_PATH_DIST_64)/additions/$(kext).kext/Contents/MacOS/$(kext) \
+			-output $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions/$(kext).kext/Contents/MacOS/$(kext))
+else
+	$(foreach kext,$(VPOX_ADD_DI_KEXTS), \
+		$(NLTAB)$(INSTALL) -m 0755 $(VPOX_PATH_DIST)/additions/$(kext).kext/Contents/MacOS/$(kext) $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions/$(kext).kext/Contents/MacOS/)
+endif
+	@# Signed the kext bundles.
+ifdef VPOX_SIGNING_MODE
+	$(foreach kext,$(VPOX_ADD_DI_KEXTS), \
+		$(NLTAB)$(call VPOX_SIGN_BUNDLE_FN,$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions/$(kext).kext,) )
+endif
+	@# Set the correct owners.
+	sudo chown    root:admin $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library
+	sudo chown -R root:wheel $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions
+
+	# Copy package internal files
+	$(INSTALL) $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsKEXTs/PkgBuildComponent.plist $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.desc/PkgBuildComponent.plist
+
+	# Copy installer scripts
+	$(INSTALL) -m 0755 $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsKEXTs/postflight $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.res
+
+	@# Build the package.
+	$(VPOX_PKGBUILD) \
+		--root   $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root/Library/Extensions/ \
+		--component-plist $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.desc/PkgBuildComponent.plist \
+		--script $(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.res \
+		--identifier org.virtualpox.pkg.additions.kexts \
+		--version $(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD) \
+		--install-location /Library/Extensions/ \
+		--ownership preserve \
+		$(if-expr defined(VPOX_MACOSX_INSTALLER_SIGN) && $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING)) == "",--sign "$(VPOX_MACOSX_INSTALLER_SIGN)",) \
+		$@
+ifdef VPOX_SIGNING_MODE
+ if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Sign the created pkg.
+	$(call VPOX_SIGN_PKG_FN,$@,org.virtualpox.pkg.vpoxguestadditionskexts)
+ endif
+endif
+	@# Cleanup
+	sudo rm -Rf \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.root \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.desc \
+		$(VPOX_PATH_PACK_TMP)/VPoxGuestAdditionsKEXTs.pkg.res
+
+#
+# The VirtualPox Guest Additions Tools & Services.
+#
+
+VPOX_GA_PKG=VPoxGuestAdditionsToolsAndServices.pkg
+VPOX_DI_VB_GA_BINARIES=VPoxClient VPoxControl VPoxService
+$(VPOX_PATH_PACK_TMP)/Packages/$(VPOX_GA_PKG): \
+		$(foreach f, $(VPOX_DI_VB_GA_BINARIES)\
+			,$(call VPOX_DI_FN_DEP_BOTH,$(f)) ) \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsToolsAndServices/org.virtualpox.additions.vpoxclient.plist \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsToolsAndServices/org.virtualpox.additions.vpoxservice.plist \
+		$(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsToolsAndServices/VPoxServiceWrapper \
+		$(VPOX_ADD_PATH_DI_SRC)/DiskImage/Uninstall.tool \
+		$(VPOX_DARWIN_INST_DEP_ON_MAKEFILE)
+	$(call MSG_TOOL,pkgbuild,,,$@)
+	@# Cleanup any previously failed attempts.
+	sudo rm -Rf \
+		$@ \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).desc \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).res
+	@# Correct directory permissions are important.
+	$(MKDIR) -p \
+		$(@D) \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).desc \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).res \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).res/English.lproj
+
+	@# Create directory structure within a package w/ proper permittions
+	$(MKDIR) -p -m 0775 \
+	    "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions" \
+	    "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/LaunchAgents" \
+	    "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/LaunchDaemons"
+
+	@# Install binaries
+ifdef VPOX_WITH_COMBINED_PACKAGE
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES) \
+		,$(VPOX_DI_LIPO) -create \
+			$(VPOX_PATH_DIST_32)/additions/$(binary) \
+			$(VPOX_PATH_DIST_64)/additions/$(binary) \
+			-output "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary)"$(NLTAB))
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES), \
+		$(NLTAB)$(INSTALL) -m 0755 $(VPOX_PATH_DIST_32)/additions/$(binary) "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary)-x86" \
+		$(NLTAB)$(INSTALL) -m 0755 $(VPOX_PATH_DIST_64)/additions/$(binary) "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary)-amd64" )
+else
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES) \
+		,$(INSTALL) -m 0755 $(VPOX_PATH_DIST)/additions/$(binary)           "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary)"$(NLTAB))
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES) \
+		,$(INSTALL) -m 0755 $(VPOX_PATH_DIST)/additions/$(binary)           "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary)-$(KBUILD_TARGET_ARCH)"$(NLTAB))
+endif
+	# Add Uninstall.tool
+	$(INSTALL) -m 0755 $(VPOX_ADD_PATH_DI_SRC)/DiskImage/Uninstall.tool  "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/"
+ifdef VPOX_SIGNING_MODE
+	$(call VPOX_SIGN_FILE_FN,$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/Uninstall.tool,org.virtualpox.app.guestadditions.uninstaller)
+endif
+
+	@# Install launchd stuff
+	$(INSTALL) -m 0755 $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsToolsAndServices/VPoxServiceWrapper \
+	                                                                         "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/"
+	$(INSTALL) -m 644 $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsToolsAndServices/org.virtualpox.additions.vpoxclient.plist \
+	                                                                         "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/LaunchAgents/"
+	$(INSTALL) -m 644 $(VPOX_ADD_PATH_DI_SRC)/VPoxGuestAdditionsToolsAndServices/org.virtualpox.additions.vpoxservice.plist \
+	                                                                         "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/LaunchDaemons/"
+
+	@# Sign the binaries.
+ifdef VPOX_SIGNING_MODE
+ ifdef VPOX_WITH_COMBINED_PACKAGE
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES) \
+		,$(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary),org.virtualpox.app.guestadditions.$(notdir $(binary))) )
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES) \
+		,$(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary)-x86,org.virtualpox.app.guestadditions.$(notdir $(binary))-x86) )
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES) \
+		,$(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary)-amd64,org.virtualpox.app.guestadditions.$(notdir $(binary))-amd64) )
+ else
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES) \
+		,$(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary),org.virtualpox.app.guestadditions.$(notdir $(binary))) )
+	$(foreach binary, $(VPOX_DI_VB_GA_BINARIES) \
+		,$(NLTAB)$(call VPOX_SIGN_MACHO_FN,$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/Application Support/VirtualPox Guest Additions/$(binary)-$(KBUILD_TARGET_ARCH),org.virtualpox.app.guestadditions.$(notdir $(binary))-$(KBUILD_TARGET_ARCH)) )
+ endif
+endif
+
+	@# Correct ownership
+	sudo chown -R root:wheel "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/"
+
+	@# Build the package.
+	$(VPOX_PKGBUILD) \
+		--root   "$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root/Library/" \
+		--script $(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).res \
+		--identifier org.virtualpox.pkg.additions.tools-and-services \
+		--version $(VPOX_VERSION_MAJOR).$(VPOX_VERSION_MINOR).$(VPOX_VERSION_BUILD) \
+		--install-location "/Library/" \
+		--ownership preserve \
+		$(if-expr defined(VPOX_MACOSX_INSTALLER_SIGN) && $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING)) == "",--sign "$(VPOX_MACOSX_INSTALLER_SIGN)",) \
+		$@
+ifdef VPOX_SIGNING_MODE
+ if $(intersects darwin all 1,$(VPOX_WITH_CORP_CODE_SIGNING))
+	@# Sign the created pkg.
+	$(call VPOX_SIGN_PKG_FN,$@,org.virtualpox.pkg.vpoxguestadditions)
+ endif
+endif
+	@# Cleanup
+	sudo rm -Rf \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).root \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).desc \
+		$(VPOX_PATH_PACK_TMP)/$(VPOX_GA_PKG).res

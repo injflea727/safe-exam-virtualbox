@@ -1,0 +1,207 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the Windows guest display driver.
+#
+
+#
+# Copyright (C) 2011-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+ifdef VPOX_WITH_MESA3D
+ ifndef VPOX_MESA3D_CONFIG_KMK_INCLUDED
+  include $(PATH_ROOT)/src/VPox/Additions/3D/Config.kmk
+ endif
+endif
+
+#
+# VPoxDisp - Windows Guest Additions XPDM Display Driver
+#
+# Note. This has to run on NT4! (*_NT4 => *_W2K3 when targeting 64-bit.)
+#
+SYSMODS += VPoxDisp
+VPoxDisp_TEMPLATE      = VPOXGUESTR0
+VPoxDisp_SYSSUFF       = .dll
+VPoxDisp_SDKS          = ReorderCompilerIncs $(VPOX_WINDDK_GST_NT4)
+VPoxDisp_DEFS.x86      = _WIN32_WINNT=0x0501
+VPoxDisp_DEFS          = VPOX_WITH_DDRAW
+VPoxDisp_DEFS         += LOG_TO_BACKDOOR #LOG_ENABLED
+ifdef VPOX_WITH_VIDEOHWACCEL
+ VPoxDisp_DEFS        += VPOX_WITH_VIDEOHWACCEL
+endif
+#VPoxDisp_DEFS         += VPOX_VBVA_ADJUST_RECT
+VPoxDisp_INCS          = ../../../include .. $(VPOX_GRAPHICS_INCS)
+VPoxDisp_LDFLAGS.x86   = /Entry:DrvEnableDriver@12
+VPoxDisp_LDFLAGS.amd64 = /Entry:DrvEnableDriver
+VPoxDisp_SOURCES     = \
+	xpdm/VPoxDispDriver.cpp \
+	xpdm/VPoxDispMini.cpp \
+	xpdm/VPoxDispMouse.cpp \
+	xpdm/VPoxDispPalette.cpp \
+	xpdm/VPoxDispVBVA.cpp \
+	xpdm/VPoxDispDrawCmd.cpp \
+	xpdm/VPoxDispVRDP.cpp \
+	xpdm/VPoxDispVrdpBmp.cpp \
+	xpdm/VPoxDispVrdpTxt.cpp \
+	xpdm/VPoxDispDriverDDraw.cpp \
+	xpdm/VPoxDispDDraw.cpp \
+	xpdm/VPoxDisp.def \
+	xpdm/VPoxDisp.rc \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIBase.cpp \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIBuffers.cpp \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/HGSMIHostCmd.cpp \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/VBVABase.cpp \
+	$(PATH_ROOT)/src/VPox/Additions/common/VPoxVideo/Modesetting.cpp
+ifdef VPOX_WITH_VIDEOHWACCEL
+ VPoxDisp_SOURCES += \
+ 	xpdm/VPoxDispVHWA.cpp \
+ 	xpdm/VPoxDispDDrawVHWA.cpp
+endif
+VPoxDisp_LIBS = \
+	$(PATH_SDK_$(VPOX_WINDDK_GST_NT4)_LIB)/win32k.lib \
+	$(VPOX_LIB_IPRT_GUEST_R0_NT4) \
+	$(VPOX_PATH_ADDITIONS_LIB)/HGSMIGuestR0Lib$(VPOX_SUFF_LIB)
+VPoxDisp_USES.win += vpoximportchecker
+VPoxDisp_VPOX_IMPORT_CHECKER.win.x86 = nt4/r0
+VPoxDisp_VPOX_IMPORT_CHECKER.win.amd64 = xp64/r0
+
+# Signing requires both miniport and display drivers
+# so it'd be dealt with in the parent makefile.
+ifdef VPOX_SIGN_ADDITIONS
+ VPoxDisp_INSTTYPE           = none
+ VPoxDisp_DEBUG_INSTTYPE     = both
+ ifdef VPOX_WITH_WDDM
+  VPoxDispD3D_INSTTYPE       = none
+  VPoxDispD3D_DEBUG_INSTTYPE = both
+ endif
+endif
+
+ifdef VPOX_WITH_WDDM
+#
+# VPoxDispD3D - Windows Guest Additions WDDM R3 Display Driver
+#
+DLLS += VPoxDispD3D
+VPoxDispD3D_TEMPLATE = VPoxGuestR3DllMinVista
+VPoxDispD3D_SDKS     = ReorderCompilerIncs $(VPOX_WINDDK_GST_WLH)
+VPoxDispD3D_DEFS     = UNICODE _UNICODE VPOX_WITH_WDDM VPOXWDDMDISP LOG_TO_BACKDOOR LOG_TO_BACKDOOR_DRV VPOX_WITH_HGCM
+ifdef DEBUG_misha
+VPoxDispD3D_DEFS    += LOG_ENABLED
+endif
+ifdef VPOXWDDM_WITH_VBVA
+VPoxDispD3D_DEFS    += VPOXWDDM_WITH_VBVA
+endif
+ifdef VPOX_WITH_VIDEOHWACCEL
+ VPoxDispD3D_DEFS   += VPOX_WITH_VIDEOHWACCEL
+endif
+VPoxDispD3D_INCS     = \
+	../../../include \
+	.. \
+	$(PATH_ROOT)/src/VPox/Additions/WINNT/Graphics/Video/disp/wddm/shared \
+	$(VPOX_GRAPHICS_INCS)
+VPoxDispD3D_SOURCES  = \
+	wddm/VPoxDispD3D.cpp \
+	wddm/VPoxDispD3DIf.cpp \
+	wddm/VPoxDispDbg.cpp \
+	wddm/VPoxD3DIf.cpp \
+	wddm/VPoxDispD3D.rc \
+	wddm/VPoxDispD3D.def
+VPoxDispD3D_LIBS     = \
+	$(VPOX_LIB_IPRT_GUEST_R3) \
+	$(VPOX_LIB_VBGL_R3) \
+	Psapi.lib \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxDispMpLogger$(VPOX_SUFF_LIB) \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxWddmUmKmt$(VPOX_SUFF_LIB)
+
+ifdef VPOX_WITH_MESA3D
+VPoxDispD3D_DEFS     += VPOX_WITH_MESA3D
+VPoxDispD3D_INCS     += \
+	$(VPOX_PATH_MESA)/src/gallium/include \
+	$(VPOX_PATH_MESA)/src \
+	$(VPOX_PATH_MESA)/include/c99 \
+	$(VPOX_PATH_MESA)/include \
+	$(VPOX_PATH_3D)/win/include \
+	$(VPOX_PATH_VMSVGA_INC)
+VPoxDispD3D_SOURCES  += \
+	wddm/gallium/GaDxva.cpp \
+	wddm/gallium/GaDrvEnvWddm.cpp \
+	wddm/gallium/GaWddm.cpp \
+	wddm/gallium/GaDdi.cpp \
+	wddm/gallium/Present.cpp \
+	wddm/gallium/VPoxGallium.cpp \
+	wddm/gallium/VPoxGaD3DDevice9Ex.cpp \
+	wddm/gallium/VPoxD3DAdapter9.c
+
+ ifdef VPOX_WITH_MESA3D_D3DTEST
+VPoxDispD3D_DEFS     += VPOX_WITH_MESA3D_D3DTEST
+VPoxDispD3D_SOURCES  += \
+	wddm/gallium/test/d3dhlp.cpp \
+	wddm/gallium/test/d3d9render.cpp \
+	wddm/gallium/GaDrvTest.cpp
+ endif
+endif
+
+#
+# 64-bit systems needs a 32-bit version of VPoxDispD3D.
+#
+DLLS.amd64 += VPoxDispD3D-x86
+VPoxDispD3D-x86_EXTENDS = VPoxDispD3D
+VPoxDispD3D-x86_BLD_TRG_ARCH = x86
+VPoxDispD3D-x86_LIBS = \
+	$(VPOX_LIB_IPRT_GUEST_R3_X86) \
+	$(VPOX_LIB_VBGL_R3_X86) \
+	Psapi.lib \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxDispMpLogger-x86$(VPOX_SUFF_LIB) \
+	$(VPOX_PATH_ADDITIONS_LIB)/VPoxWddmUmKmt-x86$(VPOX_SUFF_LIB)
+VPoxDispD3D-x86_DEFS = $(VPoxDispD3D_DEFS) VPOX_WDDM_WOW64
+
+include $(PATH_SUB_CURRENT)/wddm/shared/Makefile.kmk
+
+endif #ifdef VPOX_WITH_WDDM
+
+ifdef VPOXVIDEOWINDBG
+DLLS += vbvdbg
+vbvdbg_TEMPLATE = VPOXR3STATIC
+vbvdbg_SDKS     = ReorderCompilerIncs $(VPOX_WINDDK_GST_WLH)
+vbvdbg_DEFS     = UNICODE _UNICODE
+vbvdbg_SOURCES  = \
+	wddm/dbg/VPoxVideoWinDbg.cpp \
+	wddm/dbg/VPoxVideoWinDbg.def
+
+PROGRAMS += tstMvWnd
+tstMvWnd_TEMPLATE = VPOXR3EXE
+tstMvWnd_DEFS     = UNICODE _UNICODE
+tstMvWnd_SOURCES  = \
+	wddm/dbg/tstMvWnd.cpp
+tstMvWnd_LIBS     = $(VPOX_LIB_IPRT_GUEST_R3)
+tstMvWnd_LDFLAGS.win = /SUBSYSTEM:windows
+
+PROGRAMS += DumpD3DCaps9
+DumpD3DCaps9_TEMPLATE = VPOXR3EXE
+DumpD3DCaps9_SDKS     = ReorderCompilerIncs $(VPOX_WINDDK_GST_WLH)
+DumpD3DCaps9_DEFS     = UNICODE _UNICODE
+DumpD3DCaps9_SOURCES  = \
+	wddm/dbg/DumpD3DCaps9.cpp
+DumpD3DCaps9_LIBS     = d3d9.lib
+DumpD3DCaps9_LDFLAGS.win = /SUBSYSTEM:CONSOLE
+
+PROGRAMS += D3DFeatureLevel
+D3DFeatureLevel_TEMPLATE = VPOXR3EXE
+D3DFeatureLevel_SDKS     = ReorderCompilerIncs $(VPOX_WINDDK_GST_WLH)
+D3DFeatureLevel_SOURCES  = \
+	wddm/dbg/D3DFeatureLevel.cpp
+D3DFeatureLevel_LIBS     = $(VPOX_LIB_IPRT_GUEST_R3) d3d11.lib
+D3DFeatureLevel_LDFLAGS.win = /SUBSYSTEM:CONSOLE
+
+endif #VPOXVIDEOWINDBG
+
+include $(FILE_KBUILD_SUB_FOOTER)

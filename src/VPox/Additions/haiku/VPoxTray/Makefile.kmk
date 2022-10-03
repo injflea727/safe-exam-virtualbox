@@ -1,0 +1,118 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VPoxTray, Haiku Guest Additions.
+#
+
+#
+# Copyright (C) 2012-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+#
+# This code is based on:
+#
+# VirtualPox Guest Additions for Haiku.
+# Copyright (c) 2011 Mike Smith <mike@scgtrp.net>
+#                    François Revol <revol@free.fr>
+#
+# Permission is hereby granted, free of charge, to any person
+# obtaining a copy of this software and associated documentation
+# files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use,
+# copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following
+# conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
+
+SUB_DEPTH = ../../../../..
+include	$(KBUILD_PATH)/subheader.kmk
+
+# @todo split the tray code,
+# single bin will cause problems loading gcc4 binary from a gcc2-built Deskbar!
+
+PROGRAMS += VPoxTray
+VPoxTray_TEMPLATE = VPOXGUESTR3EXE
+VPoxTray_DEFS     = VPOX_WITH_HGCM LOG_TO_BACKDOOR
+VPoxTray_DEFS    += LOG_ENABLED
+VPoxTray_INCS     = ../include
+VPoxTray_SOURCES  = \
+	VPoxClipboard.cpp \
+	VPoxDisplay.cpp \
+	VPoxGuestApplication.cpp \
+	VPoxGuestDeskbarView.cpp
+
+VPoxTray_SOURCES += \
+  	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/clipboard-helper.cpp
+
+VPoxTray_LIBS     = \
+	be translation \
+	$(VPOX_LIB_VBGL_R3) \
+	$(VPOX_LIB_IPRT_GUEST_R3) \
+	$(VPOX_LIB_VBGL_R3)
+
+VPoxTray_RSRCS   += $(VPoxTray_0_OUTDIR)/VPoxTray.rsrc
+VPoxTray_DEPS    += $(VPoxTray_0_OUTDIR)/VPoxTray.rsrc
+VPoxTray_CLEAN   += $(VPoxTray_0_OUTDIR)/VPoxTray.rsrc
+
+# VPoxGuestApplication.cpp uses VPOX_SVN_REV.
+VPoxGuestApplication.cpp_DEFS += VPOX_SVN_REV=$(VPOX_SVN_REV)
+VPoxGuestApplication.cpp_DEPS = $(VPOX_SVN_REV_KMK)
+VPoxGuestDeskbarView.cpp_DEFS += VPOX_SVN_REV=$(VPOX_SVN_REV)
+VPoxGuestDeskbarView.cpp_DEPS = $(VPOX_SVN_REV_KMK)
+
+## The icon location is configurable.
+VPoxTray.rdef_INCS = $(VPoxTray_0_OUTDIR)
+VPoxTray.rdef_DEFS += VPOX_SVN_REV=$(VPOX_SVN_REV) \
+	VPOX_HAIKU_DESKBAR_ICON_PNG=\"$(VPOX_BRAND_GUI_VPOX_16PX_PNG)\"
+VPoxTray.rdef_DEPS = $(VPOX_SVN_REV_KMK)
+
+VPoxTray.rsrc_DEPS = VPoxTray.rdef
+VPoxTray.rsrc_CLEAN = VPoxTray.rdef
+
+
+
+#XXX: cleanup!
+#XXX: handle deps correctly
+#XXX: -I / is due to a bug in rc with absolute paths
+## Resource file.
+$$(VPoxTray_0_OUTDIR)/VPoxTray.rsrc: $$(VPoxTray_DEFPATH)/VPoxTray.rdef $$(VPoxTray_DEFPATH)/Makefile.kmk | $$(dir $$@)
+	$(call MSG_TOOL,$(VPOX_HAIKU_RCTOOL),HaikuResources,$<,$@)
+	$(QUIET)cat $< | gcc -E -I $(dir $<) -I $(dir $<)/../include $(foreach name, $(INCS), -I $(name)) $(foreach dname, $(VPoxTray.rdef_DEFS), -D$(dname)) - | grep -v '^#' | $(VPOX_HAIKU_RCTOOL) -I / -I $(dir $<) -I $(dir $<)/../include -o "$@" -
+
+
+#	rc -I $(VPoxTray_DEFPATH)/../include -o $@ $<
+#	$(RM) -f $@
+#	$(APPEND) $@ 'IDI_VIRTUALPOX ICON DISCARDABLE "$(subst /,\\,$(VPOX_WINDOWS_ADDITIONS_ICON_FILE))"'
+
+## The icon location is configurable.
+#VPoxTray.rc_INCS = $(VPoxTray_0_OUTDIR)
+#VPoxTray.rc_DEPS = $(VPoxTray_0_OUTDIR)/VPoxTray-icon.rc
+#VPoxTray.rc_CLEAN = $(VPoxTray_0_OUTDIR)/VPoxTray-icon.rc
+
+## Icon include file.
+#$$(VPoxTray_0_OUTDIR)/VPoxTray-icon.rc: $(VPOX_WINDOWS_ADDITIONS_ICON_FILE) $$(VPoxTray_DEFPATH)/Makefile.kmk | $$(dir $$@)
+#	$(RM) -f $@
+#	$(APPEND) $@ 'IDI_VIRTUALPOX ICON DISCARDABLE "$(subst /,\\,$(VPOX_WINDOWS_ADDITIONS_ICON_FILE))"'
+
+include	$(KBUILD_PATH)/subfooter.kmk
+

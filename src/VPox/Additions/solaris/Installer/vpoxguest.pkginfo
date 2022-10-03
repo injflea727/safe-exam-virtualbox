@@ -1,0 +1,15 @@
+PKG="SUNWvpoxguest"
+NAME="@VPOX_PRODUCT@ Guest Additions"
+SUNW_PRODNAME="@VPOX_PRODUCT@ Guest Additions"
+ARCH="@UNAME_P@"
+VERSION="@VPOX_VERSION_STRING@,REV=r@VPOX_SVN_REV@.@VPOX_VERSION_REVSTAMP@"
+SUNW_PRODVERS="@VPOX_VERSION_STRING@"
+SUNW_PKGVERS=1.0
+CATEGORY="application"
+VENDOR="@VPOX_VENDOR@"
+EMAIL="info@virtualpox.org"
+HOTLINE="Please contact your local service provider"
+BASEDIR="/"
+CLASSES=none manifest
+DESC="@VPOX_PRODUCT@ Guest Additions for Solaris guests"
+

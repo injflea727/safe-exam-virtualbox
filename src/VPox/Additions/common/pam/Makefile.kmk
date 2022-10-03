@@ -1,0 +1,35 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for VPox PAM module for automated logons.
+#
+
+#
+# Copyright (C) 2011-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# The PAM module.
+DLLS += pam_vpox
+
+pam_vpox_TEMPLATE = VPOXGUESTR3DLL
+pam_vpox_DEFS     = LOG_TO_BACKDOOR VPOX_WITH_HGCM
+pam_vpox_DEFS    += \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS,)
+pam_vpox_SOURCES  = pam_vpox.cpp
+pam_vpox_LIBS = \
+	pam \
+	$(VPOX_LIB_IPRT_GUEST_R3_SHARED) \
+	$(VPOX_LIB_VBGL_R3_SHARED) \
+	$(VPOX_LIB_IPRT_GUEST_R3_SHARED)
+
+include $(FILE_KBUILD_SUB_FOOTER)

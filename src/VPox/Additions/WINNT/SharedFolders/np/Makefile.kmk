@@ -1,0 +1,48 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the VirtualPox Windows Guest Shared Folders Network Provider.
+#
+
+#
+# Copyright (C) 2012-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+DLLS += VPoxMRXNP
+VPoxMRXNP_TEMPLATE    = VPoxGuestR3Dll
+VPoxMRXNP_DEFS        = LOG_TO_BACKDOOR UNICODE WIN32_LEAN_AND_MEAN=1
+#VPoxMRXNP_DEFS       += LOG_ENABLED
+VPoxMRXNP_SDKS        = ReorderCompilerIncs $(VPOX_WINDDK_GST_W2K)
+
+VPoxMRXNP_SOURCES     = \
+	vpoxmrxnp.cpp \
+	vpoxmrxnp.rc \
+	vpoxmrxnp.def
+
+VPoxMRXNP_LIBS     = \
+	$(VPOX_LIB_IPRT_GUEST_R3) \
+	$(VPOX_LIB_VBGL_R3) \
+	$(VPOX_LIB_IPRT_GUEST_R3)
+
+#
+# VPoxMRXNP-x86 - x86 version of VPoxMRXNP built for amd64 build
+#
+DLLS.win.amd64 += VPoxMRXNP-x86
+VPoxMRXNP-x86_EXTENDS = VPoxMRXNP
+VPoxMRXNP-x86_BLD_TRG_ARCH = x86
+VPoxMRXNP-x86_LIBS = \
+	$(VPOX_LIB_IPRT_GUEST_R3_X86) \
+	$(VPOX_LIB_VBGL_R3_X86)
+VPoxMRXNP-x86_DEFS = $(VPoxMRXNP_DEFS) VPOX_WOW64
+
+include $(FILE_KBUILD_SUB_FOOTER)

@@ -1,0 +1,650 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<!--
+    VirtualPox Windows Installation Script (WiX)
+
+    Copyright (C) 2014-2020 Oracle Corporation
+
+    This file is part of VirtualPox Open Source Edition (OSE), as
+    available from http://www.virtualpox.org. This file is free software;
+    you can redistribute it and/or modify it under the terms of the GNU
+    General Public License (GPL) as published by the Free Software
+    Foundation, in version 2 as it comes in the "COPYING" file of the
+    VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+    hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+-->
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:difxapp="http://schemas.microsoft.com/wix/DifxAppExtension"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+    <?include Defines.wxi ?>
+
+<?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+    <!-- The merge module file names -->
+    <?define Property_VPoxMergeApp = "$(env.VPOX_WIN_INST_MERGE_APP)" ?>
+    <?if $(env.VPOX_WITH_32_ON_64_MAIN_API) = "yes" ?>
+        <?define Property_VPoxMergeCOM32On64 = "$(env.VPOX_WIN_INST_MERGE_COM32ON64)" ?>
+    <?endif ?>
+    <?if $(env.VPOX_WITH_USB) = "yes" ?>
+        <?define Property_VPoxMergeUSB = "$(env.VPOX_WIN_INST_MERGE_USB)" ?>
+    <?endif ?>
+    <?if $(env.VPOX_WITH_NETFLT) = "yes" ?>
+        <?define Property_VPoxMergeNetworkFlt = "$(env.VPOX_WIN_INST_MERGE_NETFLT)" ?>
+    <?endif ?>
+    <?if $(env.VPOX_WITH_NETADP) = "yes" ?>
+        <?define Property_VPoxMergeNetworkAdp  = "$(env.VPOX_WIN_INST_MERGE_NETADP)" ?>
+        <?define Property_VPoxMergeNetworkAdp6 = "$(env.VPOX_WIN_INST_MERGE_NETADP6)" ?>
+    <?endif ?>
+    <?if $(env.VPOX_WITH_NETFLT) = "yes" ?>
+        <?define Property_VPoxMergeNetworkLwf = "$(env.VPOX_WIN_INST_MERGE_NETLWF)" ?>
+    <?endif ?>
+    <?if $(env.VPOX_WITH_PYTHON) = "yes" ?>
+        <?define Property_VPoxMergePython = "$(env.VPOX_WIN_INST_MERGE_PYTHON)" ?>
+    <?endif ?>
+<?endif ?>
+
+    <Product Id="*"
+             UpgradeCode="C4BAD770-BFE8-4D2C-A592-693028A7215B"
+             Name="$(env.VPOX_PRODUCT) $(env.VPOX_VERSION_STRING)"
+             Language="!(loc.LANG)"
+             Codepage="1252"
+             Version="$(var.Property_Version)"
+             Manufacturer="$(env.VPOX_VENDOR)">
+
+    <Package Id="*"
+             Keywords="Installer"
+             Description="$(env.VPOX_PRODUCT) $(var.Property_VersionExt) installation package"
+             Comments="$(env.VPOX_PRODUCT) installation package"
+             Compressed="yes"
+             Manufacturer="$(env.VPOX_VENDOR)"
+             InstallerVersion="200"
+             InstallPrivileges="elevated"
+             Platform="$(var.Property_Platform)"/>
+
+    <?include CommonProperties.wxi ?>
+
+    <!-- Global properties -->
+    <Property Id="ARPPRODUCTICON">IconVirtualPox</Property>
+    <Property Id="ARPURLINFOABOUT">http://www.virtualpox.org</Property>
+    <Property Id="ARPURLUPDATEINFO">http://www.virtualpox.org</Property>
+
+    <Property Id="NETWORKTYPE" Value="NDIS6" Secure="yes"/>
+
+<?if $(env.VPOX_WITH_MSM_INSTALL) = "no" ?>
+    <!-- Force NDIS5 on pre-Vista -->
+    <SetProperty Id="NETWORKTYPE" After="LaunchConditions" Value="NDIS5"><![CDATA[(VersionNT < 600)]]></SetProperty>
+<?endif ?>
+
+    <!-- Whether or not registering of known desktop shortcut for the Quick Launch Bar should be created -->
+    <Property Id="VPOX_REGISTERFILEEXTENSIONS" Value="1" Secure="yes"/>
+
+    <SetProperty Id="VPOX_REGISTERFILEEXTENSIONS" After="AppSearch" Sequence="both" Value="{}">
+        <![CDATA[VPOX_REGISTERFILEEXTENSIONS="0"]]>
+    </SetProperty>
+
+    <!-- Install the product for all users on the system -->
+    <Property Id="ALLUSERS"><![CDATA[1]]></Property>
+
+    <!-- Force overwriting all files and re-create shortcuts to guarantee a working environment -->
+    <Property Id='REINSTALLMODE' Value='amus'/>
+
+    <?include PublicProperties.wxi ?>
+
+    <!-- Make sure installation will not start on anything other but the NT family -->
+<?if $(env.BUILD_TARGET_ARCH) = "amd64" ?>
+    <Condition Message="!(loc.Only64Bit)">
+        VersionNT64
+    </Condition>
+<?else ?>
+    <Condition Message="!(loc.Only32Bit)">
+        NOT VersionNT64
+    </Condition>
+
+    <Condition Message="!(loc.WrongOS)">
+        NOT VersionNT=500 AND NOT Version9X AND NOT VersionNT64
+    </Condition>
+
+<?endif ?>
+
+    <Condition Message="!(loc.NeedAdmin)">
+        Privileged
+    </Condition>
+
+    <!-- Detect old innotek installation -->
+    <!-- Force a manual uninstall of an already installed innotek VirtualPox version first -->
+    <Property Id="VPOXINNOTEK">
+        <RegistrySearch Id="RegSearchInnotekVersion" Root="HKLM" Key="SOFTWARE\Innotek\VirtualPox" Name="Version" Type="raw" Win64="$(var.Property_Win64)"/>
+    </Property>
+    <Condition Message="!(loc.InnotekFound)">
+        NOT VPOXINNOTEK
+    </Condition>
+
+
+    <!-- *************************** Upgrade packages only ******************************* -->
+    <!-- Minimum and Maximum specify the range of versions we are supposed to update with this upgrade.
+         IncludeMaximum and IncludeMinimum specify whether the bound value is actually included in the range or not
+         (IncludeMaximum = yes meaning to find versions below or equal to the version specified in Maximum while
+         IncludeMaximum = no only finds those below the Maximum).
+         OnlyDetect tells the installer not to remove the previous product. This is useful as long as we
+         only change files in the package -->
+
+    <Upgrade Id="C4BAD770-BFE8-4D2C-A592-693028A7215B"> <!-- Upgrade of Sun xVM VirtualPox >= v1.6.0 -->
+
+        <!-- Upgrade is flagged if current-install is newer than or equal to package - TODO: should make a dialog appear asking user to confirm downgrade -->
+        <!-- Setting "OnlyDetect" to "no" makes the installer uninstall an already newer installed version -->
+        <UpgradeVersion Property="NEWERVERSIONDETECTED" Minimum="$(var.Property_Version)" IncludeMinimum="no" OnlyDetect="no" />
+
+        <!-- Flag is set if the install will trigger an upgrade of an existing install -->
+        <UpgradeVersion Property="PREVIOUSVERSIONSINSTALLED" Minimum="1.0.0.0" Maximum="$(var.Property_Version)" IncludeMaximum="yes" />
+
+    </Upgrade>
+
+    <!-- The product's icon table -->
+    <Icon Id="IconVirtualPox" SourceFile="$(env.VPOX_WINDOWS_ICON_FILE)" />
+
+    <!-- The media/binary IDs -->
+    <!--
+        The effects of CompressionLevel options:
+           default/mszip, high: 32.54s
+             -rw-rw-rw-  1 bird 0  53 591 221 2016-09-25 03:56 common.cab
+             -rw-rw-rw-  1 bird 0  41 560 082 2016-09-25 03:56 VirtualPox-5.1.51-r110887_en_US.msi
+           high, high: 46.76s
+             -rw-rw-rw-  1 bird 0  53 591 221 2016-09-25 03:49 common.cab
+             -rw-rw-rw-  1 bird 0  34 056 210 2016-09-25 03:49 VirtualPox-5.1.51-r110887_en_US.msi
+           medium, medium: 29.95s
+             -rw-rw-rw-  1 bird 0  56 293 089 2016-09-25 03:53 common.cab
+             -rw-rw-rw-  1 bird 0  35 498 002 2016-09-25 03:54 VirtualPox-5.1.51-r110887_en_US.msi
+           low, low: 25.41s
+             -rw-rw-rw-  1 bird 0  57 616 155 2016-09-25 03:52 common.cab
+             -rw-rw-rw-  1 bird 0  37 181 458 2016-09-25 03:52 VirtualPox-5.1.51-r110887_en_US.msi
+           mszip/default, mszip/default: 16.13s
+             -rw-rw-rw-  1 bird 0  58 751 954 2016-09-25 03:49 common.cab
+             -rw-rw-rw-  1 bird 0  41 560 082 2016-09-25 03:50 VirtualPox-5.1.51-r110887_en_US.msi
+           none, none: 2.37s
+             -rw-rw-rw-  1 bird 0  92 470 301 2016-09-25 03:47 common.cab
+             -rw-rw-rw-  1 bird 0 135 874 578 2016-09-25 03:47 VirtualPox-5.1.51-r110887_en_US.msi
+
+        We set the level in the VPOX_CAB_COMPRESSION_LEVEL and VPOX_CAB_COMPRESSION_LEVEL_COMMON
+        environment variables so we don't waste time compressing and decompressing the intermediate
+        language MSIs and the common.cab that we're not going to use (x86).
+    -->
+    <Media Id="1" Cabinet="product.cab" EmbedCab="yes" CompressionLevel="$(env.VPOX_CAB_COMPRESSION_LEVEL)" />
+<?if $(env.VPOX_WITH_MSM_INSTALL) = "no" ?>
+    <?if $(env.VPOX_WITH_COMBINED_PACKAGE) = "yes" ?>
+        <Media Id="2" Cabinet="common.cab" EmbedCab="no" CompressionLevel="$(env.VPOX_CAB_COMPRESSION_LEVEL_COMMON)" />
+    <?endif ?>
+<?endif ?>
+    <Binary Id="VPoxInstallHelper" SourceFile="$(env.PATH_OUT)\bin\VPoxInstallHelper.dll" />
+
+    <!-- Custom actions -->
+
+    <!-- Figure out where a previous installation was, if any -->
+<?if $(env.BUILD_TARGET_ARCH) = "amd64" ?>
+    <CustomAction Id="ca_OriginalTargetDir" Execute="firstSequence" Property="INSTALLDIR"
+                  Value="[ProgramFiles64Folder]\$(env.VPOX_VENDOR_SHORT)\VirtualPox" />
+
+    <Property Id="EXISTINGINSTALLDIR" Secure="yes">
+        <RegistrySearch Id="RegistryGetInstallPath" Root="HKLM" Key="$(var.Property_RegKey)" Name="InstallDir"
+                        Type="raw" Win64="$(var.Property_Win64)"/>
+    </Property>
+    <CustomAction Id="ca_DefaultTargetDir" Execute="firstSequence" Property="INSTALLDIR" Value="[EXISTINGINSTALLDIR]" />
+<?else ?>
+    <CustomAction Id="ca_OriginalTargetDir" Execute="firstSequence" Property="INSTALLDIR"
+                  Value="[ProgramFilesFolder]\$(env.VPOX_VENDOR_SHORT)\VirtualPox" />
+
+    <Property Id="EXISTINGINSTALLDIR" Secure="yes">
+        <RegistrySearch Id="RegistryGetInstallPath" Root="HKLM" Key="$(var.Property_RegKey)" Name="InstallDir"
+                        Type="raw" Win64="$(var.Property_Win64)"/>
+    </Property>
+    <CustomAction Id="ca_DefaultTargetDir" Execute="firstSequence" Property="INSTALLDIR" Value="[EXISTINGINSTALLDIR]" />
+<?endif ?>
+    <CustomAction Id="ca_UninstallTAPInstances" BinaryKey="VPoxInstallHelper"
+                  DllEntry="UninstallTAPInstances" Execute="deferred" Return="check" Impersonate="no"/>
+
+    <CustomAction Id="ca_UninstallVPoxDrv" BinaryKey="VPoxInstallHelper"
+                  DllEntry="UninstallVPoxDrv" Execute="deferred" Return="ignore" Impersonate="no"/>
+
+    <Property Id="VPOXDEPENDENCY" Secure="yes">
+        <DirectorySearch Id="VPoxInstallDir" Path="[EXISTINGINSTALLDIR]">
+            <FileSearch Name="dependency.dep"/>
+        </DirectorySearch>
+    </Property>
+
+    <!--
+                            install upgrade uninstall
+    VPOXDEPENDENCY             0      1/0      1/0
+    UPGRADINGPRODUCTCODE       0       1        0
+    final                      0       1        0
+    not final                  1       0        1
+    -->
+
+    <Condition Message="It was detected an application which has been using currently installed VirtualPox version.
+    You must remove this application before continuing installation.
+    See the file dependency.dep in the VirtualPox installation directory for details. ">
+        NOT (VPOXDEPENDENCY AND UPGRADINGPRODUCTCODE)
+    </Condition>
+
+    <!-- Detect old Sun installation -->
+    <!-- Force a manual uninstall of an already installed Sun VirtualPox version first -->
+    <!--<Property Id="VPOXSUN">
+        <RegistrySearch Id="RegSearchSunVersion" Root="HKLM" Key="SOFTWARE\Sun\VirtualPox" Name="Version" Type="raw" Win64="$(var.Property_Win64)"/>
+    </Property>
+    <Condition Message="!(loc.SunFound)">
+        NOT VPOXSUN
+    </Condition>-->
+
+    <!-- Note: Only if we include FE/Qt, we offer to start VirtualPox at the end of a successful installation. -->
+<?if $(env.VPOX_WITH_QTGUI) = "yes" ?>
+    <!-- Note: Make sure to set the CWD (via 'Directory' attribute) to not run off a possibly temporary directory or some such (see @bugref{10203}). -->
+    <CustomAction Id="ca_StartVPox" Directory="INSTALLDIR" ExeCommand="[INSTALLDIR]VirtualPox.exe" Return="asyncNoWait" Impersonate="yes" />
+<?endif ?>
+
+    <CustomAction Id="ca_CheckSerial" BinaryKey="VPoxInstallHelper" DllEntry="CheckSerial" Impersonate="no"/>
+
+    <CustomAction Id="ca_InstallBranding" BinaryKey="VPoxInstallHelper" DllEntry="InstallBranding" Execute="deferred" Return="check" Impersonate="no"/>
+    <CustomAction Id="ca_InstallBrandingArgs" Property="ca_InstallBranding" Value="[INSTALLDIR]" Execute="immediate"/>
+
+    <CustomAction Id="ca_UninstallBranding" BinaryKey="VPoxInstallHelper" DllEntry="UninstallBranding" Execute="deferred" Return="check" Impersonate="no"/>
+    <CustomAction Id="ca_UninstallBrandingArgs" Property="ca_UninstallBranding" Value="[INSTALLDIR]" Execute="immediate"/>
+
+<?if $(env.VPOX_WITH_MSM_INSTALL) = "no" ?>
+    <?include VPoxMergeAppCA.wxi ?>
+    <?if $(env.VPOX_WITH_32_ON_64_MAIN_API) = "yes" ?>
+        <?include VPoxMergeCOM32On64CA.wxi ?>
+    <?endif ?>
+    <?if $(env.VPOX_WITH_NETFLT) = "yes" ?>
+        <?include VPoxMergeNetFltCA.wxi ?>
+        <?include VPoxMergeNetLwfCA.wxi ?>
+    <?endif ?>
+    <?include VPoxMergeNetAdpCA.wxi ?>
+    <?include VPoxMergeNetAdp6CA.wxi ?>
+    <?include VPoxMergeUSBCA.wxi ?>
+    <?if $(env.VPOX_WITH_PYTHON) = "yes" ?>
+        <?include VPoxMergePythonCA.wxi ?>
+    <?endif ?>
+<?endif ?>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+        <Directory Id="$(var.Property_ProgramFiles)" Name="PFiles">
+            <Directory Id="VENDOR" Name="$(env.VPOX_VENDOR_SHORT)">
+                <Directory Id="INSTALLDIR" Name="VirtualPox">
+<?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                <Merge Id="msm_VPoxApp" Language="!(loc.LANG)" SourceFile="$(var.Property_VPoxMergeApp)" DiskId="1">
+                    <ConfigurationData Name="argRegisterExtensions" Value="[VPOX_REGISTERFILEEXTENSIONS]"/>
+                </Merge>
+    <?if $(env.VPOX_WITH_32_ON_64_MAIN_API) = "yes" ?>
+                <Merge Id="msm_VPoxCOM32On64" Language="!(loc.LANG)" SourceFile="$(var.Property_VPoxMergeCOM32On64)" DiskId="1" />
+    <?endif ?>
+<?else ?>
+                <Directory Id="msm_VPoxApplicationFolder" FileSource=".">
+                    <?include VPoxMergeApp.wxi ?>
+    <?if $(env.VPOX_WITH_32_ON_64_MAIN_API) = "yes" ?>
+                    <?include VPoxMergeCOM32On64.wxi ?>
+    <?endif ?>
+                </Directory>
+<?endif ?>
+                <Directory Id="dir_Drivers" Name="drivers">
+<?if $(env.VPOX_WITH_USB) = "yes" ?>
+                    <Directory Id="dir_USB" Name="USB">
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                        <Merge Id="msm_VPoxUSB" Language="!(loc.LANG)" SourceFile="$(var.Property_VPoxMergeUSB)" DiskId="1" />
+    <?else ?>
+                        <Directory Id="msm_VPoxUSBFolder" FileSource=".">
+                            <?include VPoxMergeUSB.wxi ?>
+                        </Directory>
+    <?endif ?>
+                    </Directory>
+<?endif ?>
+                    <Directory Id="dir_Network" Name="network">
+<?if $(env.VPOX_WITH_NETFLT) = "yes" ?>
+                        <Directory Id="dir_NetFlt" Name="netflt">
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                            <Merge Id="msm_VPoxNetworkFlt" Language="!(loc.LANG)" SourceFile="$(var.Property_VPoxMergeNetworkFlt)" DiskId="1">
+                            <ConfigurationData Name="passedNetworkType" Value="[NETWORKTYPE]"/>
+                            </Merge>
+    <?else ?>
+                            <Directory Id="msm_VPoxNetworkFltFolder" FileSource=".">
+                                <?include VPoxMergeNetFlt.wxi ?>
+                            </Directory>
+    <?endif ?>
+                        </Directory>
+<?endif ?>
+<?if $(env.VPOX_WITH_NETADP) = "yes" ?>
+                        <Directory Id="dir_NetAdp" Name="netadp">
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                            <Merge Id="msm_VPoxNetworkAdp" Language="!(loc.LANG)" SourceFile="$(var.Property_VPoxMergeNetworkAdp)" DiskId="1">
+                            <ConfigurationData Name="passedNetworkType" Value="[NETWORKTYPE]"/>
+                            </Merge>
+    <?else ?>
+                            <Directory Id="msm_VPoxNetworkAdpFolder" FileSource=".">
+                                <?include VPoxMergeNetAdp.wxi ?>
+                            </Directory>
+    <?endif ?>
+                        </Directory>
+<?endif ?>
+
+<?if $(env.VPOX_WITH_NETFLT) = "yes" ?>
+                        <Directory Id="dir_NetLwf" Name="netlwf">
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                            <Merge Id="msm_VPoxNetworkLwf" Language="!(loc.LANG)" SourceFile="$(var.Property_VPoxMergeNetworkLwf)" DiskId="1">
+                            <ConfigurationData Name="passedNetworkType" Value="[NETWORKTYPE]"/>
+                            </Merge>
+    <?else ?>
+                            <Directory Id="msm_VPoxNetworkLwfFolder" FileSource=".">
+                                <?include VPoxMergeNetLwf.wxi ?>
+                            </Directory>
+    <?endif ?>
+                        </Directory>
+<?endif ?>
+
+<?if $(env.VPOX_WITH_NETADP) = "yes" ?>
+                        <Directory Id="dir_NetAdp6" Name="netadp6">
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                            <Merge Id="msm_VPoxNetworkAdp6" Language="!(loc.LANG)" SourceFile="$(var.Property_VPoxMergeNetworkAdp6)" DiskId="1">
+                            <ConfigurationData Name="passedNetworkType" Value="[NETWORKTYPE]"/>
+                            </Merge>
+    <?else ?>
+                            <Directory Id="msm_VPoxNetworkAdp6Folder" FileSource=".">
+                                <?include VPoxMergeNetAdp6.wxi ?>
+                            </Directory>
+    <?endif ?>
+                        </Directory>
+<?endif ?>
+                    </Directory>
+                </Directory>
+<?if $(env.VPOX_WITH_PYTHON) = "yes" ?>
+                <Directory Id="dir_SDK" Name="sdk">
+                    <Directory Id="dir_SDKInstall" Name="install">
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                        <Merge Id="msm_VPoxPython" Language="!(loc.LANG)" SourceFile="$(var.Property_VPoxMergePython)" DiskId="1" />
+    <?else ?>
+                        <Directory Id="msm_VPoxPythonFolder" FileSource=".">
+                            <?include VPoxMergePython.wxi ?>
+                        </Directory>
+    <?endif ?>
+                    </Directory>
+                </Directory>
+<?endif ?>
+
+<?if $(env.VPOX_WITH_QTGUI) = "yes" ?>
+                <!-- Set up special directory IDs for referencing to the start menu
+                     or the Quick Launch bar.
+                     See: http://msdn.microsoft.com/en-us/library/aa368276.aspx
+                          http://wix.mindcapers.com/wiki/Shortcuts_in_WiX -->
+                <Directory Id="ProgramMenuFolder">
+                    <Directory Id="dir_StartMenuVPox" Name="$(env.VPOX_PRODUCT)"/>
+                </Directory>
+
+                <Directory Id="DesktopFolder" Name="Desktop"/>
+
+                <Directory Id="AppDataFolder" Name="AppData">
+                    <Directory Id="dir_AppDataMicrosoft" Name="Microsoft">
+                        <Directory Id="dir_AppDataMSIE" Name="Internet Explorer">
+                            <Directory Id="dir_QuicklaunchFolder" Name="Quick Launch"/>
+                        </Directory>
+                    </Directory>
+                </Directory>
+
+                <!-- Start menu entries. -->
+                <Component Id="cp_StartMenuVPox" Guid="C2DC321A-CE63-40EE-8A98-724DF8BD12FB" Win64="$(var.Property_Win64)">
+                    <Condition>VPOX_INSTALLSTARTMENUENTRIES</Condition>
+                    <Shortcut Id="sc_StartMenuVPox" Directory="dir_StartMenuVPox" Name="$(env.VPOX_PRODUCT)" Description="$(env.VPOX_PRODUCT)"
+                              Target="[INSTALLDIR]VirtualPox.exe" WorkingDirectory="INSTALLDIR"/>
+                    <RegistryValue Root="HKCU" Key="$(var.Property_RegKeyInstall)"
+                                   Type="string" Value="installed" KeyPath="yes" />
+                    <?include $(env.PATH_TARGET)\Shortcuts_StartMenu.wxi ?>
+                </Component>
+
+                <!-- Desktop shortcut. -->
+                <Component Id="cp_DesktopShortcut" Guid="668F8A1A-F5CE-48B3-BB1A-3042EE27B279" Win64="$(var.Property_Win64)">
+                    <Condition>VPOX_INSTALLDESKTOPSHORTCUT</Condition>
+                    <Shortcut Id="sc_DesktopVPox" Directory="DesktopFolder" Name="$(env.VPOX_PRODUCT)" Description="$(env.VPOX_PRODUCT)"
+                              Target="[INSTALLDIR]VirtualPox.exe" WorkingDirectory="INSTALLDIR"/>
+                    <RegistryValue Root="HKCU" Key="$(var.Property_RegKeyInstall)" Type="string"
+                                   Value="installed" KeyPath="yes" />
+                </Component>
+
+                <!-- QuickLaunch shortcut. -->
+                <Component Id="cp_QuickLaunchVPox" Guid="CC19E026-938A-41CB-8E77-3F33296244B6" Win64="$(var.Property_Win64)">
+                    <CreateFolder/>
+                    <Condition>VPOX_INSTALLQUICKLAUNCHSHORTCUT</Condition>
+                    <Shortcut Id="sc_QuickLaunchVPox" Directory="dir_QuicklaunchFolder" Name="$(env.VPOX_PRODUCT)" Description="$(env.VPOX_PRODUCT)"
+                              Target="[INSTALLDIR]VirtualPox.exe" WorkingDirectory="INSTALLDIR"/>
+                    <RegistryValue Root="HKCU" Key="$(var.Property_RegKeyInstall)"
+                                   Type="string" Value="installed" KeyPath="yes" />
+                </Component>
+<?endif ?>
+                </Directory>
+            </Directory>
+        </Directory>
+    </Directory> <!-- TARGETDIR -->
+
+    <!-- Note: Feature IDs *must not* be renamed to use any prefixes or such,
+               otherwise this will break manual selection using the ADDLOCAL= syntax
+               when using the command line / scripts (see VPox manual). -->
+    <Feature Id="VPoxApplication" Title="VirtualPox Application" Level="1"
+             Description="!(loc.VB_App)"
+             ConfigurableDirectory="INSTALLDIR" TypicalDefault="install" Display="expand"
+             Absent="disallow" AllowAdvertise="no" >
+
+<?if $(env.VPOX_WITH_QTGUI) = "yes" ?>
+        <!-- Components which are handled only by this installer itself -->
+        <ComponentRef Id="cp_StartMenuVPox" />
+        <ComponentRef Id="cp_DesktopShortcut" />
+        <ComponentRef Id="cp_QuickLaunchVPox" />
+<?endif ?>
+        <!-- Components handled either by the installer itself or
+             the merge module -->
+<?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+        <MergeRef Id="msm_VPoxApp" />
+        <?if $(env.VPOX_WITH_32_ON_64_MAIN_API) = "yes" ?>
+            <MergeRef Id="msm_VPoxCOM32On64" />
+        <?endif ?>
+<?else ?>
+    <!-- Make sure to reference the permissions component, which takes care of setting
+         the required ACLs for our files / folders. -->
+    <ComponentRef Id="cp_Permissions" />
+    <?if $(env.VPOX_WITH_QTGUI) = "yes" ?>
+        <ComponentRef Id="cp_RegisterExtensions" />
+    <?endif ?>
+    <?if $(env.VPOX_WITH_DOCS_PACKING) = "yes" ?>
+        <ComponentRef Id="cp_Docs" />
+    <?endif ?>
+    <?if $(env.VPOX_WITH_QTGUI) = "yes" ?>
+        <ComponentRef Id="cp_NLS" />
+    <?endif ?>
+    <?if $(env.VPOX_WITH_32_ON_64_MAIN_API) = "yes" ?>
+        <ComponentRef Id="cp_MainCOM_x86" />
+    <?endif ?>
+    <ComponentRef Id="cp_MainCOM" />
+    <?if $(env.VPOX_WITH_SDS) = "yes" ?>
+        <ComponentRef Id="cp_VPoxSDS" />
+    <?endif ?>
+    <?if $(env.VPOX_WITH_MIDL_PROXY_STUB) = "yes" ?>
+        <ComponentRef Id="cp_ProxyStub" />
+        <ComponentRef Id="cp_ProxyStubLegacy" />
+    <?endif?>
+    <ComponentRef Id="cp_MainBinaries" />
+    <?if $(env.VPOX_WITH_QTGUI) = "yes" ?>
+        <ComponentRef Id="cp_QtPlatforms" />
+    <?endif ?>
+    <?if $(env.VPOX_WITH_PYTHON) = "yes" ?>
+        <ComponentRef Id="cp_VPoxPyInst" />
+        <ComponentRef Id="cp_VPoxPyMod" />
+    <?endif ?>
+    <?if $(env.VPOX_WITH_VPOXSDL) = "yes" ?>
+        <ComponentRef Id="cp_VPoxSDLBinaries" />
+    <?endif ?>
+    <?if $(env.VPOX_WITH_WEBSERVICES) = "yes" ?>
+        <ComponentRef Id="cp_VPoxWebService" />
+    <?endif ?>
+    <ComponentRef Id="cp_VPoxCAPI" />
+    <?if $(env.VPOX_WITH_UNATTENDED) = "yes" ?>
+        <!-- unattended template component -->
+        <ComponentRef Id="cp_UnattendedTemplates" />
+    <?endif ?>
+    <?if $(env.VPOX_SIGNING_MODE) != none ?>
+        <ComponentRef Id="cp_VPoxSupCat_PreW10" />
+        <ComponentRef Id="cp_VPoxSupCat_W10" />
+    <?endif ?>
+    <ComponentRef Id="cp_VPoxSup" />
+<?endif ?>
+
+<?if $(env.VPOX_WITH_USB) = "yes" ?>
+        <Feature Id="VPoxUSB" Title="VirtualPox USB Support" Level="1"
+                 Description="!(loc.VB_USBDriver)"
+                 ConfigurableDirectory="INSTALLDIR" TypicalDefault="install" Display="expand"
+                 Absent="allow" AllowAdvertise="no" >
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+            <MergeRef Id="msm_VPoxUSB" />
+    <?else ?>
+        <?if $(env.VPOX_SIGNING_MODE) != none ?>
+            <ComponentRef Id="cp_USBFilterDriverCat_PreW10" />
+            <ComponentRef Id="cp_USBFilterDriverCat_W10" />
+        <?endif ?>
+            <ComponentRef Id="cp_USBFilterDriver" />
+        <?if $(env.VPOX_SIGNING_MODE) != none ?>
+            <ComponentRef Id="cp_USBDeviceDriverCat_PreW10" />
+            <ComponentRef Id="cp_USBDeviceDriverCat_W10" />
+        <?endif ?>
+            <ComponentRef Id="cp_USBDeviceDriver" />
+    <?endif ?>
+        </Feature>
+<?endif ?>
+
+<?if $(env.VPOX_WITH_NETFLT) = "yes" ?>
+        <Feature Id="VPoxNetwork" Title="VirtualPox Networking" Level="1"
+                 Description="!(loc.VB_Network)"
+                 ConfigurableDirectory="INSTALLDIR" TypicalDefault="install" Display="expand"
+                 Absent="allow" AllowAdvertise="no" >
+            <Feature Id="VPoxNetworkFlt" Title="VirtualPox Bridged Networking" Level="1"
+                     Description="!(loc.VB_NetFltDriver)"
+                     ConfigurableDirectory="INSTALLDIR" TypicalDefault="install" Display="expand"
+                     Absent="allow" AllowAdvertise="no" >
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                <MergeRef Id="msm_VPoxNetworkFlt" />
+                <MergeRef Id="msm_VPoxNetworkLwf" />
+    <?else ?>
+                <ComponentRef Id="cp_NetFltDriver" />
+        <?if $(env.VPOX_SIGNING_MODE) != none ?>
+                <ComponentRef Id="cp_NetLwfDriverCat_PreW10" />
+                <ComponentRef Id="cp_NetLwfDriverCat_W10" />
+        <?endif ?>
+                <ComponentRef Id="cp_NetLwfDriver" />
+    <?endif ?>
+            </Feature>
+            <Feature Id="VPoxNetworkAdp" Title="VirtualPox Host-Only Networking" Level="1"
+                     Description="!(loc.VB_NetAdpDriver)"
+                     ConfigurableDirectory="INSTALLDIR" TypicalDefault="install" Display="expand"
+                     Absent="allow" AllowAdvertise="no" >
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                <MergeRef Id="msm_VPoxNetworkAdp" />
+                <MergeRef Id="msm_VPoxNetworkAdp6" />
+    <?else ?>
+                <ComponentRef Id="cp_NetAdpDriver" />
+        <?if $(env.VPOX_SIGNING_MODE) != none ?>
+                <ComponentRef Id="cp_NetAdp6DriverCat_PreW10" />
+                <ComponentRef Id="cp_NetAdp6DriverCat_W10" />
+        <?endif ?>
+                <ComponentRef Id="cp_NetAdp6Driver" />
+    <?endif ?>
+            </Feature>
+
+        </Feature>
+<?endif ?>
+
+<?if $(env.VPOX_WITH_PYTHON) = "yes" ?>
+        <Feature Id="VPoxPython" Title="VirtualPox Python 2.x Support" Level="1"
+                 Description="!(loc.VB_Python)"
+                 ConfigurableDirectory="INSTALLDIR" TypicalDefault="install" Display="expand"
+                 Absent="allow" AllowAdvertise="no" >
+    <?if $(env.VPOX_WITH_MSM_INSTALL) = "yes" ?>
+                <MergeRef Id="msm_VPoxPython" />
+    <?else ?>
+                <ComponentRef Id="cp_VPoxPythonBinding" />
+    <?endif ?>
+        </Feature>
+<?endif ?>
+    </Feature>
+
+    <!-- Include user interface definition -->
+    <?include UserInterface.wxi ?>
+
+    <InstallExecuteSequence>
+
+        <!--
+            To debug the action sequences, do: "msiexec /i <VPox.msi> /lar <Logfile>"
+
+            InstallUISequence (client side) is:
+                AppSearch
+                LaunchConditions
+                ValidateProductID
+                CostInitialize
+                FileCost
+                CostFinalize
+                ExecuteAction -> will pass control over to "InstallExecuteSequence"
+
+            The first six actions above will be repeated but skipped on the server
+            side if already run on the client side.
+
+            InstallExecuteSequence (server side) is:
+                <First six action from InstallUISequence>
+                .
+                InstallInitialize
+                .
+                InstallFinalize
+
+            The actions between InstallInitialize and InstallFinalize will be gone through twice:
+            - The first time the installer creates an installation script containing all actions in the right
+              sequence which need to get executed in a batch later. At this point the launch conditions for
+              custom actions must be met already!
+            - The second time the generated installation script will be run as-is.
+
+            Also, the InstallUISequence and InstallExecuteSequence tables run in different sessions which
+            need public properties (that is, UPPERCASE properties).
+        -->
+
+        <!-- AppSearch must be done before "RemoveExistingProducts" and before "FindRelatedProducts" -->
+        <AppSearch Sequence="1"></AppSearch>
+        <LaunchConditions After="AppSearch" />
+
+        <!-- First install the new version and then remove the old version. This is more efficient -->
+        <RemoveExistingProducts After="InstallValidate"><![CDATA[PREVIOUSVERSIONSINSTALLED OR NEWERVERSIONDETECTED]]></RemoveExistingProducts>
+
+        <Custom Action="ca_OriginalTargetDir" After="FileCost"><![CDATA[(NOT INSTALLDIR)]]></Custom>
+        <Custom Action="ca_DefaultTargetDir" Before="FileCost" ><![CDATA[NOT INSTALLDIR AND EXISTINGINSTALLDIR]]></Custom>
+
+        <!-- Check + unininstall old TAP instances - we  don't need them anymore -->
+        <Custom Action="ca_UninstallTAPInstances" Before="InstallFiles" >1</Custom>
+
+        <!-- Check + uninstall old VPoxDrv service - it was renamed to VPoxSup.  -->
+        <Custom Action="ca_UninstallVPoxDrv" Before="InstallFiles" >1</Custom>
+
+        <Custom Action="ca_InstallBrandingArgs" Before="ca_InstallBranding" ><![CDATA[NOT REMOVE]]></Custom>
+        <Custom Action="ca_InstallBranding" Before="InstallFinalize" ><![CDATA[NOT REMOVE]]></Custom>
+
+        <!-- Uninstall branding on complete uninstall, not on update -->
+        <Custom Action="ca_UninstallBrandingArgs" Before="ca_UninstallBranding" ><![CDATA[(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")]]></Custom>
+        <Custom Action="ca_UninstallBranding" Before="InstallFinalize" ><![CDATA[(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")]]></Custom>
+
+<?if $(env.VPOX_WITH_MSM_INSTALL) = "no" ?>
+        <?include VPoxMergeAppSeq.wxi ?>
+        <?if $(env.VPOX_WITH_32_ON_64_MAIN_API) = "yes" ?>
+            <?include VPoxMergeCOM32On64Seq.wxi ?>
+        <?endif ?>
+        <?if $(env.VPOX_WITH_NETFLT) = "yes" ?>
+            <?include VPoxMergeNetFltSeq.wxi ?>
+            <?include VPoxMergeNetLwfSeq.wxi ?>
+        <?endif ?>
+        <?include VPoxMergeNetAdpSeq.wxi ?>
+        <?include VPoxMergeNetAdp6Seq.wxi ?>
+        <?include VPoxMergeUSBSeq.wxi ?>
+        <?if $(env.VPOX_WITH_PYTHON) = "yes" ?>
+            <?include VPoxMergePythonSeq.wxi ?>
+        <?endif ?>
+<?endif ?>
+
+    </InstallExecuteSequence>
+
+  </Product>
+</Wix>

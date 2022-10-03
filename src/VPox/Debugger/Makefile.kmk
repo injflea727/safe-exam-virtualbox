@@ -1,0 +1,148 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the VPox debugger.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# The targets.
+#
+ifdef VPOX_WITH_DEBUGGER
+ LIBRARIES += Debugger
+ ifdef VPOX_WITH_TESTCASES
+  PROGRAMS += tstDBGCParser
+ endif
+endif # VPOX_WITH_DEBUGGER
+
+
+#
+# Debugger library - linked into VPoxVMM.
+#
+Debugger_TEMPLATE  = VPOXR3
+Debugger_DEFS      = IN_VMM_R3 IN_DBG_R3 IN_DIS
+ifneq ($(KBUILD_TYPE),release)
+ Debugger_DEFS    += VPOX_WITH_DEBUGGER_TCP_BY_DEFAULT
+endif
+Debugger_SOURCES   = \
+	DBGConsole.cpp \
+	DBGCEval.cpp \
+	DBGCBuiltInSymbols.cpp \
+	DBGCCmdHlp.cpp \
+	DBGCCmdWorkers.cpp \
+	DBGCCommands.cpp \
+	DBGCDumpImage.cpp \
+	DBGCFunctions.cpp \
+	DBGCEmulateCodeView.cpp \
+	DBGCOps.cpp \
+	DBGCGdbRemoteStub.cpp \
+	DBGCTcp.cpp \
+	DBGCScreenAscii.cpp
+
+#
+# The diggers plug-in.
+#
+DLLS += DbgPlugInDiggers
+DbgPlugInDiggers_TEMPLATE = VPOXR3
+DbgPlugInDiggers_DEFS     = IN_DIS
+DbgPlugInDiggers_SOURCES = \
+	DBGPlugInDiggers.cpp \
+	DBGPlugInDarwin.cpp \
+	DBGPlugInLinux.cpp \
+	DBGPlugInSolaris.cpp \
+	DBGPlugInWinNt.cpp \
+	DBGPlugInOS2.cpp \
+	DBGPlugInFreeBsd.cpp \
+	DBGPlugInCommonELF.cpp
+DbgPlugInDiggers_LIBS = \
+	$(PATH_STAGE_LIB)/DisasmR3$(VPOX_SUFF_LIB) \
+	$(if-expr "$(LIB_VMM)" == "$(VPOX_LIB_VMM_LAZY)",$(LIB_REM),) \
+	$(VPOX_LIB_VMM_LAZY) \
+	$(LIB_RUNTIME)
+$(call VPOX_SET_VER_INFO_DLL,DbgPlugInDiggers,VirtualPox Debugger Guest OS Digger Plug-in)
+
+
+#
+# The DBGC parser testcase.
+# This stubs all the VPoxVMM APIs.
+#
+tstDBGCParser_TEMPLATE = VPOXR3TSTEXE
+tstDBGCParser_DEFS = IN_VMM_R3
+tstDBGCParser_CXXFLAGS = $(VPOX_C_CXX_FLAGS_NO_UNUSED_PARAMETERS)
+tstDBGCParser_SOURCES = \
+	testcase/tstDBGCParser.cpp \
+	testcase/tstDBGCStubs.cpp
+tstDBGCParser_LIBS = \
+	$(Debugger_1_TARGET) \
+	$(LIB_RUNTIME)
+
+
+if defined(VPOX_WITH_QTGUI) && defined(VPOX_WITH_DEBUGGER_GUI)
+#
+# Debugger GUI component (Qt).
+#
+USES += qt5
+DLLS += VPoxDbg
+VPoxDbg_TEMPLATE = VPOXQTGUI
+VPoxDbg_DEFS = IN_DBG_R3
+VPoxDbg_INCS = .
+VPoxDbg_QT_MODULES = Core Gui Widgets
+VPoxDbg_QT_MOCHDRS = \
+	VPoxDbgGui.h \
+	VPoxDbgConsole.h \
+	VPoxDbgStatsQt.h
+VPoxDbg_SOURCES = \
+	VPoxDbg.cpp \
+	VPoxDbgGui.cpp \
+	VPoxDbgBase.cpp \
+	VPoxDbgConsole.cpp \
+	VPoxDbgStatsQt.cpp
+VPoxDbg_LIBS = \
+	$(VPOX_LIB_VMM_LAZY)
+VPoxDbg_LDFLAGS.darwin = \
+	-install_name $(VPOX_DYLD_EXECUTABLE_PATH)/VPoxDbg.dylib
+$(call VPOX_SET_VER_INFO_DLL,VPoxDbg,VirtualPox Debugger GUI)
+
+ ifdef VPOX_WITH_TESTCASES
+#
+# The VPoxDbg testcase (Qt).
+#
+PROGRAMS += tstVPoxDbg
+tstVPoxDbg_TEMPLATE     = VPOXQTGUIEXE
+tstVPoxDbg_USES         = qt5
+tstVPoxDbg_QTTOOL       = QT5
+tstVPoxDbg_QT_MODULES   = Core Gui Widgets
+tstVPoxDbg_LIBS.linux   += xcb
+tstVPoxDbg_LIBS.solaris += xcb
+tstVPoxDbg_LIBS.freebsd += xcb
+tstVPoxDbg_SOURCES      = testcase/tstVPoxDbg.cpp
+tstVPoxDbg_LIBS         = \
+	$(LIB_VMM) \
+	$(LIB_REM) \
+	$(LIB_RUNTIME)
+  ifeq ($(KBUILD_TARGET),win)
+tstVPoxDbg_LIBS        += \
+	$(PATH_STAGE_LIB)/VPoxDbg.lib
+  else
+tstVPoxDbg_LIBS        += \
+	$(PATH_STAGE_BIN)/VPoxDbg$(VPOX_SUFF_DLL)
+  endif
+ endif # TESTCASES
+endif # Qt
+
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

@@ -1,0 +1,92 @@
+@owner root
+@group wheel
+@mode 755
+lib/virtualpox/VPoxDbg.so
+lib/virtualpox/DbgPlugInDiggers.so
+lib/virtualpox/VPoxDD.so
+lib/virtualpox/VPoxDD2.so
+lib/virtualpox/VPoxDDU.so
+lib/virtualpox/VPoxGuestPropSvc.so
+lib/virtualpox/VPoxGuestControlSvc.so
+lib/virtualpox/VPoxHostChannel.so
+lib/virtualpox/VPoxHeadless.so
+lib/virtualpox/VPoxKeyboard.so
+lib/virtualpox/VPoxManage
+lib/virtualpox/VPoxNetDHCP.so
+lib/virtualpox/VPoxPython.so
+lib/virtualpox/VPoxRT.so
+lib/virtualpox/VPoxSDL.so
+lib/virtualpox/VPoxSharedFolders.so
+lib/virtualpox/VPoxSVC
+lib/virtualpox/VPoxVMM.so
+lib/virtualpox/VPoxVRDP.so
+lib/virtualpox/VPoxXPCOM.so
+lib/virtualpox/VPoxXPCOMC.so
+lib/virtualpox/VPoxXPCOMIPCD
+lib/virtualpox/VirtualPox.so
+lib/virtualpox/VPoxOGLhostcrutil.so
+lib/virtualpox/VPoxOGLhosterrorspu.so
+lib/virtualpox/VPoxOGLrenderspu.so
+lib/virtualpox/vpoxwebsrv
+lib/virtualpox/rdesktop-vrdp
+lib/virtualpox/VPoxTestOGL
+@mode 4755
+lib/virtualpox/VPoxSDL
+lib/virtualpox/VirtualPox
+lib/virtualpox/VPoxNetDHCP
+lib/virtualpox/VPoxNetAdpCtl
+lib/virtualpox/VPoxHeadless
+@mode 755
+lib/virtualpox/components/VPoxC.so
+lib/virtualpox/components/VPoxSVCM.so
+lib/virtualpox/components/VPoxXPCOMIPCC.so
+@mode 644
+lib/virtualpox/components/VPoxXPCOMBase.xpt
+lib/virtualpox/components/VirtualPox_XPCOM.xpt
+@mode 755
+bin/VirtualPox
+bin/VPoxManage
+bin/VPoxSVC
+bin/VPoxHeadless
+bin/VPoxSDL
+bin/vpoxwebsrv
+@mode 644
+lib/virtualpox/VPoxDDRC.rc
+lib/virtualpox/VPoxDDR0.r0
+lib/virtualpox/VMMRC.rc
+lib/virtualpox/VMMR0.r0
+lib/virtualpox/License-7.html
+lib/virtualpox/vpoxdrv.tar.gz
+lib/virtualpox/nls/qt_de.qm
+lib/virtualpox/nls/VirtualPox_de.qm
+lib/virtualpox/nls/qt_fr.qm
+lib/virtualpox/nls/VirtualPox_fr.qm
+lib/virtualpox/nls/qt_it.qm
+lib/virtualpox/nls/VirtualPox_it.qm
+lib/virtualpox/nls/qt_ro.qm
+lib/virtualpox/nls/VirtualPox_ro.qm
+lib/virtualpox/nls/qt_zh_CN.qm
+lib/virtualpox/nls/VirtualPox_zh_CN.qm
+lib/virtualpox/nls/qt_ja.qm
+lib/virtualpox/nls/VirtualPox_ja.qm
+lib/virtualpox/nls/qt_es.qm
+lib/virtualpox/nls/VirtualPox_es.qm
+lib/virtualpox/nls/qt_ru.qm
+lib/virtualpox/nls/VirtualPox_ru.qm
+lib/virtualpox/nls/qt_pl.qm
+lib/virtualpox/nls/VirtualPox_pl.qm
+lib/virtualpox/nls/qt_pt_BR.qm
+lib/virtualpox/nls/VirtualPox_pt_BR.qm
+lib/virtualpox/nls/qt_ko.qm
+lib/virtualpox/nls/VirtualPox_ko.qm
+lib/virtualpox/nls/qt_sv.qm
+lib/virtualpox/nls/VirtualPox_sv.qm
+lib/virtualpox/nls/qt_fi.qm
+lib/virtualpox/nls/VirtualPox_fi.qm
+lib/virtualpox/nls/qt_hu.qm
+lib/virtualpox/nls/VirtualPox_hu.qm
+lib/virtualpox/nls/qt_cs.qm
+lib/virtualpox/nls/VirtualPox_cs.qm
+share/applications/virtualpox.desktop
+share/pixmaps/VPox.png
+

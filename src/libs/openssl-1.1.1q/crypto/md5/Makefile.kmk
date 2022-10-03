@@ -1,0 +1,41 @@
+# $Id$
+## @file
+# OpenSSL Sub-Makefile.
+#
+
+#
+# Copyright (C) 2019 Oracle Corporation
+#
+# Oracle Corporation confidential
+# All rights reserved
+#
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += crypto_md5
+crypto_md5_TEMPLATE = SUBLIBCRYPTO
+crypto_md5_DEFS = OPENSSL_NO_DEPRECATED
+crypto_md5_SOURCES = \
+	md5_dgst.c \
+	md5_one.c
+ifdef VPOX_WITH_CRYPTO_ASM
+ crypto_ec_SOURCES.x86 += \
+	$(VPOX_PATH_CRYPTO_GENASM)/md5-586.S
+ crypto_ec_SOURCES.amd64 += \
+	$(VPOX_PATH_CRYPTO_GENASM)/md5-x86_64.S
+endif
+$(evalcall VPOX_OPENSSL_X86,crypto_md5)
+
+
+recreate-md5-asm: $(VPOX_PATH_CRYPTO)/perlasm/x86asm.pl \
+	$(VPOX_PATH_CRYPTO_MD5)/asm/md5-586.pl \
+	$(VPOX_PATH_CRYPTO_MD5)/asm/md5-x86_64.pl
+	perl $(VPOX_PATH_CRYPTO_MD5)/asm/md5-586.pl elf -fPIC $(VPOX_PATH_CRYPTO)/genasm-elf/md5-586.S
+	perl $(VPOX_PATH_CRYPTO_MD5)/asm/md5-x86_64.pl elf $(VPOX_PATH_CRYPTO)/genasm-elf/md5-x86_64.S
+	perl $(VPOX_PATH_CRYPTO_MD5)/asm/md5-586.pl macosx $(VPOX_PATH_CRYPTO)/genasm-macosx/md5-586.S
+	perl $(VPOX_PATH_CRYPTO_MD5)/asm/md5-x86_64.pl macosx $(VPOX_PATH_CRYPTO)/genasm-macosx/md5-x86_64.S
+	perl $(VPOX_PATH_CRYPTO_MD5)/asm/md5-586.pl win32n $(VPOX_PATH_CRYPTO)/genasm-nasm/md5-586.S
+	perl $(VPOX_PATH_CRYPTO_MD5)/asm/md5-x86_64.pl nasm $(VPOX_PATH_CRYPTO)/genasm-nasm/md5-x86_64.S
+
+include $(FILE_KBUILD_SUB_FOOTER)

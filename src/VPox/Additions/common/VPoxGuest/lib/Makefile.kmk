@@ -1,0 +1,249 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the common guest addition code library.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+#
+# Target config.
+#
+if defined(VPOX_WITH_ADDITION_DRIVERS) && !defined(VPOX_ONLY_VALIDATIONKIT)
+ LIBRARIES += \
+ 	VPoxGuestR0Lib \
+ 	VPoxGuestR0LibBase
+endif
+LIBRARIES += \
+	VPoxGuestR3Lib \
+	VPoxGuestR3LibShared
+ifndef VPOX_ONLY_VALIDATIONKIT
+ if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd)
+ ifndef VPOX_USE_SYSTEM_XORG_HEADERS
+  LIBRARIES += \
+  	VPoxGuestR3LibXFree86
+ endif
+ endif
+ if1of ($(KBUILD_TARGET), freebsd linux netbsd openbsd solaris)
+  LIBRARIES += \
+  	VPoxGuestR3LibXOrg
+ endif
+endif
+LIBRARIES.win.amd64 += VPoxGuestR3Lib-x86 VPoxGuestR3LibShared-x86
+
+
+#
+# VPoxGuestR0Lib
+#
+VPoxGuestR0Lib_TEMPLATE     = VPOXGUESTR0LIB
+VPoxGuestR0Lib_DEFS         = VPOX_WITH_HGCM \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPOX_WITH_DRAG_AND_DROP,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH,)
+VPoxGuestR0Lib_INCS         = \
+	$(VPoxGuestR0Lib_0_OUTDIR)
+VPoxGuestR0Lib_SOURCES      = \
+	VPoxGuestR0LibInit.cpp \
+	VPoxGuestR0LibPhysHeap.cpp \
+	VPoxGuestR0LibGenericRequest.cpp \
+	VPoxGuestR0LibVMMDev.cpp \
+	VPoxGuestR0LibHGCM.cpp \
+	VbglR0CanUsePhysPageList.cpp \
+       \
+	VPoxGuestR0LibIdc.cpp \
+	VPoxGuestR0LibSharedFolders.c \
+	VPoxGuestR0LibCrOgl.cpp \
+	VPoxGuestR0LibMouse.cpp
+VPoxGuestR0Lib_SOURCES.os2     = VPoxGuestR0LibIdc-os2.cpp
+VPoxGuestR0Lib_SOURCES.solaris = VPoxGuestR0LibIdc-solaris.cpp
+VPoxGuestR0Lib_SOURCES.win     = VPoxGuestR0LibIdc-win.cpp
+ifn1of ($(KBUILD_TARGET), os2 solaris win)
+ VPoxGuestR0Lib_SOURCES       += VPoxGuestR0LibIdc-unix.cpp
+endif
+
+#
+# VPoxGuestR0LibBase
+#
+VPoxGuestR0LibBase_TEMPLATE = VPOXGUESTR0LIB
+VPoxGuestR0LibBase_DEFS     = VPOX_WITH_HGCM VBGL_VPOXGUEST \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPOX_WITH_DRAG_AND_DROP,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH,)
+VPoxGuestR0LibBase_INCS     = $(VPoxGuestR0Lib_INCS)
+VPoxGuestR0LibBase_INCS.win = $(VPoxGuestR0Lib_INCS.win)
+VPoxGuestR0LibBase_SOURCES  = \
+	VPoxGuestR0LibInit.cpp \
+	VPoxGuestR0LibPhysHeap.cpp \
+	VPoxGuestR0LibGenericRequest.cpp \
+	VPoxGuestR0LibVMMDev.cpp \
+	VPoxGuestR0LibHGCMInternal.cpp \
+	VbglR0CanUsePhysPageList.cpp
+
+#
+# VPoxGuestR3Lib
+#
+if "$(KBUILD_TARGET)" == "win" || defined(VPOX_WITH_MASOCHISTIC_WARNINGS) ## @todo use VPoxGuestR3Lib everywhere
+VPoxGuestR3Lib_TEMPLATE    = VPoxGuestR3Lib
+else
+VPoxGuestR3Lib_TEMPLATE    = VPOXGUESTR3LIB
+endif
+VPoxGuestR3Lib_DEFS        = \
+	VPOX_WITH_HGCM \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS,) \
+	$(if $(VPOX_WITH_SHARED_CLIPBOARD),VPOX_WITH_SHARED_CLIPBOARD,) \
+    $(if $(VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS),VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS,) \
+	$(if $(VPOX_WITH_SHARED_FOLDERS),VPOX_WITH_SHARED_FOLDERS,) \
+	$(if $(VPOX_WITH_GUEST_CONTROL),VPOX_WITH_GUEST_CONTROL,)
+VPoxGuestR3Lib_SOURCES     = \
+	VPoxGuestR3Lib.cpp \
+	VPoxGuestR3LibAdditions.cpp \
+	VPoxGuestR3LibAutoLogon.cpp \
+	VPoxGuestR3LibBalloon.cpp \
+	VPoxGuestR3LibCoreDump.cpp \
+	VPoxGuestR3LibCpuHotPlug.cpp \
+	VPoxGuestR3LibCredentials.cpp \
+	VPoxGuestR3LibEvent.cpp \
+	VPoxGuestR3LibGuestUser.cpp \
+	VPoxGuestR3LibGR.cpp \
+	VPoxGuestR3LibHGCM.cpp \
+	VPoxGuestR3LibHostChannel.cpp \
+	VPoxGuestR3LibLog.cpp \
+	VPoxGuestR3LibMisc.cpp \
+	VPoxGuestR3LibStat.cpp \
+	VPoxGuestR3LibTime.cpp \
+ 	VPoxGuestR3LibModule.cpp \
+ 	VPoxGuestR3LibPidFile.cpp \
+ 	VPoxGuestR3LibVrdp.cpp \
+ 	VPoxGuestR3LibMouse.cpp \
+ 	VPoxGuestR3LibSeamless.cpp \
+ 	VPoxGuestR3LibVideo.cpp
+ifneq ($(KBUILD_TARGET),win)
+ VPoxGuestR3Lib_SOURCES   += \
+ 	VPoxGuestR3LibDaemonize.cpp
+endif
+ifdef VPOX_WITH_GUEST_PROPS
+ VPoxGuestR3Lib_SOURCES   += \
+ 	VPoxGuestR3LibGuestProp.cpp \
+ 	VPoxGuestR3LibHostVersion.cpp
+endif
+ifdef VPOX_WITH_SHARED_CLIPBOARD
+ VPoxGuestR3Lib_DEFS      += VPOX_WITH_SHARED_CLIPBOARD_GUEST
+ VPoxGuestR3Lib_SOURCES   += \
+	VPoxGuestR3LibClipboard.cpp
+ ifdef VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS
+ VPoxGuestR3Lib_SOURCES   += \
+	$(PATH_ROOT)/src/VPox/GuestHost/SharedClipboard/ClipboardMIME.cpp
+ endif
+endif
+ifdef VPOX_WITH_SHARED_FOLDERS
+ VPoxGuestR3Lib_SOURCES   += \
+ 	VPoxGuestR3LibSharedFolders.cpp
+endif
+ifdef VPOX_WITH_GUEST_CONTROL
+ VPoxGuestR3Lib_SOURCES   += \
+ 	VPoxGuestR3LibGuestCtrl.cpp
+endif
+ifdef VPOX_WITH_DRAG_AND_DROP
+ VPoxGuestR3Lib_DEFS      += \
+    VPOX_WITH_DRAG_AND_DROP \
+    $(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH,)
+ VPoxGuestR3Lib_SOURCES   += \
+ 	VPoxGuestR3LibDragAndDrop.cpp
+endif
+
+VPoxGuestR3LibAdditions.cpp_DEFS = VPOX_SVN_REV=$(VPOX_SVN_REV)
+
+#
+# VPoxGuestR3LibShared - a PIC variant of VPoxGuestR3Lib for linking into .so/.dll/.dylib.
+#
+if "$(KBUILD_TARGET)" == "win" || defined(VPOX_WITH_MASOCHISTIC_WARNINGS) ## @todo use VPoxGuestR3Lib everywhere
+VPoxGuestR3LibShared_TEMPLATE = VPoxGuestR3Dll
+else
+VPoxGuestR3LibShared_TEMPLATE = VPOXGUESTR3DLL
+endif
+VPoxGuestR3LibShared_DEFS    := $(VPoxGuestR3Lib_DEFS)
+VPoxGuestR3LibShared_SOURCES := $(VPoxGuestR3Lib_SOURCES)
+VPoxGuestR3LibShared_INST    := $(INST_ADDITIONS_LIB)
+
+
+#
+# VPoxGuestR3Lib-x86 - an x86 (32-bit) variant of VPoxGuestR3Lib for 64-bit Windows.
+#
+VPoxGuestR3Lib-x86_EXTENDS      := VPoxGuestR3Lib
+VPoxGuestR3Lib-x86_BLD_TRG_ARCH := x86
+
+
+#
+# VPoxGuestR3LibShared-x86 - an x86 (32-bit) variant of VPoxGuestR3LibShared for 64-bit Windows.
+#
+VPoxGuestR3LibShared-x86_EXTENDS      := VPoxGuestR3LibShared
+VPoxGuestR3LibShared-x86_BLD_TRG_ARCH := x86
+
+
+#
+# VPoxGuestR3LibXFree86 - a reduced version of the guest library which uses
+# the X server runtime instead of IPRT, for use with old servers where the
+# C library is not available.
+#
+VPoxGuestR3LibXFree86_TEMPLATE = VPOXGUESTR3XF86LIB
+VPoxGuestR3LibXFree86_DEFS     = \
+	VPOX_WITH_HGCM \
+	VPOX_VBGLR3_XFREE86 \
+	RTMEM_NO_WRAP_TO_EF_APIS \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPOX_WITH_DRAG_AND_DROP,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH,) \
+	$(if $(VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS),VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS,)
+VPoxGuestR3LibXFree86_SOURCES  = \
+	VPoxGuestR3Lib.cpp \
+	VPoxGuestR3LibGR.cpp \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPoxGuestR3LibGuestProp.cpp,) \
+	VPoxGuestR3LibMouse.cpp \
+	VPoxGuestR3LibMisc.cpp \
+	VPoxGuestR3LibSeamless.cpp \
+	VPoxGuestR3LibVideo.cpp \
+	VPoxGuestR3LibRuntimeXF86.cpp
+VPoxGuestR3LibXFree86_INCS     = \
+        $(VPOX_PATH_X11_ROOT)/XFree86-4.3/Xserver \
+        $(VPOX_PATH_X11_ROOT)/XFree86-4.3 \
+        $(VPOX_PATH_X11_ROOT)/XFree86-4.3/X11
+
+#
+# VPoxGuestR3LibXOrg - a reduced version of the guest library which uses
+# the C server runtime instead of IPRT.
+#
+VPoxGuestR3LibXOrg_TEMPLATE = VPOXGUESTR3XORGLIB
+VPoxGuestR3LibXOrg_DEFS     = \
+	VPOX_WITH_HGCM \
+	VPOX_VBGLR3_XORG \
+	RTMEM_NO_WRAP_TO_EF_APIS \
+	IN_RT_STATIC \
+	$(if $(VPOX_WITH_GUEST_PROPS),VPOX_WITH_GUEST_PROPS,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP),VPOX_WITH_DRAG_AND_DROP,) \
+	$(if $(VPOX_WITH_DRAG_AND_DROP_GH),VPOX_WITH_DRAG_AND_DROP_GH,) \
+	$(if $(VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS),VPOX_WITH_SHARED_CLIPBOARD_TRANSFERS,)
+VPoxGuestR3LibXOrg_SOURCES  = $(VPoxGuestR3LibXFree86_SOURCES)
+
+VPoxGuestR3LibRuntimeXF86.cpp_CXXFLAGS = -Wno-shadow
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

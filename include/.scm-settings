@@ -1,0 +1,80 @@
+# $Id: .scm-settings $
+## @file
+# Source code massager settings for the includes.
+#
+
+#
+# Copyright (C) 2010-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+
+# Default license for headers is dual GPL and CDDL.
+--license-ose-dual
+
+# Only the headers should be dual.
+/Makefile.kmk:  --license-ose-gpl
+/.scm-settings: --license-ose-gpl
+
+# These three have no Oracle license or copyright stuff for some reason.
+/iprt/formats/elf-amd64.h:  --no-update-license  --no-update-copyright-year
+/iprt/formats/elf-common.h: --no-update-license  --no-update-copyright-year
+/iprt/formats/elf-i386.h:   --no-update-license  --no-update-copyright-year
+/iprt/formats/elf-i386.h:   --no-update-license  --no-update-copyright-year
+
+# external copyright
+/iprt/formats/lx.h:         --external-copyright
+
+# TODO: This is using LGPL with Oracle disclaimer. Implement.
+/VPox/VPoxKeyboard.h: --external-copyright --lgpl-disclaimer
+
+# Some of the graphics stuff is using MIT.
+/VPox/Graphics/HGSMI.h:                 --license-mit
+/VPox/Graphics/HGSMIBase.h:             --license-mit
+/VPox/Graphics/HGSMIChannels.h:         --license-mit
+/VPox/Graphics/HGSMIChSetup.h:          --license-mit
+/VPox/Graphics/HGSMIContext.h:          --license-mit
+/VPox/Graphics/HGSMIDefs.h:             --license-mit
+/VPox/Graphics/VPoxVideo.h:             --license-mit
+/VPox/Graphics/VPoxVideoErr.h:          --license-mit
+/VPox/Graphics/VPoxVideoGuest.h:        --license-mit
+/VPox/Graphics/VPoxVideoVBE.h:          --license-mit
+/VPox/Graphics/VPoxVideoVBEPrivate.h:   --license-mit
+
+# And so are some files used by the shared folder guest code.
+/VPox/shflsvc.h:                        --license-mit
+/VPox/VPoxGuest.h:                      --license-mit
+/VPox/VPoxGuestCoreTypes.h:             --license-mit
+/VPox/VPoxGuestLib.h:                   --license-mit
+/VPox/VPoxGuestLibSharedFolders.h:      --license-mit
+/VPox/VPoxGuestLibSharedFoldersInline.h: --license-mit
+/VPox/VMMDev.h:                         --license-mit
+/VPox/VMMDevCoreTypes.h:                --license-mit
+
+/VPox/HostServices/glext.h:             --external-copyright --no-convert-tabs --no-strip-trailing-blanks
+/VPox/HostServices/glxext.h:            --external-copyright --no-convert-tabs --no-strip-trailing-blanks
+/VPox/HostServices/wglext.h:            --external-copyright --no-convert-tabs --no-strip-trailing-blanks
+
+# Some headers actually shouldn't have include guards:
+/VPox/dbus-calls.h:                     --no-fix-header-guards
+/VPox/VDEPlugSymDefs.h:                 --no-fix-header-guards
+/iprt/asn1-generator-core.h:            --no-fix-header-guards
+/iprt/asn1-generator-pass.h:            --no-fix-header-guards
+/iprt/asn1-generator-sanity.h:          --no-fix-header-guards
+/iprt/asn1-generator-internal-header.h: --no-fix-header-guards
+/iprt/asn1-generator-asn1-decoder.h:    --no-fix-header-guards
+/iprt/asn1-generator-init.h:            --no-fix-header-guards
+/iprt/runtime-loader.h:                 --no-fix-header-guards
+/iprt/bldprog-strtab-template.cpp.h:    --no-fix-header-guards
+/iprt/asm*watcom*.h:                    --no-pragma-once
+
+/iprt/*.h: --guard-relative-to-dir iprt --guard-prefix IPRT_INCLUDED_
+/VPox/*.h: --guard-relative-to-dir VPox --guard-prefix VPOX_INCLUDED_
+

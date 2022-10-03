@@ -1,0 +1,79 @@
+application/x-virtualpox-vpox
+    icon_filename=virtualpox-vpox
+    description=Virtual Machine
+    default_action_type=application
+    short_list_application_ids_for_novice_user_level=virtualpox
+    short_list_application_ids_for_intermediate_user_level=virtualpox
+    short_list_application_ids_for_advanced_user_level=virtualpox
+    category=System
+    use_category_default=no
+
+application/x-virtualpox-vpox-extpack
+    icon_filename=virtualpox-vpox-extpack
+    description=VirtualPox Extension Pack
+    default_action_type=application
+    short_list_application_ids_for_novice_user_level=virtualpox
+    short_list_application_ids_for_intermediate_user_level=virtualpox
+    short_list_application_ids_for_advanced_user_level=virtualpox
+    category=System
+    use_category_default=no
+
+application/x-virtualpox-ovf
+    icon_filename=virtualpox-ovf
+    description=Open Virtualization Format
+    default_action_type=application
+    short_list_application_ids_for_novice_user_level=virtualpox
+    short_list_application_ids_for_intermediate_user_level=virtualpox
+    short_list_application_ids_for_advanced_user_level=virtualpox
+    category=System
+    use_category_default=no
+
+application/x-virtualpox-ovf
+    icon_filename=virtualpox-ova
+    description=Open Virtualization Format Archive
+    default_action_type=application
+    short_list_application_ids_for_novice_user_level=virtualpox
+    short_list_application_ids_for_intermediate_user_level=virtualpox
+    short_list_application_ids_for_advanced_user_level=virtualpox
+    category=System
+    use_category_default=no
+
+application/x-virtualpox-vdi
+    icon_filename=virtualpox-vdi
+    description=Virtual Disk Image
+    default_action_type=none
+    short_list_application_ids_for_novice_user_level=virtualpox
+    short_list_application_ids_for_intermediate_user_level=virtualpox
+    short_list_application_ids_for_advanced_user_level=virtualpox
+    category=System
+    use_category_default=no
+
+application/x-virtualpox-vmdk
+    icon_filename=virtualpox-vmdk
+    description=Virtual Machine Disk Format
+    default_action_type=none
+    short_list_application_ids_for_novice_user_level=virtualpox
+    short_list_application_ids_for_intermediate_user_level=virtualpox
+    short_list_application_ids_for_advanced_user_level=virtualpox
+    category=System
+    use_category_default=no
+
+application/x-virtualpox-vhd
+    icon_filename=virtualpox-vhd
+    description=Virtual Hard Disk
+    default_action_type=none
+    short_list_application_ids_for_novice_user_level=virtualpox
+    short_list_application_ids_for_intermediate_user_level=virtualpox
+    short_list_application_ids_for_advanced_user_level=virtualpox
+    category=System
+    use_category_default=no
+
+application/x-virtualpox-hdd
+    icon_filename=virtualpox-hdd
+    description=Virtual Hard Disk
+    default_action_type=none
+    short_list_application_ids_for_novice_user_level=virtualpox
+    short_list_application_ids_for_intermediate_user_level=virtualpox
+    short_list_application_ids_for_advanced_user_level=virtualpox
+    category=System
+    use_category_default=no

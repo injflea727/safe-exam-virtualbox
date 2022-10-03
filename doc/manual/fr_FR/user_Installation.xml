@@ -1,0 +1,868 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+"http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd">
+<chapter id="installation">
+  <title>Détails sur l'installation</title>
+
+  <para>Comme l'installation de VirtualPox varie selon votre système d'exploitation
+  hôte, nous fournissons des instructions d'installation dans quatre chapitres
+  distincts, respectivement pour Windows, Mac OS X, Linux et Solaris.</para>
+
+  <sect1 id="installation_windows">
+    <title>Installation sur des hôtes Windows</title>
+
+    <sect2>
+      <title>Prérequis</title>
+
+      <para>Pour les différentes versions de Windows que nous supportons en tant
+      que systèmes d'exploitation hôtes, merci de vous reporter au <xref
+      linkend="hostossupport" />.</para>
+
+      <para>En outre, l'installeur Windows 1.1 ou supérieur doit être présent sur
+      votre système. Cela devrait être le cas si vous avez installé les mises
+      à jour récentes de Windows.</para>
+    </sect2>
+
+    <sect2>
+      <title>Effectuer l'installation</title>
+
+      <para>L'installation de VirtualPox peut se lancer <itemizedlist>
+          <listitem>
+            <para>soit en cliquant deux fois sur son fichier exécutable (contenant
+            les architectures 32 et 64 bits)</para>
+          </listitem>
+
+          <listitem>
+            <para>soit en entrant <screen>VirtualPox.exe -extract</screen></para>
+
+            <para>sur la ligne de commande. Cela va extraire les deux installeurs
+            dans un répertoire temporaire où vous trouverez ensuite les fichiers
+            .MSI habituels. Puis vous pouvez faire un
+            <screen>msiexec /i VirtualPox-&lt;version&gt;-MultiArch_&lt;x86|amd64&gt;.msi</screen>
+            pour lancer l'installation.</para>
+          </listitem>
+        </itemizedlist></para>
+
+      <para>Dans tous les cas, ceci affichera la boîte de dialogue de bienvenue
+      dans l'installation et vous permet de choisir où installer VirtualPox et
+      les composants à installer. Outre l'application  VirtualPox, les composants
+      suivants sont disponibles&#xA0;:<glosslist>
+          <glossentry>
+            <glossterm>Support USB</glossterm>
+
+            <glossdef>
+              <para>Ce paquet contient des pilotes spéciaux pour votre hôte Windows
+              dont a besoin VirtualPox pour supporter pleinement les périphériques
+              USB dans vos machines virtuelles.</para>
+            </glossdef>
+          </glossentry>
+
+          <glossentry>
+            <glossterm>Réseau</glossterm>
+
+            <glossdef>
+              <para>Ce paquet contient les pilotes réseaux supplémentaires pour
+              votre hôte Windows, dont a besoin VirtualPox pour supporter le
+              réseau bridge (pour que les cartes réseaux de votre VM soient
+              accessibles depuis d'autres machines de votre réseau physique).</para>
+            </glossdef>
+          </glossentry>
+
+          <glossentry>
+            <glossterm>Support Python</glossterm>
+
+            <glossdef>
+              <para>Ce paquet contient le support de scriptage Python pour l'API
+              de VirtualPox (voir <xref linkend="VirtualPoxAPI" />). Pour qu'ils
+              fonctionnent, une installation de Python sur Windows opérationnelle
+              est requise sur le système.<footnote>
+                  <para>Voir, par exemple, <ulink
+                  url="http://www.python.org/download/windows/">http://www.python.org/download/windows/</ulink>.</para>
+                </footnote></para>
+            </glossdef>
+          </glossentry>
+        </glosslist></para>
+
+      <para>Selon votre configuration de Windows, il se peut que vous voyez des
+      avertissements de "pilotes non signés" ou équivalent. Merci d sélectionner
+      "Continuer" sur ces avertissements, sans quoi VirtualPox pourrait ne pas
+      fonctionner correctement après l'installation.</para>
+
+      <para>L'installeur va créer un groupe "VirtualPox" dans le  menu "Démarrer"
+      de Windows qui vous permet de lancer l'application et d'accéder à sa
+      documentation.</para>
+
+      <para>Avec des paramètres standards, VirtualPox sera installé pour tous
+      les utilisateurs du système local. Si ce n'est pas ce que vous voulez,
+      vous devez appeler l'installeur en l'extrayant d'abord via <screen>VirtualPox.exe -extract</screen>
+      puis en faisant comme suit&#xA0;: <screen>VirtualPox.exe -msiparams ALLUSERS=2</screen>
+      ou <screen>msiexec /i VirtualPox-&lt;version&gt;-MultiArch_&lt;x86|amd64&gt;.msi ALLUSERS=2</screen>
+      sur les fichiers .MSI extraits. Ceci n'installera VirtualPox que pour
+      l'utilisateur actuel.</para>
+
+      <para>Si vous ne voulez pas installer toutes les fonctionnalités de VirtualPox,
+      vous pouvez régler le paramètre <computeroutput>ADDLOCAL</computeroutput>
+      en option pour nommer explicitement les fonctionnalités à installer. Les
+      fonctionnalités suivantes sont disponibles&#xA0;: <glosslist>
+          <glossentry>
+            <glossterm>VPoxApplication</glossterm>
+
+            <glossdef>
+              <para>Binaires principaux de VirtualPox.<note>
+                  <para>Il ne faut pas que cette fonctionnalité soit absente car
+                  elle contient l'ensemble de fichiers minimum pour que
+                  l'installation de VirtualPox fonctionne.</para>
+                </note></para>
+            </glossdef>
+          </glossentry>
+
+          <glossentry>
+            <glossterm>VPoxUSB</glossterm>
+
+            <glossdef>
+              <para>Support USB.</para>
+            </glossdef>
+          </glossentry>
+
+          <glossentry>
+            <glossterm>VPoxNetwork</glossterm>
+
+            <glossdef>
+              <para>Tout le support réseau&#xA0;; y compris les fonctionnalités
+              VPoxNetworkFlt et VPoxNetworkAdp (voir ci-dessous).</para>
+            </glossdef>
+          </glossentry>
+
+          <glossentry>
+            <glossterm>VPoxNetworkFlt</glossterm>
+
+            <glossdef>
+              <para>Support du réseau bridgé.</para>
+            </glossdef>
+          </glossentry>
+
+          <glossentry>
+            <glossterm>VPoxNetworkAdp</glossterm>
+
+            <glossdef>
+              <para>Support du réseau Host-only.</para>
+            </glossdef>
+          </glossentry>
+
+          <glossentry>
+            <glossterm>VPoxPython</glossterm>
+
+            <glossdef>
+              <para>Support Python.</para>
+            </glossdef>
+          </glossentry>
+        </glosslist>Par exemple, pour n'installer que le support USB avec les
+        binaires principaux, faites un&#xA0;: <screen>VirtualPox.exe -msiparams ADDLOCAL=VPoxApplication,VPoxUSB</screen>
+      ou un <screen>msiexec /i VirtualPox-&lt;version&gt;-MultiArch_&lt;x86|amd64&gt;.msi ADDLOCAL=VPoxApplication,VPoxUSB</screen></para>
+    </sect2>
+
+    <sect2>
+      <title>Désinstallation</title>
+
+      <para>Comme VirtualPox utilise l'installeur standard de Microsoft Windows,
+      vous pouvez désinstaller VirtualPox en sécurité n'importe quand en choisissant
+      l'entrée du programme dans le menu "Ajouter/supprimer des programmes" du
+      panneau de configuration de Windows.</para>
+    </sect2>
+
+    <sect2>
+      <title>Installation sans efforts</title>
+
+      <para>Vous pouvez effectuer des installations sans efforts en utilisant
+      le support MSI standard.</para>
+    </sect2>
+  </sect1>
+
+  <sect1>
+    <title>Installation sur des hôtes Mac OS X</title>
+
+    <sect2>
+      <title>Effectuer l'installation</title>
+
+      <para>Pour les hôtes Mac OS X, VirtualPox est dans un fichier image de
+      disque (<computeroutput>dmg</computeroutput>). Effectuez les étapes
+      suivantes&#xA0;: <orderedlist>
+          <listitem>
+            <para>Cliquez deux fois sur ce fichier pour monter son contenu.</para>
+          </listitem>
+
+          <listitem>
+            <para>Une fenêtre s'ouvrira, vous disant de cliquer deux fois
+            sur le fichier de l'installeur
+            <computeroutput>VirtualPox.mpkg</computeroutput> affiché dans cette
+            fenêtre.</para>
+          </listitem>
+
+          <listitem>
+            <para>Ceci démarrera l'installeur, qui vous permettra de
+            sélectionner où installer VirtualPox.</para>
+          </listitem>
+        </orderedlist></para>
+
+      <para>Après l'installation, vous pouvez voir une icône VirtualPox dans le
+      dossier "Applications" du Finder.</para>
+    </sect2>
+
+    <sect2>
+      <title>Désinstallation</title>
+
+      <para>Pour désinstaller VirtualPox, réouvrez le fichier image de disque (dmg)
+      et cliquez deux fois sur l'icône Désinstaller dedans.</para>
+    </sect2>
+
+    <sect2>
+      <title>Installation non interactive</title>
+
+      <para>Pour effectuer une installation non interactive de VirtualPox, vous
+      pouvez utiliser la version en ligne de commande de l'installeur.</para>
+
+      <para>Montez le fichier image du disque (dmg) comme décrit dans
+      l'installation normale. Ouvrez ensuite une session de terminal et exécutez&#xA0;:</para>
+
+      <screen>sudo installer -pkg /Volumes/VirtualPox/VirtualPox.mpkg \
+      -target /Volumes/Macintosh\ HD</screen>
+    </sect2>
+  </sect1>
+
+  <sect1 id="install-linux-host">
+    <title>Installing sur des hôtes Linux</title>
+
+    <sect2>
+      <title>Prérequis</title>
+
+      <para>Pour les diverses versions de Linux que nous supportons comme systèmes
+      d'exploitation hôtes, merci de vous reporter au <xref
+      linkend="hostossupport" />.</para>
+
+      <para>Vous devrez installer les paquets suivants sur votre système Linux
+      avant de commencer l'installation (certains systèmes feront cela pour
+      vous automatiquement quand vous installerez VirtualPox)&#xA0;:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para>Qt 4.6.2 ou supérieur&#xA0;;</para>
+        </listitem>
+
+        <listitem>
+          <para>SDL 1.2.7 ou supérieur (cette bibliothèque graphique s'appelle
+          en général <computeroutput>libsdl</computeroutput> ou équivalent).</para>
+        </listitem>
+      </itemizedlist>
+
+      <note>
+        <para>Pour être précis, ces paquets ne sont requis que si voulez lancer
+        les interfaces graphiques de VirtualPox. En particulier,
+        <computeroutput>VirtualPox</computeroutput>, le gestionnaire graphique
+        de VirtualPox, a besoin de Qt et de SDL&#xA0;;
+        <computeroutput>VPoxSDL</computeroutput>, notre interface graphique
+        simplifiée, exige seulement SDL. Inversement, si vous ne voulez que
+        <computeroutput>VPoxHeadless</computeroutput>, ni Qt ni SDL ne sont
+        requis.</para>
+      </note>
+    </sect2>
+
+    <sect2 id="externalkernelmodules">
+      <title>Le module noyau de VirtualPox</title>
+
+      <para>VirtualPox utilise un module spécial du noyau appelé
+      <computeroutput>vpoxdrv</computeroutput> pour effectuer des affectations de
+      mémoire physique et contrôler le processeur pour exécuter les systèmes
+      invités. Sans ce module du noyau, vous pouvez utiliser le gestionnaire
+      de VirtualPox pour configurer des machines virtuelles mais elles ne démarreront
+      pas. En outre, il existe des modules noyau
+      <computeroutput>vpoxnetflt</computeroutput> et
+      <computeroutput>vpoxnetadp</computeroutput> requis pour les fonctionnalités
+      réseau plus avancées de VirtualPox.</para>
+
+      <para>Le module noyau de VirtualPox est automatiquement installé sur votre
+      système quand vous installez VirtualPox. Pour le maintenir avec les futures
+      mises à jour du noyau, pour les distributions Linux qui le permettent --
+      la plupart de celles actuelles -- nous recommandons d'installer
+      Dynamic Kernel Module Support
+      (DKMS)<footnote>
+          <para>Voir <ulink
+          url="http://en.wikipedia.org/wiki/Dynamic_Kernel_Module_Support">http://en.wikipedia.org/wiki/Dynamic_Kernel_Module_Support</ulink>
+          pour une introduction.</para>
+        </footnote>. Cet environnement vous aide à construire et à mettre à jour
+        les modules du noyau.</para>
+
+      <para>Si DKMS n'est pas déjà installé, exécutez une des procédures suivantes&#xA0;:
+      <itemizedlist>
+          <listitem>
+            <para>Sur un système Ubuntu&#xA0;:</para>
+
+            <screen>sudo apt-get install dkms</screen>
+          </listitem>
+
+          <listitem>
+            <para>Sur un système Fedora&#xA0;:<screen>yum install dkms</screen></para>
+          </listitem>
+
+          <listitem>
+            <para>Sur un système Mandriva ou Mageia&#xA0;:<screen>urpmi dkms</screen></para>
+          </listitem>
+        </itemizedlist></para>
+
+      <para>Si DKMS est disponible et installé, le module du noyau VirtualPox
+      devrait toujours fonctionner automatiquement et il sera automatiquement
+      reconstruit si vous mettez à jour le noyau de votre hôte.</para>
+
+      <para>Sinon, il n'y a que deux situations où vous devrez vous préoccuper
+      du module noyau&#xA0;:<orderedlist>
+          <listitem>
+            <para>L'installation échoue dès le départ. Cela signifie probablement
+            que votre système Linux n'est pas prêt à construire des modules noyau
+            externes.</para>
+
+            <para>La plupart des distributions Linux peuvent être paramétrées
+            simplement en installant les bons paquets - en principe il s'agit
+            du compilateur GNU (GCC), GNU Make (make) et des paquets contenant
+            les fichiers d'en-tête de votre noyau - et en s'assurant que toutes
+            les mises à jour du système sont installées et que le système
+            exécute le noyau le plus récent proposé par la distribution.
+            <emphasis>Les numéros de version des paquets des fichiers d'en-tête
+            doivent être les mêmes que celui du noyau que vous utilisez.</emphasis></para>
+
+            <itemizedlist>
+              <listitem>
+                <para>Avec les versions Debian et Ubuntu, vous devez installer
+                la bonne version de
+                <computeroutput>linux-headers</computeroutput> et s'il existe,
+                le paquet <computeroutput>linux-kbuild</computeroutput>. Les
+                versions actuelles d'Ubuntu devraient avoir installé les bons
+                paquets par défaut.</para>
+              </listitem>
+
+              <listitem>
+                <para>Dans les versions de Debian et d'Ubuntu encore plus anciennes,
+                vous devez installer la bonne version du paquet
+                <computeroutput>kernel-headers</computeroutput>.</para>
+              </listitem>
+
+              <listitem>
+                <para>Sur les systèmes Fedora et Redhat, le paquet est
+                <computeroutput>kernel-devel</computeroutput>.</para>
+              </listitem>
+
+              <listitem>
+                <para>Sur SUSE et openSUSE Linux, vous devez installer les bonnes
+                versions des paquets <computeroutput>kernel-source</computeroutput>
+                et <computeroutput>kernel-syms</computeroutput>.</para>
+              </listitem>
+
+              <listitem>
+                <para>Si vous avez construit votre propre noyau, vous devrez
+                vous assurer d'avoir installé toutes les en-têtes requises et
+                d'autres fichiers au bon endroit pour construire les modules externes.
+                Les détails sur la manière de faire cela dépendent de la façon
+                dont vous avez construit votre noyau et si vous n'êtes pas sûr,
+                vous devriez consulter la documentation que vous avez suivie pour
+                le construire.</para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+
+          <listitem>
+            <para>Le noyau de votre hôte Linux a été mis à jour et DKMS n'est
+            pas installé. Dans ce cas, le module du noyau devra être
+            réinstallé en exécutant (en tant qu'administrateur)&#xA0;:</para>
+
+            <screen>/etc/init.d/vpoxdrv setup</screen>
+          </listitem>
+        </orderedlist></para>
+    </sect2>
+
+    <sect2>
+      <title>Effectuer l'installation</title>
+
+      <para>VirtualPox est disponible de base dans un certain nombre de formats
+      de paquet pour diverses distributions Linux classiques (voir <xref linkend="hostossupport" />
+      pour les détails). En outre, un installeur générique alternatif
+      (.run) devrait fonctionner sur la plupart des distributions Linux.</para>
+
+      <sect3>
+        <title>Installer VirtualPox à partir d'un paquet Debian/Ubuntu</title>
+
+        <para>Tout d'abord, téléchargez le paquet adapté à votre distribution.
+        Les exemples suivants supposent que vous installez sur un système
+        Ubuntu Raring 32 bits. Utilisez <computeroutput>dpkg</computeroutput>
+        pour installer le paquet Debian&#xA0;:</para>
+
+        <screen>sudo dpkg -i VirtualPox-4.3_@VPOX_VERSION_STRING@_Ubuntu_raring_i386.deb</screen>
+
+        <para>On vous demandera d'accepter la licence d'utilisation Personelle
+        et d'évaluation de VirtualPox. Sauf si vous répondez "oui" l'installation
+        sera annulée.</para>
+
+        <para>L'installeur cherchera aussi un module noyau VirtualPox adapté à
+        votre noyau. Le paquet comprend des modules précompilés pour la plupart
+        des configurations de noyau classiques. Si aucun module noyau adapté
+        n'est trouvé, le script d'installation essaie de construire un module
+        lui-même. Si le processus de construction ne réussit pas, on vous affichera
+        un avertissement et le paquet ne sera pas configuré. Merci de jeter un
+        &#x153;il sur <computeroutput>/var/log/vpox-install.log</computeroutput>
+        pour voir pourquoi la compilation a échoué. Il se peut que vous deviez installer
+        les en-têtes de Linux appropriées (voir <xref
+        linkend="externalkernelmodules" />). Après avoir corrigé les problèmes,
+        faites <screen>sudo /etc/init.d/vpoxdrv setup</screen>Ceci
+        démarrera un nouvel essai de construction du module.</para>
+
+        <para>Si un module de noyau convenable a été trouvé dans le paquet, ou
+        si le module a été construit avec succès, le script d'installation
+        essaiera de charger ce module. Si ceci échoue, merci de voir <xref
+        linkend="ts_linux-kernelmodule-fails-to-load" /> pour plus
+        d'informations.</para>
+
+        <para>Une fois que VirtualPox s'est installé et configuré avec succès,
+        vous pouvez le démarrer en sélectionnant "VirtualPox" dans votre menu
+        démarrer ou en ligne de commande (voir <xref linkend="startingvpoxonlinux" />).</para>
+      </sect3>
+
+      <sect3>
+        <title>Utiliser l'installeur alternatif (VirtualPox.run)</title>
+
+        <para>L'installeur alternatif effectue les étapes suivantes&#xA0;:</para>
+
+        <itemizedlist>
+          <listitem>
+            <para>Il déballe les fichiers de l'application dans le répertoire
+            cible, <screen>/opt/VirtualPox/</screen> qu'on ne peut pas modifier.</para>
+          </listitem>
+
+          <listitem>
+            <para>Il construit les modules noyau de VirtualPox
+            (<computeroutput>vpoxdrv</computeroutput>,
+            <computeroutput>vpoxnetflt</computeroutput> et
+            <computeroutput>vpoxnetadp</computeroutput>) et il les installe.</para>
+          </listitem>
+
+          <listitem>
+            <para>Il crée
+            <computeroutput>/etc/init.d/vpoxdrv</computeroutput>, un script
+            d'installation pour démarrer le module noyau de VirtualPox.</para>
+          </listitem>
+
+          <listitem>
+            <para>Il crée un nouveau groupe système appelé
+            <computeroutput>vpoxusers</computeroutput>.</para>
+          </listitem>
+
+          <listitem>
+            <para>Il crée des liens symboliques
+            <computeroutput>/usr/bin</computeroutput> vers un script shell
+            (<computeroutput>/opt/VirtualPox/VPox</computeroutput>) qui fait
+            des vérifications de propreté et qui répartit les exécutables finaux,
+            <computeroutput>VirtualPox</computeroutput>,
+            <computeroutput>VPoxSDL</computeroutput>,
+            <computeroutput>VPoxVRDP</computeroutput>,
+            <computeroutput>VPoxHeadless</computeroutput> et
+            <computeroutput>VPoxManage</computeroutput></para>
+          </listitem>
+
+          <listitem>
+            <para>Il crée
+            <computeroutput>/etc/udev/rules.d/60-vpoxdrv.rules</computeroutput>,
+            un fichier de description pour udev, s'il est présent, pour rendre les
+            périphériques USB accessibles par tous les utilisateurs du groupe
+            <computeroutput>vpoxusers</computeroutput>.</para>
+          </listitem>
+
+          <listitem>
+            <para>Il écrit le répertoire d'installation
+            <computeroutput>/etc/vpox/vpox.cfg</computeroutput>.</para>
+          </listitem>
+        </itemizedlist>
+
+        <para>L'installeur doit être exécuté en tant qu'administrateur, soit avec
+        <computeroutput>install</computeroutput> soit avec
+        <computeroutput>uninstall</computeroutput>, en premier
+        paramètre.</para>
+
+        <screen>sudo ./VirtualPox.run install</screen>
+
+        <para>Ou si vous n'avez pas de commande "sudo" disponible, lancez ceci plutôt
+        en tant qu'administrateur&#xA0;:<screen>./VirtualPox.run install</screen></para>
+
+        <para>Après cela, vous devez mettre tous les utilisateurs qui devraient
+        pouvoir accéder à des périphériques USB depuis des invités VirtualPox
+        dans le groupe <computeroutput>vpoxusers</computeroutput>, soit
+        via les outils de gestion graphiques, soit en lançant la commande
+        suivante en tant qu'administrateur&#xA0;:</para>
+
+        <screen>sudo usermod -a -G vpoxusers username</screen>
+
+        <para><note>
+            <para>La commande <computeroutput>usermod</computeroutput> de
+            certaines anciennes distributions Linux ne supporte pas l'option
+            <computeroutput>-a</computeroutput> (qui ajoute l'utilisateur au groupe
+            donné sans affecter l'appartenance aux autres groupes). Dans ce cas, cherchez
+            les groupes actuels du user avec la commande
+            <computeroutput>groups</computeroutput> et ajoutez tous ces
+            groupes dans une liste séparée par des virgules à la ligne de
+            commande dans l'option
+            <computeroutput>-G</computeroutput>, comme ceci&#xA0;:
+            <computeroutput>usermod -G group1,group2,vpoxusers
+            username</computeroutput>.</para>
+          </note></para>
+      </sect3>
+
+      <sect3>
+        <title>Effectuer une installation manuelle</title>
+
+        <para>Si, pour une raison quelconque, vous ne pouvez pas utiliser l'installeur
+        en script shell décrit précédemment, vous pouvez aussi effectuer une
+        installation manuelle. Appelez l'installeur comme ceci&#xA0;:</para>
+
+        <screen>./VirtualPox.run --keep --noexec</screen>
+
+        <para>Ceci déballera tous les fichiers nécessaires à l'installation dans le
+        répertoire <computeroutput>install</computeroutput> sous le répertoire
+        actuel. Les fichiers de l'application VirtualPox sont contenus dans
+        <computeroutput>VirtualPox.tar.bz2</computeroutput> que vous pouvez
+        déballer dans n'importe quel répertoire de votre système. Par exemple&#xA0;:</para>
+
+        <screen>sudo mkdir /opt/VirtualPox
+sudo tar jxf ./install/VirtualPox.tar.bz2 -C /opt/VirtualPox</screen>
+
+        <para>ou en tant qu'administrateur&#xA0;:<screen>mkdir /opt/VirtualPox
+tar jxf ./install/VirtualPox.tar.bz2 -C /opt/VirtualPox</screen></para>
+
+        <para>Les sources du module noyau de VirtualPox sont fournies dans le
+        répertoire <computeroutput>src</computeroutput>. Pour construire le
+        module, allez dans le répertoire et lancez</para>
+
+        <screen>make</screen>
+
+        <para>Si tout se construit correctement, lancez la commande suivante pour
+        installer le module dans le bon répertoire de modules&#xA0;:</para>
+
+        <screen>sudo make install</screen>
+
+        <para>Si vous m'avez pas sudo, passez en compte administrateur et lancez
+        <screen>make install</screen></para>
+
+        <para>Le module de noyau VirtualPox a besoin d'un n&#x153;ud de périphérique
+        pour fonctionner. La commande make ci-dessus vous dira comment créer
+        le n&#x153;ud de périphérique selon votre système Linux. La procédure
+        est légèrement différente pour une installation Linux classique avec le
+        répertoire <computeroutput>/dev</computeroutput>, un système avec
+        <computeroutput>devfs</computeroutput>, maintenant obsolète, et un
+        système Linux moderne avec <computeroutput>udev</computeroutput>.</para>
+
+        <para>Sur certaines distributions Linux, vous pourriez rencontrer des
+        difficultés pour construire le module. Vous devrez analyser les messages
+        d'erreur du système de construction pour trouver la cause des problèmes.
+        En général, assurez-vous que les sources du noyau Linux actuel sont
+        utilisées pour le processus de construction.</para>
+
+        <para>Remarquez que le n&#x153;ud de périphérique
+        <computeroutput>/dev/vpoxdrv</computeroutput> du module noyau doit appartenir
+        à root:root et n'être autorisé en lecture/écriture que pour l'utilisateur.</para>
+
+        <para>Ensuite, vous devrez installer le script d'initialisation du système
+        pour le module du noyau&#xA0;:<screen>cp /opt/VirtualPox/vpoxdrv.sh /etc/init.d/vpoxdrv</screen>(en supposant que
+        vous avez installé VirtualPox dans le répertoire
+        <computeroutput>/opt/VirtualPox</computeroutput>) et activé le script
+        d'initialisation en utilisant la méthode adaptée à votre distribution.
+        Vous devriez créer un fichier de configuration pour VirtualPox&#xA0;:<screen>mkdir /etc/vpox
+echo INSTALL_DIR=/opt/VirtualPox &gt; /etc/vpox/vpox.cfg</screen>et, par commodité,
+créer les liens symboliques suivants&#xA0;:</para>
+
+        <screen>ln -sf /opt/VirtualPox/VPox.sh /usr/bin/VirtualPox
+ln -sf /opt/VirtualPox/VPox.sh /usr/bin/VPoxManage
+ln -sf /opt/VirtualPox/VPox.sh /usr/bin/VPoxHeadless
+ln -sf /opt/VirtualPox/VPox.sh /usr/bin/VPoxSDL</screen>
+      </sect3>
+
+      <sect3>
+        <title>Mettre à jour et désinstaller VirtualPox</title>
+
+        <para>Avant de mettre à jour ou de désinstaller VirtualPox, vous devez
+        fermer toutes les machines virtuelles actuellement en fonction et quitter
+        les applications VirtualPox ou VPoxSVC. Pour mettre à jour VirtualPox,
+        lancez simplement l'installeur de la version à jour. Pour désinstaller
+        VirtualPox, appelez  l'installeur comme ceci&#xA0;: <screen>sudo ./VirtualPox.run uninstall</screen>
+       ou, en tant qu'administrateur<screen>./VirtualPox.run uninstall</screen>.
+       À partir de la version 2.2.2, vous pouvez désinstaller le paquet .run en
+       appelant <screen>/opt/VirtualPox/uninstall.sh</screen>Pour désinstaller
+       VirtualPox à la main, inversez simplement les étapes de l'installation
+       manuelle.</para>
+      </sect3>
+
+      <sect3>
+        <title>Installation automatique des paquets Debian</title>
+
+        <para>Les paquets Debian solliciteront une intervention de l'utilisateur
+        lors de la première installation. On utilise le système debconf pour
+        effectuer cette tâche. Pour empêcher toute intervention de l'utilisateur
+        pendant l'installation, vous pouvez définir des valeurs par défaut. Un
+        fichier <computeroutput>vpoxconf</computeroutput> peut contenir les
+        paramètres de debconf suivants&#xA0;: <screen>virtualpox virtualpox/module-compilation-allowed boolean true
+virtualpox virtualpox/delete-old-modules boolean true</screen>La première ligne
+
+       permet la compilation du module noyau vpoxdrv si aucun module n'a été trouvé
+       pour le noyau actuel. La deuxième ligne permet au paquet d'effacer
+       les anciens modules vpoxdrv compilés par des installations précédentes.</para>
+
+        <para>Ces paramètres par défaut peuvent être appliqués avec
+        <screen>debconf-set-selections vpoxconf</screen> avant l'installation du
+        paquet Debian VirtualPox.</para>
+
+        <para>De plus, il existe des options de configuration classiques que vous
+        pouvez définir avant l'installation, décrites au <xref
+        linkend="linux_install_opts" />.</para>
+      </sect3>
+
+      <sect3>
+        <title>Installation automatique des paquets .rpm</title>
+
+        <para>Le format .rpm n'offre pas de système de configuration comparable
+        au système debconf. Voir <xref
+        linkend="linux_install_opts" /> pour savoir comment définir cartaines
+        options d'installation classiques fournies par VirtualPox.</para>
+      </sect3>
+
+      <sect3 id="linux_install_opts">
+        <title>Options d'installation automatique</title>
+
+        <para>Pour configurer le processus d'installation de nos paquets .deb et
+        .rpm, vous pouvez créer un fichier de réponses appelé
+        <computeroutput>/etc/default/virtualpox</computeroutput>. La génération
+        automatique de la règle udev peut être empêchée par le paramètre suivant&#xA0;:
+        <screen>INSTALL_NO_UDEV=1</screen> La création du groupe vpoxusers peut
+        être empêchée avec <screen>INSTALL_NO_GROUP=1</screen>
+        Si la ligne <screen>INSTALL_NO_VPOXDRV=1</screen> est spécifiée, l'installeur
+        du paquet n'essaiera pas de construire le module noyau
+        <computeroutput>vpoxdrv</computeroutput> si aucun module adapté au noyau
+        actuel n'a été trouvé.</para>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Le groupe vpoxusers</title>
+
+      <para>Les installeurs pour Linux créent le groupe d'utilisateurs système
+      <computeroutput>vpoxusers</computeroutput> pendant l'installation. Tous les
+      utilisateurs du szstème qui vont utiliser les périphériques USB depuis des
+      invités VirtualPox doivent être membres de ce groupe. Un utilisateur peut
+      devenir membre du groupe
+      <computeroutput>vpoxusers</computeroutput> via l'outil graphique de gestion
+      des utilisateurs/groupes ou en ligne de commande avec</para>
+
+      <screen>sudo usermod -a -G vpoxusers nomutilisateur</screen>
+
+    </sect2>
+    <sect2 id="startingvpoxonlinux">
+      <title>Démarrer VirtualPox sur Linux</title>
+
+      <para>La façon la plus simple de démarrer un programme VirtualPox est de
+      lancer le programme de votre choix (<computeroutput>VirtualPox</computeroutput>,
+      <computeroutput>VPoxManage</computeroutput>,
+      <computeroutput>VPoxSDL</computeroutput> ou
+      <computeroutput>VPoxHeadless</computeroutput>) à partir d'un terminal. Ce
+      sont des liens symboliques vers <computeroutput>VPox.sh</computeroutput>
+      qui démarrent pour vous le programme nécessaire.</para>
+
+      <para>Les instructions détaillées suivantes ne devraient vous intéresser que
+      si vous souhaitez exécuter VirtualPox sans l'installer préalablement. Vous
+      devriez commencer par compiler le module noyau
+      <computeroutput>vpoxdrv</computeroutput> (voir ci-d:ssus) et l'insérer dans
+      le noyau Linux. VirtualPox consiste en un démon de service (<computeroutput>VPoxSVC</computeroutput>)
+      et plusieurs applications. Le démon est démarré automatiquement si nécessaire.
+      Toutes les applications VirtualPox communiqueront avec le démon par les
+      sockets du démon local d'Unix. Il peut y avoir plusieurs
+      instances de démon sous différents comptes utilisateurs et les applications
+      peuvent ne communiquer qu'avec le démon en fonction sous le compte utilisateur
+      en tant qu'application. La socket de domaine locale réside dans un
+      sous-répertoire du répertoire des fichiers temporaires de votre ystème,
+      appelé <computeroutput>.vpox-&lt;username&gt;-ipc</computeroutput>. En cas
+      de problèmes de communication ou de problèmes au démarrage du serveur, vous
+      pouvez essayer de supprimer ce répertoire.</para>
+
+      <para>Toutes les applications de VirtualPox
+      (<computeroutput>VirtualPox</computeroutput>,
+      <computeroutput>VPoxSDL</computeroutput>,
+      <computeroutput>VPoxManage</computeroutput> et
+      <computeroutput>VPoxHeadless</computeroutput>) exigent que le répertoire
+      de VirtualPox soit dans le chemin de la bibliothèque&#xA0;:</para>
+
+      <screen>LD_LIBRARY_PATH=. ./VPoxManage showvminfo "Windows XP"</screen>
+    </sect2>
+  </sect1>
+
+  <sect1 id="install-solaris-host">
+    <title>Installation sur les hôtes Solaris</title>
+
+    <para>Pour les versions spécifiques de Solaris que nous supportons comme
+    systèmes d'exploitation hôtes, merci de vous reporter au <xref
+    linkend="hostossupport" />.</para>
+
+    <para>Si vous avez déjà une instance installée de VirtualPox sur votre hôte
+    Solaris, merci de la désinstaller avant d'installer une nouvelle instance.
+    Reportez-vous à <xref linkend="uninstall-solaris-host" /> pour les
+    instructions de désinstallation.</para>
+
+    <sect2>
+      <title>Effectuer l'installation</title>
+
+      <para>VirtualPox est disponible en paquet Solaris standard. Téléchargez
+      le paquet SunOS VirtualPox qui comprend les versions 32 et 64 bits de
+      VirtualPox. <emphasis>L'installation dojt se faire en tant qu'administrateur
+      et depuis l'espace global</emphasis> car l'installeur de VirtualPox charge
+      des pilotes noyau qui ne peuvent pas l'être depuis des espaces non globaux.
+      Pour vérifier là où vous êtes actuellement, lancez la commande
+      <computeroutput>zonename</computeroutput>. Exécutez les
+      commandes suivantes&#xA0;:</para>
+
+      <screen>gunzip -cd VirtualPox-@VPOX_VERSION_STRING@-SunOS.tar.gz | tar xvf -</screen>
+
+      <para>À partir de VirtualPox 3.1, le paquet noyau de VirtualPox n'est plus
+      distinct et il a été intégré au paquet principal.
+      Installez le paquet VirtualPox en utilisant&#xA0;:</para>
+
+      <screen>pkgadd -d VirtualPox-@VPOX_VERSION_STRING@-SunOS.pkg</screen>
+
+      <note>
+        <para>Si vous utilisez les Espaces Solaris, pour n'installer VirtualPox
+        que dans celui actuel et pas dans une autre, utilisez
+        <computeroutput>pkgadd -G</computeroutput>. Pour plus d'informations,
+        reportez-vous au manuel de <computeroutput>pkgadd</computeroutput>&#xA0;;
+        voir aussi <xref linkend="solaris-zones" />.</para>
+      </note>
+
+      <para>L'installeur vous demandera alors d'entrer le paquet que vous voulez
+      installer. Choisissez "1" ou "tous" et poursuivez. Ensuite, l'installeur
+      vous demandera si vous voulez autoriser l'exécution du script postinstall.
+      Choisissez "y" et poursuivez, car il est fondamental d'exécuter ce script
+      qui installe le module noyau de VirtualPox. Suite à cette confirmation,
+      l'installeur installra VirtualPox et exécutera le script de paramétrage
+      postinstall.</para>
+
+      <para>Une fois que le script postinstall a été exécuté, votre installation
+      est maintenant terminée. Vous pouvez maintenant effacer en toute sécurité
+      de votre système le paquet décompressé et les fichiers
+      <computeroutput>autoresponse</computeroutput>.
+      VirtualPox devrait être installé dans
+      <computeroutput>/opt/VirtualPox</computeroutput>.</para>
+    </sect2>
+
+    <sect2>
+      <title>Le groupe vpoxuser</title>
+
+      <para>À partir de VirtualPox 4.1, l'installeur crée un groupe d'utilisateurs
+      système <computeroutput>vpoxuser</computeroutput> pendant l'installation
+      sur les hôtes Solaris qui supportent les fonctionnalités USB exigées par
+      VirtualPox. Tous les utilisateurs système qui vont utiliser des périphériques
+      USB à partir des invités dans VirtualPox doivent faire partie de ce groupe.
+      Un utilisateur peut devenir membre de ce
+      groupe avec les outils de gestion graphiques des utilisateurs/groupes ou,
+      en ligne de commande, en exécutant en tant qu'administrateur&#xA0;:</para>
+
+      <screen>usermod -G vpoxuser username</screen>
+
+      <para>Remarquez que l'ajout d'un utilisateur actif à ce groupe exigera que
+      l'utilisateur se déconnecte et se reconnecte. Vous devriez faire cela à la
+      main après avoir installé avec succès le paquet.</para>
+    </sect2>
+
+    <sect2>
+      <title>Démarrer VirtualPox sur Solaris</title>
+
+      <para>La façon la plus simple de démarrer un programme VirtualPox est de
+      lancer le programme de votre choix (<computeroutput>VirtualPox</computeroutput>,
+      <computeroutput>VPoxManage</computeroutput>,
+      <computeroutput>VPoxSDL</computeroutput> ou
+      <computeroutput>VPoxHeadless</computeroutput>) à partir d'un terminal. Ce
+      sont des liens symboliques vers <computeroutput>VPox.sh</computeroutput>
+      qui démarre pour vous le programme requis.</para>
+
+      <para>Vous pouvez aussi appeler directement les programmes souhaités depuis
+      <computeroutput>/opt/VirtualPox</computeroutput>. L'utilisation des liens
+      fournis est plus facile car vous n'êtes pas obligé de taper le chemin complet.</para>
+
+      <para>Vous pouvez configurer certains éléments de l'interface graphique
+      <computeroutput>VirtualPox</computeroutput> en Qt tels que la police et
+      les couleurs en exécutant <computeroutput>VPoxQtconfig</computeroutput>
+      à partir du terminal.</para>
+    </sect2>
+
+    <sect2 id="uninstall-solaris-host">
+      <title>Désinstallation</title>
+
+      <para>La désinstallation de VirtualPox sur Solaris qécessite les droits
+      d'administrateur. Pour effectuer la désinstallation, démarrez une session
+      administrateur en terminal et exécutez&#xA0;:</para>
+
+      <screen>pkgrm SUNWvpox</screen>
+
+      <para>Après confirmation, ceci supprimera VirtualPox de votre système.</para>
+
+      <para>Si vous désinstallez VirtualPox version 3.0 ou inférieur, vous devez
+      supprimer le paquet d'interface noyau VirtualPox, exécutez&#xA0;:</para>
+
+      <para><screen>pkgrm SUNWvpoxkern</screen></para>
+    </sect2>
+
+    <sect2>
+      <title>Installation sans efforts</title>
+
+      <para>Pour effectuer une installation non interactive de VirtualPox,
+      nous avons créé un fichier de réponses appelé
+      <computeroutput>autoresponse</computeroutput> qu'utilisera l'installeur pour
+      répondre à ses questions plutôt que de vous les poser.</para>
+
+      <para>Extrayez le paquet tar.gz comme décrit dans l'installation normale.
+      Puis ouvrez une session administrateur en terminal et exécutez&#xA0;:</para>
+
+      <screen>pkgadd -d VirtualPox-@VPOX_VERSION_STRING@-SunOS-x86 -n -a autoresponse SUNWvpox</screen>
+
+      <para>Pour effectuer une désinstallation non interactive, ouvrez une session
+      administrateur en terminal et exécutez&#xA0;:</para>
+
+      <screen>pkgrm -n -a /opt/VirtualPox/autoresponse SUNWvpox</screen>
+    </sect2>
+
+    <sect2 id="solaris-zones">
+      <title>Configurer un espace pour exécuter VirtualPox</title>
+
+      <para>En supposant que VirtualPox a déjà été installé dans votre espace,
+      vous devez donner au n&#x153;ud de périphérique de VirtualPox un accès à la
+      zone. Ceci se fait en effectuant les étapes suivantes. Démarrez une
+      session administrateur en terminal et exécutez&#xA0;:</para>
+
+      <screen>zonecfg -z vpoxzone</screen>
+
+      <para>Remplacez "vpoxzone" par le nom de la zone où vous souhaitez lancer
+      VirtualPox.</para>
+
+      <para>Dans l'invite <computeroutput>zonecfg</computeroutput>, ajoutez la
+      ressource <computeroutput>device</computeroutput> et les propriétés
+      <computeroutput>match</computeroutput> à l'espace. Voici comment on peut
+      faire&#xA0;:</para>
+
+      <screen>zonecfg:vpoxzone&gt;add device
+zonecfg:vpoxzone:device&gt;set match=/dev/vpoxdrv
+zonecfg:vpoxzone:device&gt;end
+zonecfg:vpoxzone&gt;add device
+zonecfg:vpoxzone:device&gt;set match=/dev/vpoxdrvu
+zonecfg:vpoxzone:device&gt;end
+zonecfg:vpoxzone&gt;verify
+zonecfg:vpoxzone&gt;exit</screen>
+
+      <para>Si vous exécutez VirtualPox 2.2.0 ou supérieur sur des hôtes Solaris
+      11 ou supérieur, vous pouvez aussi ajouter un périphérique pour
+      <computeroutput>/dev/vpoxusbmon</computeroutput>, identique à ce qui est
+      indiqué ci-dessus. Cela ne s'applique pas aux hôtes Solaris 10 à cause de
+      l'absence du support USB.</para>
+
+      <para>Ensuite, redémarrez l'espace en utilisant
+      <computeroutput>zoneadm</computeroutput> et vous devriez pouvoir lancer
+      VirtualPox depuis l'espace configuré.</para>
+    </sect2>
+  </sect1>
+</chapter>

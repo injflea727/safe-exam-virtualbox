@@ -1,0 +1,42 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for VPoxFB.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+PROGRAMS += VPoxFB
+
+#
+# VPoxFB
+#
+VPoxFB_TEMPLATE = VPOXR3NPEXE
+VPoxFB_SOURCES  = \
+	VPoxFB.cpp \
+	Framebuffer.cpp \
+	Helper.cpp
+VPoxFB_CXXFLAGS = -Wno-non-virtual-dtor -fshort-wchar
+ifdef VPOX_WITH_XPCOM_NAMESPACE_CLEANUP
+ VPoxFB_DEFS     += VPOX_WITH_XPCOM_NAMESPACE_CLEANUP
+endif
+VPoxFB_INCS     = $(VPOX_XPCOM_INCS) /usr/include/directfb
+VPoxFB_LIBPATH  = $(LIBPATH_XPCOM)
+VPoxFB_LIBS     = $(LIB_XPCOM) $(LIB_RUNTIME) directfb
+VPoxFB_DEPS     = $(VPOX_PATH_SDK)/bindings/xpcom/include/VirtualPox_XPCOM.h
+
+# generate rules.
+include $(FILE_KBUILD_SUB_FOOTER)
+

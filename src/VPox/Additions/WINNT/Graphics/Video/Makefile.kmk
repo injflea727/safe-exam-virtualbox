@@ -1,0 +1,175 @@
+# $Id: Makefile.kmk $
+## @file
+# Makefile for the Windows guest video driver.
+#
+
+#
+# Copyright (C) 2011-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ../../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+# Include sub-makefiles.
+include $(PATH_SUB_CURRENT)/mp/Makefile.kmk
+include $(PATH_SUB_CURRENT)/disp/Makefile.kmk
+
+#
+# Install the inf & cat.
+# This has to be done here since it depends on both the
+# miniport driver and the display dll.
+#
+INSTALLS += VPoxVideo-inf
+VPoxVideo-inf_INST = $(INST_ADDITIONS)
+VPoxVideo-inf_MODE = a+r,u+w
+VPoxVideo-inf_SOURCES = \
+	$(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.inf
+VPoxVideo-inf_CLEAN = $(VPoxVideo-inf_SOURCES)
+VPoxVideo-inf_BLDDIRS = $(PATH_TARGET)/VPoxVideoCat.dir
+
+$(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.inf: $(PATH_SUB_CURRENT)/mp/xpdm/VPoxVideo.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxVideo-inf,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@)
+
+if defined(VPOX_SIGNING_MODE) && defined(VPOX_SIGN_ADDITIONS)
+ VPoxVideo-inf_SOURCES += \
+ 	$(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.cat \
+ 	$(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.cat=>VPoxVideo-PreW10.cat \
+ 	$(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.sys \
+ 	$(PATH_TARGET)/VPoxVideoCat.dir/VPoxDisp.dll
+
+$(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.sys: $$(VPoxVideo_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+$(PATH_TARGET)/VPoxVideoCat.dir/VPoxDisp.dll: $$(VPoxDisp_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+ $(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.cat: \
+ 		$(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.inf \
+ 		$(PATH_TARGET)/VPoxVideoCat.dir/VPoxVideo.sys \
+ 		$(PATH_TARGET)/VPoxVideoCat.dir/VPoxDisp.dll
+	$(call MSG_TOOL,Inf2Cat,VPoxVideo-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+endif # signing
+
+ifdef VPOX_WITH_WDDM
+ VPOXWDDM_WITH_DISPD3D = 1
+
+ #
+ # Install the inf & cat.
+ # This has to be done here since it depends on both the
+ # miniport driver and the display dll.
+ #
+ INSTALLS += VPoxWddm-inf
+ VPoxWddm-inf_INST = $(INST_ADDITIONS)
+ VPoxWddm-inf_MODE = a+r,u+w
+ VPoxWddm-inf_SOURCES = \
+ 	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.inf
+ VPoxWddm-inf_CLEAN = $(VPoxWddm-inf_SOURCES)
+ VPoxWddm-inf_CLEAN.amd64 = $(VPoxWddm-inf_SOURCES.amd64)
+ VPoxWddm-inf_BLDDIRS = $(PATH_TARGET)/VPoxWddmCat.dir
+
+ VPOXWDDM_EDIT_INF_DISPD3D_FN_ARG = $(if $(VPOXWDDM_WITH_DISPD3D),-e 's/^;dispd3d  *//', -e '/^;dispd3d /d')
+ VPOXWDDM_EDIT_INF_MESA3D_FN_ARG = $(if $(VPOX_WITH_MESA3D),-e 's/^;mesa3d  *//', -e '/^;mesa3d /d')
+
+ $(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.inf: \
+		$(PATH_SUB_CURRENT)/mp/wddm/VPoxWddm.inf $(MAKEFILE_CURRENT) | $$(dir $$@)
+	$(call MSG_GENERATE,VPoxWddm-inf,$@,$<)
+	$(call VPOX_EDIT_INF_FN,$<,$@ $(VPOXWDDM_EDIT_INF_DISPD3D_FN_ARG) $(VPOXWDDM_EDIT_INF_MESA3D_FN_ARG))
+
+ if defined(VPOX_SIGNING_MODE) && defined(VPOX_SIGN_ADDITIONS)
+  VPoxWddm-inf_SOURCES += \
+  	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.cat \
+  	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.cat=>VPoxWddm-PreW10.cat \
+  	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.sys
+
+  ifdef VPOXWDDM_WITH_DISPD3D
+   VPoxWddm-inf_SOURCES += \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxDispD3D.dll
+   VPoxWddm-inf_SOURCES.amd64 += \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxDispD3D-x86.dll
+  endif # VPOXWDDM_WITH_DISPD3D
+
+  ifdef VPOX_WITH_MESA3D
+   VPoxWddm-inf_SOURCES += \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxNine.dll \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxSVGA.dll \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxICD.dll \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxGL.dll
+   VPoxWddm-inf_SOURCES.amd64 += \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxNine-x86.dll \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxSVGA-x86.dll \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxICD-x86.dll \
+   	$(PATH_TARGET)/VPoxWddmCat.dir/VPoxGL-x86.dll
+  endif
+
+  $(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.sys: $$(VPoxWddm_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+  ifdef VPOXWDDM_WITH_DISPD3D
+   $(PATH_TARGET)/VPoxWddmCat.dir/VPoxDispD3D.dll: $$(VPoxDispD3D_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+   ifeq ($(KBUILD_TARGET_ARCH),amd64)
+    $(PATH_TARGET)/VPoxWddmCat.dir/VPoxDispD3D-x86.dll: $$(VPoxDispD3D-x86_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+   endif
+  endif # VPOXWDDM_WITH_DISPD3D
+
+  ifdef VPOX_WITH_MESA3D
+   $(PATH_TARGET)/VPoxWddmCat.dir/VPoxNine.dll: $$(VPoxNine_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+   $(PATH_TARGET)/VPoxWddmCat.dir/VPoxSVGA.dll: $$(VPoxSVGA_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+   $(PATH_TARGET)/VPoxWddmCat.dir/VPoxICD.dll: $$(VPoxICD_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+   $(PATH_TARGET)/VPoxWddmCat.dir/VPoxGL.dll: $$(VPoxGL_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+   ifeq ($(KBUILD_TARGET_ARCH),amd64)
+    $(PATH_TARGET)/VPoxWddmCat.dir/VPoxNine-x86.dll: $$(VPoxNine-x86_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+    $(PATH_TARGET)/VPoxWddmCat.dir/VPoxSVGA-x86.dll: $$(VPoxSVGA-x86_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+    $(PATH_TARGET)/VPoxWddmCat.dir/VPoxICD-x86.dll: $$(VPoxICD-x86_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+
+    $(PATH_TARGET)/VPoxWddmCat.dir/VPoxGL-x86.dll: $$(VPoxGL-x86_1_TARGET) | $$(dir $$@)
+	$(INSTALL) -m 644 $< $(@D)
+   endif
+  endif
+
+  $(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.cat: \
+		$(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.inf \
+		$(PATH_TARGET)/VPoxWddmCat.dir/VPoxWddm.sys \
+		$(if $(VPOXWDDM_WITH_DISPD3D), $(PATH_TARGET)/VPoxWddmCat.dir/VPoxDispD3D.dll, ) \
+		$(if $(VPOXWDDM_WITH_DISPD3D), $(if-expr "$(KBUILD_TARGET_ARCH)" == "amd64", $(PATH_TARGET)/VPoxWddmCat.dir/VPoxDispD3D-x86.dll, ), ) \
+		$(if $(VPOX_WITH_MESA3D), \
+			$(PATH_TARGET)/VPoxWddmCat.dir/VPoxNine.dll \
+			$(PATH_TARGET)/VPoxWddmCat.dir/VPoxSVGA.dll \
+			$(PATH_TARGET)/VPoxWddmCat.dir/VPoxICD.dll \
+			$(PATH_TARGET)/VPoxWddmCat.dir/VPoxGL.dll \
+			$(if-expr "$(KBUILD_TARGET_ARCH)" == "amd64", \
+				$(PATH_TARGET)/VPoxWddmCat.dir/VPoxNine-x86.dll \
+				$(PATH_TARGET)/VPoxWddmCat.dir/VPoxSVGA-x86.dll \
+				$(PATH_TARGET)/VPoxWddmCat.dir/VPoxICD-x86.dll \
+				$(PATH_TARGET)/VPoxWddmCat.dir/VPoxGL-x86.dll, ), )
+	$(call MSG_TOOL,Inf2Cat,VPoxWddm-inf,$@,$<)
+	$(call VPOX_MAKE_CAT_FN, $(@D),$@)
+ endif # signing
+endif # VPOX_WITH_WDDM
+
+include $(FILE_KBUILD_SUB_FOOTER)

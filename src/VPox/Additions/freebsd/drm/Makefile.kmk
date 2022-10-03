@@ -1,0 +1,72 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the vpoxvideo DRM module (FreeBSD kernel OpenGL module).
+#
+
+#
+# Copyright (C) 2009-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+
+SUB_DEPTH = ../../../../..
+include $(KBUILD_PATH)/subheader.kmk
+
+INSTALLS += vpoxvideo-mod
+
+ifdef VPOX_WITH_ADDITION_DRIVERS
+ SYSMODS  += vpoxvideo_drm
+endif
+ifneq ($(KBUILD_HOST),freebsd)
+$(error "The FreeBSD guest additions can only be built on FreeBSD!")
+endif
+
+#
+# Populate FILES_VPOXVIDEO_DRM_NOBIN
+#
+include $(PATH_SUB_CURRENT)/files_vpoxvideo_drm
+
+# vpoxvideo source
+vpoxvideo-mod_INST        = $(INST_ADDITIONS)src/vpoxvideo_drm/
+vpoxvideo-mod_MODE        = a+r,u+w
+vpoxvideo-mod_SOURCES     = $(subst ",,$(FILES_VPOXVIDEO_DRM_NOBIN))
+
+#
+# vpoxvideo - The Video DRM (Direct Rendering Module) kernel module
+#
+# Note! Syntax checking only.
+#
+vpoxvideo_drm_TEMPLATE      = VPOXGUESTR0
+vpoxvideo_drm_NAME          = vpoxvideo
+vpoxvideo_drm_DEFS          = VPOX_WITH_HGCM VPOX_SVN_REV=$(VPOX_SVN_REV)
+vpoxvideo_drm_DEPS         += $(VPOX_SVN_REV_KMK)
+vpoxvideo_drm_INCS.freebsd  = \
+	$(vpoxvideo_drm_0_OUTDIR) \
+	$(PATH_STAGE)/gen-sys-hdrs
+vpoxvideo_drm_SOURCES       = vpoxvideo_drm.c
+vpoxvideo_drm_LIBS          = \
+	$(VPOX_LIB_VBGL_R0) \
+	$(VPOX_LIB_IPRT_GUEST_R0)
+vpoxvideo_drm_ORDERDEPS.freebsd = \
+	$(PATH_STAGE)/gen-sys-hdrs/pci_if.h \
+	$(PATH_STAGE)/gen-sys-hdrs/bus_if.h \
+	$(PATH_STAGE)/gen-sys-hdrs/device_if.h \
+	$(vpoxvideo_drm_0_OUTDIR)/opt_drm.h
+vpoxvideo_drm_CLEAN.freebsd = $(vpoxvideo_drm_DEPS)
+
+#
+# Header for DRM not included by us.
+#
+$$(vpoxvideo_drm_0_OUTDIR)/opt_drm.h:
+	$(QUIET)$(MKDIR) -p $(vpoxvideo_drm_0_OUTDIR)
+	$(QUIET)touch $(vpoxvideo_drm_0_OUTDIR)/opt_drm.h
+
+include $(FILE_KBUILD_SUB_FOOTER)
+

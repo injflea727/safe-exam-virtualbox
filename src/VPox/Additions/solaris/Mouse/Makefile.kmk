@@ -1,0 +1,71 @@
+# $Id: Makefile.kmk $
+## @file
+# Sub-Makefile for the Solaris Mouse Integration kernel module.
+#
+
+#
+# Copyright (C) 2012-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+# The contents of this file may alternatively be used under the terms
+# of the Common Development and Distribution License Version 1.0
+# (CDDL) only, as it comes in the "COPYING.CDDL" file of the
+# VirtualPox OSE distribution, in which case the provisions of the
+# CDDL are applicable instead of those of the GPL.
+#
+# You may elect to license modified versions of this file under the
+# terms and conditions of either the GPL or the CDDL or both.
+#
+
+SUB_DEPTH = ../../../../..
+include	$(KBUILD_PATH)/subheader.kmk
+
+#ifneq ($(KBUILD_HOST),solaris)
+#$(error "The Solaris guest additions can only be built on Solaris!")
+#endif
+
+#
+# vpoxms - The Mouse Integration Driver
+#
+SYSMODS.solaris     += vpoxms
+vpoxms_TEMPLATE   = VPOXGUESTR0
+vpoxms_DEFS       = VPOX_WITH_HGCM VPOX_SVN_REV=$(VPOX_SVN_REV)
+vpoxms_DEPS      += $(VPOX_SVN_REV_KMK)
+vpoxms_SOURCES    = \
+	vpoxms.c
+vpoxms_LIBS       = \
+	$(VPOX_LIB_VBGL_R0)
+ifeq ($(KBUILD_HOST),solaris)
+ vpoxms_LDFLAGS         += -N drv/vpoxguest -N misc/ctf
+else
+ vpoxms_SOURCES         += deps.asm
+ vpoxms_deps.asm_ASFLAGS = -f bin -g null
+endif
+
+
+PROGRAMS += vpoxmslnk
+vpoxmslnk_TEMPLATE    = NewVPoxGuestR3Exe
+vpoxmslnk_SOURCES     = vpoxmslnk.c
+
+
+if 0 # Broken - unresolved externals: vbglDriver*, RTR0AssertPanicSystem.
+if defined(VPOX_WITH_TESTCASES) && !defined(VPOX_ONLY_ADDITIONS) && !defined(VPOX_ONLY_SDK)
+ PROGRAMS += tstVPoxMouse-solaris
+ tstVPoxMouse-solaris_TEMPLATE = VPOXR3TSTEXE
+ tstVPoxMouse-solaris_SOURCES  = \
+ 	vpoxms.c \
+ 	testcase/tstVPoxMouse-solaris.c
+ tstVPoxMouse-solaris_DEFS     = TESTCASE
+ tstVPoxMouse-solaris_LIBS     = $(LIB_RUNTIME)
+endif
+endif
+
+include	$(KBUILD_PATH)/subfooter.kmk
+

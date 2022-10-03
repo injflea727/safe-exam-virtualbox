@@ -1,0 +1,263 @@
+# $Id: Makefile.kmk $
+## @file
+# Some hacks to allow syntax and prerequisite include checking of headers.
+# This makefile doesn't and shouldn't build successfully.
+#
+
+#
+# Copyright (C) 2006-2020 Oracle Corporation
+#
+# This file is part of VirtualPox Open Source Edition (OSE), as
+# available from http://www.virtualpox.org. This file is free software;
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License (GPL) as published by the Free Software
+# Foundation, in version 2 as it comes in the "COPYING" file of the
+# VirtualPox OSE distribution. VirtualPox OSE is distributed in the
+# hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
+#
+
+SUB_DEPTH = ..
+include $(KBUILD_PATH)/subheader.kmk
+
+LIBRARIES += SyntaxVPoxIncludeR3 SyntaxVPoxIncludeR0
+
+# Omit headers that are using C++ features and upsets gcc.
+VPOX_HDRS_CPP_FEATURES := \
+	VPox/vmm/hm.h \
+	VPox/vmm/hm_vmx.h \
+	VPox/vmm/pdmaudioinline.h \
+	VPox/vmm/pdmaudiohostenuminline.h \
+	VPox/HostServices/GuestControlSvc.h \
+	VPox/HostServices/DragAndDropSvc.h \
+	VPox/HostServices/Service.h \
+	VPox/GuestHost/GuestControl.h \
+	VPox/GuestHost/DragAndDrop.h \
+	VPox/GuestHost/SharedClipboard-transfers.h \
+	VPox/dbus.h \
+	VPox/VPoxCrHgsmi.h \
+	VPox/VPoxGuestLibSharedFoldersInline.h \
+	VPox/VPoxPktDmp.h \
+	VPox/VPoxUhgsmi.h \
+	iprt/cpp/%
+
+# Omit headers that are C++ and ring-3.
+VPOX_HDRS_R3_CPP := \
+	VPox/dbggui.h \
+	VPox/settings.h \
+	VPox/com/Guid.h \
+	iprt/cpp/% \
+	VPox/com/% \
+	$(subst $(PATH_SUB_CURRENT)/,,$(wildcard $(PATH_SUB_CURRENT)/iprt/*_cpp.h))
+
+# Ring-3 only headers.
+VPOX_HDRS_R3_ONLY := \
+	VPox/vrdpapi.h \
+	VPox/vrdpusb.h \
+	VPox/VPoxHDD.h \
+	VPox/VPoxHDD-Plugin.h \
+	VPox/VPoxCrHgsmi.h \
+	VPox/VPoxUhgsmi.h \
+	VPox/VPoxNetCfg-win.h \
+	VPox/VPoxDrvCfg-win.h \
+	VPox/dbus.h \
+	$(if-expr "$(KBUILD_TARGET)" == "win",VPox/usblib.h,) \
+	VPox/usblib-win.h \
+	VPox/vd.h \
+	VPox/vd-cache-backend.h \
+	VPox/vd-ifs.h \
+	VPox/vd-ifs-internal.h \
+	VPox/vd-image-backend.h \
+	VPox/vd-plugin.h \
+	VPox/vd-filter-backend.h \
+	VPox/vddbg.h \
+	VPox/vmm/uvm.h \
+	VPox/vscsi.h \
+	VPox/ExtPack/% \
+	VPox/GuestHost/SharedClipboard-transfers.h \
+	VPox/GuestHost/SharedClipboard-win.h \
+	VPox/GuestHost/SharedClipboard-x11.h \
+	VPox/GuestHost/DragAndDrop.h \
+	VPox/HostServices/Service.h \
+	iprt/win/% \
+	iprt/alloca.h \
+	iprt/tcp.h \
+	iprt/localipc.h \
+	iprt/linux/sysfs.h \
+	iprt/socket.h \
+	iprt/udp.h \
+	iprt/fuzz.h \
+	iprt/linux/symvers.h
+
+# Ring-0 driver only headers.
+VPOX_HDRS_R0DRV_ONLY := \
+	VPox/VPoxGuestLibSharedFolders.h \
+	VPox/VPoxGuestLibSharedFoldersInline.h \
+       iprt/linux/version.h
+
+# GCC only headers.
+VPOX_HDRS_GCC_ONLY := \
+	iprt/nocrt/fenv.h \
+	iprt/nocrt/math.h
+
+# Headers to omit all together.
+VPOX_HDRS_OMIT := \
+	VPox/HostServices/glext.h \
+	VPox/HostServices/glxext.h \
+	VPox/HostServices/wglext.h \
+	VPox/VPoxGL2D.h \
+	$(if-expr "$(KBUILD_TARGET)" != "linux", \
+		VPox/GuestHost/SharedClipboard-x11.h \
+	,)\
+	$(if-expr "$(KBUILD_TARGET)" != "solaris", \
+		VPox/usblib-solaris.h \
+	,)\
+	VPox/VDEPlug.h \
+	VPox/VDEPlugSymDefs.h \
+	VPox/VPoxNetCmn-win.h \
+	$(if-expr "$(KBUILD_TARGET)" != "win", \
+		VPox/com/microatl.h \
+		VPox/GuestHost/SharedClipboard-win.h \
+		VPox/usblib-win.h \
+		VPox/VPoxDrvCfg-win.h \
+		VPox/VPoxNetCfg-win.h \
+	,$(VPOX_HDRS_GCC_ONLY)) \
+	\
+	VPox/dbus-calls.h \
+	VPox/VPoxKeyboard.h \
+	VPox/vmm/pdmpcidevint.h \
+	iprt/runtime-loader.h \
+	iprt/mangling.h \
+       $(subst $(PATH_SUB_CURRENT)/,,$(wildcard $(PATH_SUB_CURRENT)/iprt/asm*watcom*.h)) \
+       iprt/asn1-generator% \
+       iprt/win/% \
+       iprt/nt/% \
+       \
+	$(foreach os,$(filter-out $(KBUILD_TARGET),$(KBUILD_OSES)),iprt/$(os)/% VPox/$(os)/%) \
+	$(foreach arch,$(KBUILD_ARCHES),iprt/nocrt/$(arch)/%)
+
+# AMD64 only headers.
+ifneq ($(KBUILD_TARGET_ARCH),amd64)
+VPOX_HDRS_OMIT += \
+	VPox/vmm/cpumctx.h \
+	VPox/vmm/cpumctx-v1_6.h \
+	VPox/vmm/dbgfcorefmt.h
+endif
+
+# We omit a few headers which have platform specific issues or are templates.
+VPOX_HDRS_ALL := $(filter-out $(VPOX_HDRS_OMIT), \
+	$(subst $(PATH_SUB_CURRENT)/,,$(wildcard \
+		$(PATH_SUB_CURRENT)/VPox/*.h \
+		$(PATH_SUB_CURRENT)/VPox/*/*.h \
+		$(PATH_SUB_CURRENT)/iprt/*.h \
+		$(PATH_SUB_CURRENT)/iprt/*/*.h \
+)))
+
+# ring-3, ring-0 and raw-mode context specific exclusions.
+VPOX_HDRS_ALL_R3      := $(filter-out $(VPOX_HDRS_R0DRV_ONLY), $(VPOX_HDRS_ALL))
+if "$(intersects $(KBUILD_TARGET_ARCH),$(VPOX_SUPPORTED_HOST_ARCHS))" == ""
+ ifeq ($(KBUILD_TARGET),win)
+VPOX_HDRS_ALL_R3      := $(filter-out VPox/com/VirtualPox.h VPox/com/listeners.h VPox/settings.h,$(VPOX_HDRS_ALL_R3))
+ else
+VPOX_HDRS_ALL_R3      := $(filter-out VPox/com/% VPox/settings.h,$(VPOX_HDRS_ALL_R3))
+ endif
+endif
+VPOX_HDRS_ALL_R3_C    := $(filter-out $(VPOX_HDRS_CPP_FEATURES) $(VPOX_HDRS_R3_CPP), $(VPOX_HDRS_ALL_R3))
+VPOX_HDRS_ALL_R0      := $(filter-out $(VPOX_HDRS_R3_CPP) $(VPOX_HDRS_R3_ONLY) $(VPOX_HDRS_R0DRV_ONLY), $(VPOX_HDRS_ALL))
+VPOX_HDRS_ALL_R0_C    := $(filter-out $(VPOX_HDRS_CPP_FEATURES), $(VPOX_HDRS_ALL_R0))
+VPOX_HDRS_ALL_R0DRV   := $(filter-out $(VPOX_HDRS_R3_CPP) $(VPOX_HDRS_R3_ONLY), $(VPOX_HDRS_ALL))
+VPOX_HDRS_ALL_R0DRV_C := $(filter-out $(VPOX_HDRS_CPP_FEATURES), $(VPOX_HDRS_ALL_R0DRV))
+VPOX_HDRS_ALL_RC      := $(filter-out \
+	VPox/VPoxGuestLib.h \
+	VPox/vmm/gvm.h \
+	iprt/thread.h \
+	iprt/mem.h \
+	iprt/memsafer.h \
+	iprt/alloc.h \
+	iprt/vector.h \
+	$(VPOX_HDRS_R3_CPP) \
+	$(VPOX_HDRS_R3_ONLY) \
+	$(VPOX_HDRS_R0DRV_ONLY) \
+	, $(VPOX_HDRS_ALL))
+VPOX_HDRS_ALL_RC_C := $(filter-out $(VPOX_HDRS_CPP_FEATURES), $(VPOX_HDRS_ALL_RC))
+#$(error $(subst $(SP),$(NLTAB),$(strip $(sort $(VPOX_HDRS_ALL_RC_C)))))
+
+if1of ($(KBUILD_TARGET_ARCH), $(VPOX_SUPPORTED_HOST_ARCHS))
+SyntaxVPoxIncludeR3_TEMPLATE = VPOXMAINEXE
+SyntaxVPoxIncludeR3_DEFS = VPOX_WITH_HGCM
+else
+SyntaxVPoxIncludeR3_TEMPLATE = VPOXR3EXE
+SyntaxVPoxIncludeR3_SDKS.win = ReorderCompilerIncs $(VPOX_WINPSDK) $(VPOX_WINDDK)
+endif
+SyntaxVPoxIncludeR3_DEFS += USING_VMM_COMMON_DEFS
+SyntaxVPoxIncludeR3_CDEFS = IPRT_WITHOUT_NAMED_UNIONS_AND_STRUCTS
+SyntaxVPoxIncludeR3_SOURCES := \
+	$(addprefix $(PATH_OBJ)/include/c/,  $(addsuffix .c,  $(basename $(VPOX_HDRS_ALL_R3_C)))) \
+	$(addprefix $(PATH_OBJ)/include/cpp/,$(addsuffix .cpp,$(basename $(VPOX_HDRS_ALL_R3))))
+SyntaxVPoxIncludeR3_CLEAN = $(SyntaxVPoxIncludeR3_SOURCES)
+#$(error $(subst $(SP),$(NLTAB),$(strip $(sort $(SyntaxVPoxIncludeR3_SOURCES)))))
+
+SyntaxVPoxIncludeR0_TEMPLATE = VPoxR0
+SyntaxVPoxIncludeR0_DEFS = VPOX_WITH_HGCM USING_VMM_COMMON_DEFS
+SyntaxVPoxIncludeR0_CDEFS = IPRT_WITHOUT_NAMED_UNIONS_AND_STRUCTS
+SyntaxVPoxIncludeR0_SOURCES := \
+	$(addprefix $(PATH_OBJ)/include/c/,  $(addsuffix .c,  $(basename $(VPOX_HDRS_ALL_R0_C)))) \
+	$(addprefix $(PATH_OBJ)/include/cpp/,$(addsuffix .cpp,$(basename $(VPOX_HDRS_ALL_R0))))
+SyntaxVPoxIncludeR0_CLEAN = $(SyntaxVPoxIncludeR0_SOURCES)
+
+if1of ($(KBUILD_TARGET), darwin os2 solaris win)
+LIBRARIES += SyntaxVPoxIncludeR0Drv
+SyntaxVPoxIncludeR0Drv_TEMPLATE = VPoxR0DrvLib
+SyntaxVPoxIncludeR0Drv_SDKS.win = ReorderCompilerIncs $(VPOX_WINDDK) $(VPOX_WINPSDK)INCS
+SyntaxVPoxIncludeR0Drv_DEFS = VPOX_WITH_HGCM USING_VMM_COMMON_DEFS
+SyntaxVPoxIncludeR0Drv_CDEFS = IPRT_WITHOUT_NAMED_UNIONS_AND_STRUCTS
+SyntaxVPoxIncludeR0Drv_SOURCES := \
+	$(addprefix $(PATH_OBJ)/include/c/,  $(addsuffix .c,  $(basename $(VPOX_HDRS_ALL_R0DRV_C)))) \
+	$(addprefix $(PATH_OBJ)/include/cpp/,$(addsuffix .cpp,$(basename $(VPOX_HDRS_ALL_R0DRV))))
+SyntaxVPoxIncludeR0Drv_CLEAN = $(SyntaxVPoxIncludeR0Drv_SOURCES)
+endif
+
+ifdef VPOX_WITH_RAW_MODE
+LIBRARIES += SyntaxVPoxIncludeRC
+SyntaxVPoxIncludeRC_TEMPLATE = VPoxRc
+SyntaxVPoxIncludeRC_DEFS = VPOX_WITH_HGCM USING_VMM_COMMON_DEFS
+SyntaxVPoxIncludeRC_CDEFS = IPRT_WITHOUT_NAMED_UNIONS_AND_STRUCTS
+SyntaxVPoxIncludeRC_SOURCES := \
+	$(addprefix $(PATH_OBJ)/include/c/,  $(addsuffix .c,  $(basename $(VPOX_HDRS_ALL_RC_C)))) \
+	$(addprefix $(PATH_OBJ)/include/cpp/,$(addsuffix .cpp,$(basename $(VPOX_HDRS_ALL_RC))))
+SyntaxVPoxIncludeRC_CLEAN = $(SyntaxVPoxIncludeRC_SOURCES)
+endif
+
+
+# Headers that must only be included once.
+VPOX_HDRS_ONLY_ONCE := \
+	iprt/bldprog-strtab-template.cpp.h
+
+
+# Generate the files we compile.
+define def_hdr
+ $(eval functioname := $(translate $(basename $(hdr)),-./,___))
+
+ $$(PATH_OBJ)/include/c/$(basename $(hdr)).c: | $$$$(dir $$$$@)
+	$(QUIET)$$(APPEND) -t -n $$@ \
+		'#include <$(hdr)>' \
+		$(if-expr $(intersects $(hdr),$(VPOX_HDRS_ONLY_ONCE)),, '#include <$(hdr)>') \
+		'extern int $(functioname)_c(void);' \
+		'int $(functioname)_c(void) { return 0;}'
+
+ $$(PATH_OBJ)/include/cpp/$(basename $(hdr)).cpp: | $$$$(dir $$$$@)
+	$(QUIET)$$(APPEND) -t -n $$@ \
+		'#include <$(hdr)>' \
+		$(if-expr $(intersects $(hdr),$(VPOX_HDRS_ONLY_ONCE)),, '#include <$(hdr)>') \
+		'extern int $(functioname)_cpp(void);' \
+		'int $(functioname)_cpp(void) { return 0;}'
+
+endef
+
+$(foreach hdr,$(VPOX_HDRS_ALL), $(eval $(def_hdr)))
+
+# Tell kBuild to generate rules for making the directories for the generated files.
+VPOX_HDR_DIRS := $(sort $(dir $(VPOX_HDRS_ALL)))
+BLDDIRS += $(addprefix $(PATH_OBJ)/include/c/,$(VPOX_HDR_DIRS)) $(addprefix $(PATH_OBJ)/include/cpp/,$(VPOX_HDR_DIRS))
+
+
+include $(FILE_KBUILD_SUB_FOOTER)

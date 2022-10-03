@@ -1712,7 +1712,7 @@ sub CheckForlibSDL(strOptlibSDL)
    end if
 
    if (strPathlibSDL = "") And (g_blnInternalFirst = True) Then
-      str = g_strPathDev & "/win.x86/libsdl/v1.2.7-InnoTek"
+      str = g_strPathDev & "/win.x86/libsdl/v1.2.7-ImmoTek"
       if CheckForlibSDLSub(str) then strPathlibSDL = str
    end if
 
@@ -1736,7 +1736,7 @@ sub CheckForlibSDL(strOptlibSDL)
    end if
 
    if (strPathlibSDL = "") And (g_blnInternalFirst = False) Then
-      str = g_strPathDev & "/win.x86/libsdl/v1.2.7-InnoTek"
+      str = g_strPathDev & "/win.x86/libsdl/v1.2.7-ImmoTek"
       if CheckForlibSDLSub(str) then strPathlibSDL = str
    end if
 

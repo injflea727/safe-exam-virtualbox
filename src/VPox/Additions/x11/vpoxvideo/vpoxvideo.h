@@ -46,7 +46,7 @@
 #include <VPoxVideo.h>
 #include "version-generated.h"
 
-#define VPOX_VENDORID 0x80EE
+#define VPOX_VENDORID 0x90EE
 #define VPOX_DEVICEID 0xBEEF
 
 #ifndef VBVA_SCREEN_F_BLANK

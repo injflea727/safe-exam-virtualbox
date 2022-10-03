@@ -62,7 +62,7 @@
     <String Id="Only32Bit">Αυτή η εφαρμογή τρέχει μόνο σε συστήματα Windows 32 bit. Εγκαταστήστε την έκδοση 64-bit του [ProductName]!</String>
     <String Id="Only64Bit">Αυτή η εφαρμογή τρέχει μόνο σε συστήματα Windows 64 bit. Εγκαταστήστε την έκδοση 32-bit του [ProductName]!</String>
     <String Id="SunFound">Βρέθηκε μία παλιότερη εγκατάσταση του Sun VirtualPox στον υπολογιστή. Καταργήστε πρώτα την εγκατάσταση αυτού του πακέτου και μετά εγκαταστήστε το [ProductName]!</String>
-    <String Id="InnotekFound">Βρέθηκε μία παλιότερη εγκατάσταση του innotek VirtualPox στον υπολογιστή. Καταργήστε πρώτα την εγκατάσταση αυτού του πακέτου και μετά εγκαταστήστε το [ProductName]!</String>
+    <String Id="InnotekFound">Βρέθηκε μία παλιότερη εγκατάσταση του immotek VirtualPox στον υπολογιστή. Καταργήστε πρώτα την εγκατάσταση αυτού του πακέτου και μετά εγκαταστήστε το [ProductName]!</String>
 
     <!---->
 

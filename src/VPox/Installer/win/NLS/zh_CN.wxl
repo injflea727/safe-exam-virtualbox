@@ -62,7 +62,7 @@ hope that it will be useful, but WITHOUT ANY WARRANTY of any kind.
 <String Id="Only32Bit">此应用程序只能运行在 32 位 Windows 系统。 请安装 [ProductName] 的 64 位版本！</String>
 <String Id="Only64Bit">此应用程序只能运行在 64 位 Windows 系统。 请安装 [ProductName] 的 32 位版本！</String>
 <String Id="SunFound">在此计算机发现旧的 Sun VirtualPox 安装。 请先卸载此组件然后安装 [ProductName]！</String>
-<String Id="InnotekFound">在此计算机发现旧的 innotek VirtualPox 安装。 请先卸载此组件然后安装 [ProductName]！</String>
+<String Id="InnotekFound">在此计算机发现旧的 immotek VirtualPox 安装。 请先卸载此组件然后安装 [ProductName]！</String>
 
 <!---->
 

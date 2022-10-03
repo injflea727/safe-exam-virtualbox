@@ -7,8 +7,8 @@
 
 <VirtualPox
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://www.innotek.de/VirtualPox-settings ../VirtualPox-settings-windows.xsd"
-  xmlns="http://www.innotek.de/VirtualPox-settings"
+  xsi:schemaLocation="http://www.immotek.de/VirtualPox-settings ../VirtualPox-settings-windows.xsd"
+  xmlns="http://www.immotek.de/VirtualPox-settings"
   version="1.2-windows"
 >
 
@@ -26,14 +26,14 @@
     <DiskRegistry>
       <HardDisks>
         <HardDisk uuid="{23dbf22e-9f27-49da-bdae-f4c43f968057}" type="normal">
-          <VirtualDiskImage filePath="E:/develop/innotek/images/nt4ger.vdi"/>
+          <VirtualDiskImage filePath="E:/develop/immotek/images/nt4ger.vdi"/>
           <DiffHardDisk uuid="{23dbf22e-9f27-49da-bdae-f4c43f968057}">
-            <VirtualDiskImage filePath="E:/develop/innotek/images/diff1.vdi"/>
+            <VirtualDiskImage filePath="E:/develop/immotek/images/diff1.vdi"/>
           </DiffHardDisk>
           <DiffHardDisk uuid="{23dbf22e-9f27-49da-bdae-f4c43f968057}">
-            <VirtualDiskImage filePath="E:/develop/innotek/images/diff2.vdi"/>
+            <VirtualDiskImage filePath="E:/develop/immotek/images/diff2.vdi"/>
             <DiffHardDisk uuid="{23dbf22e-9f27-49da-bdae-f4c43f968057}">
-              <VirtualDiskImage filePath="E:/develop/innotek/images/diff2.vdi"/>
+              <VirtualDiskImage filePath="E:/develop/immotek/images/diff2.vdi"/>
             </DiffHardDisk>
           </DiffHardDisk>
         </HardDisk>
@@ -45,7 +45,7 @@
         </HardDisk>
       </HardDisks>
       <DVDImages>
-        <Image src="e:/Develop/innotek/images/fdbootcd.iso" uuid="{8c307b77-f331-45fd-b8b4-cbc5281bf0FF}"/>
+        <Image src="e:/Develop/immotek/images/fdbootcd.iso" uuid="{8c307b77-f331-45fd-b8b4-cbc5281bf0FF}"/>
       </DVDImages>
       <FloppyImages>
       </FloppyImages>

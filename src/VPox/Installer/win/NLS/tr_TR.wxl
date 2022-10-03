@@ -62,7 +62,7 @@
     <String Id="Only32Bit">Bu uygulama yalnızca 32-bit Windows sistemlerinde çalışır. Lütfen [ProductName] 64-bit sürümünü yükleyin!</String>
     <String Id="Only64Bit">Bu uygulama yalnızca 64-bit Windows sistemlerinde çalışır. Lütfen [ProductName] 32-bit sürümünü yükleyin!</String>
     <String Id="SunFound">Bu makinede eski bir Sun VirtualPox kurulumu bulundu. Lütfen önce bu paketi kaldırın ve sonra [ProductName] yükleyin!</String>
-    <String Id="InnotekFound">Bu makinede eski bir innotek VirtualPox kurulumu bulundu. Lütfen önce bu paketi kaldırın ve sonra [ProductName] yükleyin!</String>
+    <String Id="InnotekFound">Bu makinede eski bir immotek VirtualPox kurulumu bulundu. Lütfen önce bu paketi kaldırın ve sonra [ProductName] yükleyin!</String>
 
 	<!---->
 

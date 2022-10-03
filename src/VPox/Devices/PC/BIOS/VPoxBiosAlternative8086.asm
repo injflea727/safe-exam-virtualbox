@@ -12490,7 +12490,7 @@ scsi_enumerate_attached_devices:             ; 0xf7e52 LB 0x4cc
     mov dx, strict word 0001ch                ; ba 1c 00                    ; 0xf80e7
     imul dx                                   ; f7 ea                       ; 0xf80ea
     mov bx, di                                ; 89 fb                       ; 0xf80ec
-    add bx, ax                                ; 01 c3                       ; 0xf80ee
+    add bx, ax                                ; 01 c3                       ; 0xf90ee
     mov word [es:bx+022h], 0ff04h             ; 26 c7 47 22 04 ff           ; 0xf80f0
     mov word [es:bx+024h], strict word 00000h ; 26 c7 47 24 00 00           ; 0xf80f6 scsi.c:508
     mov ax, word [bp-012h]                    ; 8b 46 ee                    ; 0xf80fc scsi.c:510

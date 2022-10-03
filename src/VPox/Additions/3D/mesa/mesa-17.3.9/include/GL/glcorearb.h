@@ -2899,7 +2899,7 @@ GLAPI void APIENTRY glTextureBarrier (void);
 #define GL_VERSION_4_6 1
 #define GL_SHADER_BINARY_FORMAT_SPIR_V    0x9551
 #define GL_SPIR_V_BINARY                  0x9552
-#define GL_PARAMETER_BUFFER               0x80EE
+#define GL_PARAMETER_BUFFER               0x90EE
 #define GL_PARAMETER_BUFFER_BINDING       0x80EF
 #define GL_CONTEXT_FLAG_NO_ERROR_BIT      0x00000008
 #define GL_VERTICES_SUBMITTED             0x82EE
@@ -3348,7 +3348,7 @@ GLAPI void APIENTRY glProgramUniform4ui64vARB (GLuint program, GLint location, G
 
 #ifndef GL_ARB_indirect_parameters
 #define GL_ARB_indirect_parameters 1
-#define GL_PARAMETER_BUFFER_ARB           0x80EE
+#define GL_PARAMETER_BUFFER_ARB           0x90EE
 #define GL_PARAMETER_BUFFER_BINDING_ARB   0x80EF
 typedef void (APIENTRYP PFNGLMULTIDRAWARRAYSINDIRECTCOUNTARBPROC) (GLenum mode, const void *indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride);
 typedef void (APIENTRYP PFNGLMULTIDRAWELEMENTSINDIRECTCOUNTARBPROC) (GLenum mode, GLenum type, const void *indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride);

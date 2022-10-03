@@ -79,7 +79,7 @@
 
 /** @name USB HID vendor and product IDs
  * @{ */
-#define VPOX_USB_VENDOR             0x80EE
+#define VPOX_USB_VENDOR             0x90EE
 #define USBHID_PID_KEYBOARD         0x0010
 /** @} */
 

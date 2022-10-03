@@ -21422,8 +21422,8 @@ Version %1</source>
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Fullscreen Mode</source>
@@ -25409,8 +25409,8 @@ to the system default language.&lt;/qt&gt;
         <translation type="obsolete">VirtualPox Kayıt Formu</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that innotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, innotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=http://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
-        <translation type="obsolete">&lt;p&gt;Lütfen VirtualPox kullandığınızı öğrenebilmemiz ve sizi VirtualPox haberleri ve güncellemeleri gibi konularda bilgilendirebilmemiz için kayıt formunu doldurun.&lt;/p&gt;&lt;p&gt;Aşağıdaki alanlara Latin karakterlerini kullanarak tam adınızı ve e-posta adresinizi girin. Lütfen innotek&apos;in bu bilgileri yalnızca ürün kullanımı istatistiklerini toplamak ve size VirtualPox ilgili haberleri göndermek için kullandığını unutmayın. Özellikle innotek&apos;in sizin bilgilerinizi üçüncü şahıslara iletmeyeceğini bilmelisiniz. Sizin kişisel bilgilerinizi nasıl kullandığımız konusunda detaylı bilgi almak için VirtualPox Web sitesinde yer alan &lt;a href=http://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; adresindeki VirtualPox El Kitabının &lt;b&gt;Privacy Policy&lt;/b&gt; bölümüne bakın.&lt;/p&gt;</translation>
+        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that immotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, immotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=http://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
+        <translation type="obsolete">&lt;p&gt;Lütfen VirtualPox kullandığınızı öğrenebilmemiz ve sizi VirtualPox haberleri ve güncellemeleri gibi konularda bilgilendirebilmemiz için kayıt formunu doldurun.&lt;/p&gt;&lt;p&gt;Aşağıdaki alanlara Latin karakterlerini kullanarak tam adınızı ve e-posta adresinizi girin. Lütfen immotek&apos;in bu bilgileri yalnızca ürün kullanımı istatistiklerini toplamak ve size VirtualPox ilgili haberleri göndermek için kullandığını unutmayın. Özellikle immotek&apos;in sizin bilgilerinizi üçüncü şahıslara iletmeyeceğini bilmelisiniz. Sizin kişisel bilgilerinizi nasıl kullandığımız konusunda detaylı bilgi almak için VirtualPox Web sitesinde yer alan &lt;a href=http://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; adresindeki VirtualPox El Kitabının &lt;b&gt;Privacy Policy&lt;/b&gt; bölümüne bakın.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;Name</source>
@@ -25433,8 +25433,8 @@ to the system default language.&lt;/qt&gt;
         <translation type="obsolete">&amp;Lütfen bu bilgileri benimle iletişim kurmak için kullanmayın</translation>
     </message>
     <message>
-        <source>Check this box if you do not want to receive mail from innotek at the e-mail address specified above.</source>
-        <translation type="obsolete">Eğer innotek firmasından yukarıya girdiğiniz e-posta adresinize e-posta almak istemiyorsanız bu kutucuğu işaretleyin.</translation>
+        <source>Check this box if you do not want to receive mail from immotek at the e-mail address specified above.</source>
+        <translation type="obsolete">Eğer immotek firmasından yukarıya girdiğiniz e-posta adresinize e-posta almak istemiyorsanız bu kutucuğu işaretleyin.</translation>
     </message>
     <message>
         <source>Welcome to the VirtualPox Registration Form!</source>
@@ -25458,7 +25458,7 @@ to the system default language.&lt;/qt&gt;
     </message>
     <message>
         <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Sun Microsystems will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, Sun Microsystems will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=http://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
-        <translation type="obsolete">&lt;p&gt;Lütfen VirtualPox kullandığınızı öğrenebilmemiz ve sizi VirtualPox haberleri ve güncellemeleri gibi konularda bilgilendirebilmemiz için kayıt formunu doldurun.&lt;/p&gt;&lt;p&gt;Aşağıdaki alanlara Latin karakterlerini kullanarak tam adınızı ve e-posta adresinizi girin. Lütfen innotek&apos;in bu bilgileri yalnızca ürün kullanımı istatistiklerini toplamak ve size VirtualPox ilgili haberleri göndermek için kullandığını unutmayın. Özellikle innotek&apos;in sizin bilgilerinizi üçüncü şahıslara iletmeyeceğini bilmelisiniz. Sizin kişisel bilgilerinizi nasıl kullandığımız konusunda detaylı bilgi almak için VirtualPox Web sitesinde yer alan &lt;a href=http://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; adresindeki VirtualPox El Kitabının &lt;b&gt;Privacy Policy&lt;/b&gt; bölümüne bakın.&lt;/p&gt;</translation>
+        <translation type="obsolete">&lt;p&gt;Lütfen VirtualPox kullandığınızı öğrenebilmemiz ve sizi VirtualPox haberleri ve güncellemeleri gibi konularda bilgilendirebilmemiz için kayıt formunu doldurun.&lt;/p&gt;&lt;p&gt;Aşağıdaki alanlara Latin karakterlerini kullanarak tam adınızı ve e-posta adresinizi girin. Lütfen immotek&apos;in bu bilgileri yalnızca ürün kullanımı istatistiklerini toplamak ve size VirtualPox ilgili haberleri göndermek için kullandığını unutmayın. Özellikle immotek&apos;in sizin bilgilerinizi üçüncü şahıslara iletmeyeceğini bilmelisiniz. Sizin kişisel bilgilerinizi nasıl kullandığımız konusunda detaylı bilgi almak için VirtualPox Web sitesinde yer alan &lt;a href=http://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; adresindeki VirtualPox El Kitabının &lt;b&gt;Privacy Policy&lt;/b&gt; bölümüne bakın.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Check this box if you do not want to receive mail from Sun Microsystems at the e-mail address specified above.</source>
@@ -25514,8 +25514,8 @@ to the system default language.&lt;/qt&gt;
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Details</source>

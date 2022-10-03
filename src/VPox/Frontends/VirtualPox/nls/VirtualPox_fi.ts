@@ -17001,8 +17001,8 @@ Version %1</source>
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Fullscreen Mode</source>
@@ -19798,8 +19798,8 @@ Version %1</source>
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Details</source>

@@ -3650,8 +3650,8 @@ typedef unsigned int GLhandleARB;
         <enum value="0x80EB" name="GL_PHONG_HINT_WIN"/>
         <enum value="0x80EC" name="GL_FOG_SPECULAR_TEXTURE_WIN"/>
         <enum value="0x80ED" name="GL_TEXTURE_INDEX_SIZE_EXT"/>
-        <enum value="0x80EE" name="GL_PARAMETER_BUFFER"/>
-        <enum value="0x80EE" name="GL_PARAMETER_BUFFER_ARB" alias="GL_PARAMETER_BUFFER"/>
+        <enum value="0x90EE" name="GL_PARAMETER_BUFFER"/>
+        <enum value="0x90EE" name="GL_PARAMETER_BUFFER_ARB" alias="GL_PARAMETER_BUFFER"/>
         <enum value="0x80EF" name="GL_PARAMETER_BUFFER_BINDING"/>
         <enum value="0x80EF" name="GL_PARAMETER_BUFFER_BINDING_ARB" alias="GL_PARAMETER_BUFFER_BINDING"/>
         <enum value="0x80F0" name="GL_CLIP_VOLUME_CLIPPING_HINT_EXT"/>

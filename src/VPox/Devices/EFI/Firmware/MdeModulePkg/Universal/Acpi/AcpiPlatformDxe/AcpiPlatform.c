@@ -239,7 +239,7 @@ FillSysTablesInfo(VOID **Tables, UINT32 TablesSize)
                                   (BOOLEAN)((TableInfo[Index].Flags & FLAG_NO_CHECKSUM) != 0));
         if (TableInfo[Index].Signature == SIGNATURE_32('F', 'A', 'C', 'P'))
         {
-             // we actually have 2 FADTs, see https://xtracker.innotek.de/index.php?bug=4082
+             // we actually have 2 FADTs, see https://xtracker.immotek.de/index.php?bug=4082
             Ptr = FindSignature((UINT8*)Ptr+32, SIGNATURE_32('F', 'A', 'C', 'P'), FALSE);
         }
         if (!(TableInfo[Index].Flags & FLAG_OPTIONAL))

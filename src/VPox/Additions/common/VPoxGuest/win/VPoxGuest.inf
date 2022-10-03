@@ -51,7 +51,7 @@ VPoxTray_CopyFiles = 11 ; system32
 
 ;x86   [VPoxGuest]
 ;amd64 [VPoxGuest.NTamd64]
-%VPoxGuest.DeviceDesc%=VPoxGuest_Install,PCI\VEN_80ee&DEV_cafe
+%VPoxGuest.DeviceDesc%=VPoxGuest_Install,PCI\VEN_90ee&DEV_cafe
 
 [VPoxGuest_Install]
 CopyFiles = VPoxGuest_CopyFiles, VPoxTray_CopyFiles

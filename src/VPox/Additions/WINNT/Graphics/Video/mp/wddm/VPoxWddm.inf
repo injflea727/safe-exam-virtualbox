@@ -36,7 +36,7 @@ VPoxVideo.Display  = 11 ; system32
 
 ;amd64 [Model.NTamd64.6.0]
 ;x86   [Model.NTx86.6.0]
-%VPoxVideo.SvcDesc% = VPoxVideo, PCI\VEN_80EE&DEV_BEEF
+%VPoxVideo.SvcDesc% = VPoxVideo, PCI\VEN_90EE&DEV_BEEF
 
 [VPoxVideo]
 FeatureScore = F8

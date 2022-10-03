@@ -676,7 +676,7 @@ void ConfigFileBase::readMediumOne(MediaType t,
                                    const xml::ElementNode &elmMedium,
                                    Medium &med)
 {
-    // <HardDisk uuid="{5471ecdb-1ddb-4012-a801-6d98e226868b}" location="/mnt/innotek-unix/vdis/Windows XP.vdi" format="VDI" type="Normal">
+    // <HardDisk uuid="{5471ecdb-1ddb-4012-a801-6d98e226868b}" location="/mnt/immotek-unix/vdis/Windows XP.vdi" format="VDI" type="Normal">
 
     Utf8Str strUUID;
     if (!elmMedium.getAttributeValue("uuid", strUUID))
@@ -2366,7 +2366,7 @@ void MainConfigFile::write(const com::Utf8Str strFilename)
          it != llMachines.end();
          ++it)
     {
-        // <MachineEntry uuid="{5f102a55-a51b-48e3-b45a-b28d33469488}" src="/mnt/innotek-unix/vpox-machines/Windows 5.1 XP 1 (Office 2003)/Windows 5.1 XP 1 (Office 2003).xml"/>
+        // <MachineEntry uuid="{5f102a55-a51b-48e3-b45a-b28d33469488}" src="/mnt/immotek-unix/vpox-machines/Windows 5.1 XP 1 (Office 2003)/Windows 5.1 XP 1 (Office 2003).xml"/>
         const MachineRegistryEntry &mre = *it;
         xml::ElementNode *pelmMachineEntry = pelmMachineRegistry->createChild("MachineEntry");
         pelmMachineEntry->setAttribute("uuid", mre.uuid.toStringCurly());

@@ -553,7 +553,7 @@ int main(int argc, char *argv[])
     do
     {
         ComPtr<IHardDisk> hd;
-        Bstr src = L"E:\\develop\\innotek\\images\\NewHardDisk.vdi";
+        Bstr src = L"E:\\develop\\immotek\\images\\NewHardDisk.vdi";
         RTPrintf("Opening the existing hard disk '%ls'...\n", src.raw());
         CHECK_ERROR_BREAK(virtualPox, OpenHardDisk(src, AccessMode_ReadWrite, hd.asOutParam()));
         RTPrintf("Enter to continue...\n");
@@ -591,9 +591,9 @@ int main(int argc, char *argv[])
     do
     {
 #if defined RT_OS_LINUX
-        Bstr src = L"/mnt/hugaida/common/develop/innotek/images/freedos-linux.vdi";
+        Bstr src = L"/mnt/hugaida/common/develop/immotek/images/freedos-linux.vdi";
 #else
-        Bstr src = L"E:/develop/innotek/images/freedos.vdi";
+        Bstr src = L"E:/develop/immotek/images/freedos.vdi";
 #endif
         Bstr dst = L"./clone.vdi";
         RTPrintf("Cloning '%ls' to '%ls'...\n", src.raw(), dst.raw());

@@ -1463,7 +1463,7 @@ DefinitionBlock ("DSDT.aml", "DSDT", 2, "VPOX  ", "VPOXBIOS", 2)
                     "1",        // Model number
                     "0",        // Serial number
                     "VPOX",     // Battery type
-                    "innotek"   // OEM Information
+                    "immotek"   // OEM Information
                 })
 
                 Name (PBST, Package () {

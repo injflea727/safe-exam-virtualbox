@@ -269,7 +269,7 @@ FunctionEnd
 !insertmacro Uninstall_SunXVM ""
 !insertmacro Uninstall_SunXVM "un."
 
-; This function cleans up an old innotek installation
+; This function cleans up an old immotek installation
 !macro Uninstall_Innotek un
 Function ${un}Uninstall_Innotek
 
@@ -277,7 +277,7 @@ Function ${un}Uninstall_Innotek
   Push $1
   Push $2
 
-  ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\innotek VirtualPox Guest Additions" "UninstallString"
+  ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\immotek VirtualPox Guest Additions" "UninstallString"
   StrCmp $0 "" exit
 
   ; Extract path
@@ -294,7 +294,7 @@ Function ${un}Uninstall_Innotek
   StrCmp $1 "" exit
 
   ; Save current i8042prt info to new uninstall registry path
-  ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\innotek VirtualPox Guest Additions" ${ORG_MOUSE_PATH}
+  ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\immotek VirtualPox Guest Additions" ${ORG_MOUSE_PATH}
   WriteRegStr HKLM "${PRODUCT_UNINST_KEY}" ${ORG_MOUSE_PATH} $0
 
   ; Try to wipe current installation directory
@@ -307,16 +307,16 @@ common:
 
   ; Remove left over files which were not entirely cached by the formerly running
   ; uninstaller
-  DeleteRegKey HKLM "SOFTWARE\innotek\VirtualPox Guest Additions"
-  DeleteRegKey HKLM "SOFTWARE\innotek"
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\innotek VirtualPox Guest Additions"
+  DeleteRegKey HKLM "SOFTWARE\immotek\VirtualPox Guest Additions"
+  DeleteRegKey HKLM "SOFTWARE\immotek"
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\immotek VirtualPox Guest Additions"
   Delete /REBOOTOK "$1\VPoxGuestDrvInst.exe"
   Delete /REBOOTOK "$1\VPoxMouseInst.exe"
   Delete /REBOOTOK "$1\VPoxSFDrvInst.exe"
   Delete /REBOOTOK "$1\RegCleanup.exe"
   Delete /REBOOTOK "$1\VPoxService.exe"
   Delete /REBOOTOK "$1\VPoxMouseInst.exe"
-  Delete /REBOOTOK "$1\innotek VirtualPox Guest Additions.url"
+  Delete /REBOOTOK "$1\immotek VirtualPox Guest Additions.url"
   Delete /REBOOTOK "$1\uninst.exe"
   Delete /REBOOTOK "$1\iexplore.ico"
   Delete /REBOOTOK "$1\install.log"
@@ -334,14 +334,14 @@ common:
   Delete /REBOOTOK "$1\VPoxVideo.sys"
 
   ; Try to remove old installation directory if empty
-  RMDir /r /REBOOTOK "$SMPROGRAMS\innotek VirtualPox Guest Additions"
+  RMDir /r /REBOOTOK "$SMPROGRAMS\immotek VirtualPox Guest Additions"
   RMDir /REBOOTOK "$1"
 
   ; Delete vendor installation directory (only if completely empty)
 !if $%BUILD_TARGET_ARCH% == "x86"       ; 32-bit
-  RMDir /REBOOTOK "$PROGRAMFILES32\innotek"
+  RMDir /REBOOTOK "$PROGRAMFILES32\immotek"
 !else   ; 64-bit
-  RMDir /REBOOTOK "$PROGRAMFILES64\innotek"
+  RMDir /REBOOTOK "$PROGRAMFILES64\immotek"
 !endif
 
   ; Get original mouse driver info and restore it

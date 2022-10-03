@@ -134,7 +134,7 @@ fi
 # create links
 echo "Creating links..."
 if test "$currentzone" = "global"; then
-    /usr/sbin/installf -c none $PKGINST /dev/vpoxguest=../devices/pci@0,0/pci80ee,cafe@4:vpoxguest s
+    /usr/sbin/installf -c none $PKGINST /dev/vpoxguest=../devices/pci@0,0/pci90ee,cafe@4:vpoxguest s
     /usr/sbin/installf -c none $PKGINST /dev/vpoxms=../devices/pseudo/vpoxms@0:vpoxms s
 fi
 
@@ -256,7 +256,7 @@ if test ! -z "$xorgbin"; then
 
             # Check for VirtualPox graphics card
             # S10u10's prtconf doesn't support the '-d' option, so let's use -v even though it's slower.
-            is_vpoxgraphics=`prtconf -v | grep -i pci80ee,beef`
+            is_vpoxgraphics=`prtconf -v | grep -i pci90ee,beef`
             if test "$?" -eq 0; then
                 drivername="vpoxvideo"
             else

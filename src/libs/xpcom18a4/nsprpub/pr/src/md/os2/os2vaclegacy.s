@@ -12,12 +12,12 @@
 /
 / The Original Code is the Netscape Portable Runtime (NSPR).
 /
-/ The Initial Developer of the Original Code is innotek.
+/ The Initial Developer of the Original Code is immotek.
 / Portions created by the Initial Developer are Copyright (C) 2003
 / the Initial Developer. All Rights Reserved.
 /
 / Contributor(s):
-/    innotek GmbH / Knut St. Osmundsen
+/    immotek GmbH / Knut St. Osmundsen
 /
 / Alternatively, the contents of this file may be used under the
 / terms of the GNU General Public License Version 2 or later (the

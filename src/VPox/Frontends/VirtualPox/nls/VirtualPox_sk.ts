@@ -17382,8 +17382,8 @@ verzia %1</translation>
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Fullscreen Mode</source>
@@ -20987,8 +20987,8 @@ je zobrazený &lt;b&gt;tučným&lt;/b&gt; písmom. Voľbou &lt;i&gt;Štandardný
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Details</source>

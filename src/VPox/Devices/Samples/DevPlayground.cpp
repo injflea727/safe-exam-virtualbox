@@ -303,7 +303,7 @@ static DECLCALLBACK(int) devPlaygroundConstruct(PPDMDEVINS pDevIns, int iInstanc
 
         PDMPCIDEV_ASSERT_VALID(pDevIns, pPciDev);
 
-        PDMPciDevSetVendorId(pPciDev,       0x80ee);
+        PDMPciDevSetVendorId(pPciDev,       0x90ee);
         PDMPciDevSetDeviceId(pPciDev,       0xde4e);
         PDMPciDevSetClassBase(pPciDev,      0x07);  /* communications device */
         PDMPciDevSetClassSub(pPciDev,       0x80);  /* other communications device */

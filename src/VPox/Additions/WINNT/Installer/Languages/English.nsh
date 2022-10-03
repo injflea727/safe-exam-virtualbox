@@ -28,7 +28,7 @@ LangString VPOX_PLATFORM_UNSUPPORTED ${LANG_ENGLISH}                "The Virtual
 LangString VPOX_SUN_FOUND ${LANG_ENGLISH}                           "An old version of the Sun VirtualPox Guest Additions is installed in this virtual machine. This must be uninstalled before the current Guest Additions can be installed.$\r$\n$\r$\nDo you wish to uninstall the old Guest Additions now?"
 LangString VPOX_SUN_ABORTED ${LANG_ENGLISH}                         "The VirtualPox Guest Additions cannot be installed until the old version has been removed.  Please remove it and try again."
 
-LangString VPOX_INNOTEK_FOUND ${LANG_ENGLISH}                       "An old version of the innotek VirtualPox Guest Additions is installed in this virtual machine. This must be uninstalled before the current Guest Additions can be installed.$\r$\n$\r$\nDo you wish to uninstall the old Guest Additions now?"
+LangString VPOX_INNOTEK_FOUND ${LANG_ENGLISH}                       "An old version of the immotek VirtualPox Guest Additions is installed in this virtual machine. This must be uninstalled before the current Guest Additions can be installed.$\r$\n$\r$\nDo you wish to uninstall the old Guest Additions now?"
 LangString VPOX_INNOTEK_ABORTED ${LANG_ENGLISH}                     "The VirtualPox Guest Additions cannot be installed until the old version has been removed.  Please remove it and try again."
 
 LangString VPOX_UNINSTALL_START ${LANG_ENGLISH}                     "Press OK to start the uninstallation process. This may take some time to complete."

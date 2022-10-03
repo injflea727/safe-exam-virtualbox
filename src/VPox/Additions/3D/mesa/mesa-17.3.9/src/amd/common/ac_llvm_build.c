@@ -1110,7 +1110,7 @@ ac_build_ddxy(struct ac_llvm_context *ctx,
 			break;
 		case AC_TID_MASK_TOP:
 			masks[0] = 0x8044;
-			masks[1] = 0x80ee;
+			masks[1] = 0x90ee;
 			break;
 		case AC_TID_MASK_LEFT:
 			masks[0] = 0x80a0;

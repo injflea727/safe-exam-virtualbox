@@ -1564,7 +1564,7 @@ static const smallfelem gmul[2][16][3] = {
       {1, 0, 0, 0}},
      {{0xf9faed0927a43281, 0x5e52c4144103ecbc, 0xc342967aa815c857,
        0x0781b8291c6a220a},
-      {0x5a8343ceeac55f80, 0x88f80eeee54a05e3, 0x97b2a14f12916434,
+      {0x5a8343ceeac55f80, 0x88f90eeee54a05e3, 0x97b2a14f12916434,
        0x690cde8df0151593},
       {1, 0, 0, 0}},
      {{0xaee9c75df7f82f2a, 0x9e4c35874afdf43a, 0xf5622df437371326,

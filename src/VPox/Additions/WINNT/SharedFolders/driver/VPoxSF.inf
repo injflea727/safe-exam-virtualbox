@@ -40,7 +40,7 @@ VPoxMRXNP_CopyFiles = 11 ; system32
 
 ;x86   [VPoxSF]
 ;amd64 [VPoxSF.NTamd64]
-%VPoxSF.DeviceDesc%=VPoxSF_Install,PCI\VEN_80ee&DEV_cafe
+%VPoxSF.DeviceDesc%=VPoxSF_Install,PCI\VEN_90ee&DEV_cafe
 
 [VPoxSF_Install]
 CopyFiles = VPoxSF_CopyFiles, VPoxMRXNP_CopyFiles

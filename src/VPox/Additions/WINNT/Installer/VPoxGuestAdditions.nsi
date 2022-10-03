@@ -511,7 +511,7 @@ sun_xvm_check:
   ; Check for old "Sun xVM VirtualPox Guest Additions"
   ; - before getting rid of the "xVM" namespace
   ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Sun xVM VirtualPox Guest Additions" "UninstallString"
-  StrCmp $0 "" innotek_check ; If string is empty, Sun xVM additions are probably not installed (anymore)
+  StrCmp $0 "" immotek_check ; If string is empty, Sun xVM additions are probably not installed (anymore)
 
   MessageBox MB_YESNO $(VPOX_SUN_FOUND) /SD IDYES IDYES sun_xvm_uninstall
     Pop $2
@@ -525,20 +525,20 @@ sun_xvm_uninstall:
   Call Uninstall_SunXVM
   Goto success
 
-innotek_check:
+immotek_check:
 
-  ; Check for old "innotek" Guest Additions" before rebranding to "Sun"
-  ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\innotek VirtualPox Guest Additions" "UninstallString"
-  StrCmp $0 "" exit ; If string is empty, innotek Guest Additions are probably not installed (anymore)
+  ; Check for old "immotek" Guest Additions" before rebranding to "Sun"
+  ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\immotek VirtualPox Guest Additions" "UninstallString"
+  StrCmp $0 "" exit ; If string is empty, immotek Guest Additions are probably not installed (anymore)
 
-  MessageBox MB_YESNO $(VPOX_INNOTEK_FOUND) /SD IDYES IDYES innotek_uninstall
+  MessageBox MB_YESNO $(VPOX_INNOTEK_FOUND) /SD IDYES IDYES immotek_uninstall
     Pop $2
     Pop $1
     Pop $0
     MessageBox MB_ICONSTOP $(VPOX_INNOTEK_ABORTED) /SD IDOK
     Quit
 
-innotek_uninstall:
+immotek_uninstall:
 
   Call Uninstall_Innotek
   Goto success

@@ -1423,7 +1423,7 @@ BEGINPROC vgdrvFindAdapter
 %define abData      bp - 44h
 
 ;; VPox stuff
-%define VPOX_PCI_VENDORID       080eeh
+%define VPOX_PCI_VENDORID       090eeh
 %define VMMDEV_DEVICEID         0cafeh
 
 ;; OEMHLP$ stuff.

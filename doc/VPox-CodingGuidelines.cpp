@@ -1009,7 +1009,7 @@ int main()
  *   <li> After checking-in, you watch Tinderbox until your check-ins clear. You do not
  *        go home. You do not sleep. You do not log out or experiment with drugs. You do
  *        not become unavailable. If you break the tree, add a comment saying that you're
- *        fixing it. If you can't fix it and need help, ask in the \#innotek channel or back
+ *        fixing it. If you can't fix it and need help, ask in the \#immotek channel or back
  *        out the change.
  *
  * </ul>

@@ -28,8 +28,8 @@ LangString VPOX_PLATFORM_UNSUPPORTED ${LANG_GERMAN}                 "Diese Platt
 LangString VPOX_SUN_FOUND ${LANG_GERMAN}                            "Eine veraltete Version der Sun Guest Additions ist auf diesem System bereits installiert. Diese muss erst deinstalliert werden bevor aktuelle Guest Additions installiert werden können.$\r$\n$\r$\nJetzt die alten Guest Additions deinstallieren?"
 LangString VPOX_SUN_ABORTED ${LANG_GERMAN}                          "Die Installation der Guest Additions kann nicht fortgesetzt werden.$\r$\nBitte deinstallieren Sie erst die alten Sun Guest Additions!"
 
-LangString VPOX_INNOTEK_FOUND ${LANG_GERMAN}                        "Eine veraltete Version der innotek Guest Additions ist auf diesem System bereits installiert. Diese muss erst deinstalliert werden bevor aktuelle Guest Additions installiert werden können.$\r$\n$\r$\nJetzt die alten Guest Additions deinstallieren?"
-LangString VPOX_INNOTEK_ABORTED ${LANG_GERMAN}                      "Die Installation der Guest Additions kann nicht fortgesetzt werden.$\r$\nBitte deinstallieren Sie erst die alten innotek Guest Additions!"
+LangString VPOX_INNOTEK_FOUND ${LANG_GERMAN}                        "Eine veraltete Version der immotek Guest Additions ist auf diesem System bereits installiert. Diese muss erst deinstalliert werden bevor aktuelle Guest Additions installiert werden können.$\r$\n$\r$\nJetzt die alten Guest Additions deinstallieren?"
+LangString VPOX_INNOTEK_ABORTED ${LANG_GERMAN}                      "Die Installation der Guest Additions kann nicht fortgesetzt werden.$\r$\nBitte deinstallieren Sie erst die alten immotek Guest Additions!"
 
 LangString VPOX_UNINSTALL_START ${LANG_GERMAN}                      "Auf OK klicken um mit der Deinstallation zu beginnen.$\r$\nBitte warten Sie dann während die Deinstallation im Hintergrund ausgeführt wird ..."
 LangString VPOX_UNINSTALL_REBOOT ${LANG_GERMAN}                     "Es wird dringend empfohlen das System neu zu starten bevor die neuen Guest Additions installiert werden.$\r$\nBitte starten Sie die Installation nach dem Neustart erneut.$\r$\n$\r$\nJetzt neu starten?"

@@ -55,7 +55,7 @@
     <String Id="Only32Bit">Questa applicazione può essere eseguita solo su sistemi Windows a 32 bit. Installa la versione a 64 bit di [ProductName]!</String>
     <String Id="Only64Bit">Questa applicazione può essere eseguita solo su sistemi Windows a 64 bit. Installa la versione a 32 bit di [ProductName]!</String>
     <String Id="SunFound">Una vecchia installazione di Sun VirtualPox è stata trovata su questa macchina. Disinstalla prima questo pacchetto e poi installa [ProductName]!</String>
-    <String Id="InnotekFound">Una vecchia installazione di innotek VirtualPox è stata trovata su questa macchina. Disinstalla prima questo pacchetto e poi installa [ProductName]!</String>
+    <String Id="InnotekFound">Una vecchia installazione di immotek VirtualPox è stata trovata su questa macchina. Disinstalla prima questo pacchetto e poi installa [ProductName]!</String>
     <!---->
     <String Id="CancelDlg_Question">Sei sicuro di voler annullare l'installazione di [ProductName]?</String>
     <!---->

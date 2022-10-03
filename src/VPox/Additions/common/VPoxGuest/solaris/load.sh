@@ -63,7 +63,7 @@ set -e
 sed -e '/name=vpoxguest/d' /etc/devlink.tab > /tmp/devlink.vpox
 echo -e "type=ddi_pseudo;name=vpoxguest\t\D" >> /tmp/devlink.vpox
 $SUDO cp /tmp/devlink.vpox /etc/devlink.tab
-$SUDO ln -fs ../devices/pci@0,0/pci80ee,cafe@4:vpoxguest /dev/vpoxguest
+$SUDO ln -fs ../devices/pci@0,0/pci90ee,cafe@4:vpoxguest /dev/vpoxguest
 set +e
 
 #
@@ -80,7 +80,7 @@ $SUDO cp "${DRVFILE}"      /platform/i86pc/kernel/drv/amd64/
 set +e
 
 $SUDO rem_drv $DRVNAME
-if $SUDO add_drv -ipci80ee,cafe -m"* 0666 root sys" -v $DRVNAME; then
+if $SUDO add_drv -ipci90ee,cafe -m"* 0666 root sys" -v $DRVNAME; then
     sync
     $SUDO /usr/sbin/devfsadm -i $DRVNAME
     MY_RC=0

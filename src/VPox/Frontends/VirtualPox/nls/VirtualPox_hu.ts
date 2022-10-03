@@ -25561,7 +25561,7 @@ to the system default language.&lt;/qt&gt;
         <translation type="obsolete">VirtualPox regisztrálása</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that innotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, innotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
+        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that immotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, immotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
         <translation type="obsolete">&lt;p&gt;Kérlek, töltsd ki ezt a regisztrációs űrlapot, hogy tudjuk azt, hogy a felhasználóink táborába tartozol, valamint, hogy informálhassunk téged a különböző hírekről, újdonságokról.&lt;/p&gt;&lt;p&gt;Add meg speciális karakterek nélkül a neved, illetve az e-mail címedet. Az Innotek cég az adataidat kizárólag statisztikai célokra, és a te informálásodra használja, harmadik fél számára ki nem adja. A személyes adatok felhasználásának és kezelésének részleteiről a kézikönyv &lt;b&gt;Adatvédelmi nyilatkozat&lt;/b&gt; részéből vagy a VirtualPox weboldalának &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Adatvédelmi nyilatkozat&lt;/a&gt; oldalán tájékozódhatsz.&lt;/p&gt;</translation>
     </message>
     <message>
@@ -25585,7 +25585,7 @@ to the system default language.&lt;/qt&gt;
         <translation type="obsolete">Ne használjátok ezt az információt a ka&amp;pcsolatfelvételhez</translation>
     </message>
     <message>
-        <source>Check this box if you do not want to receive mail from innotek at the e-mail address specified above.</source>
+        <source>Check this box if you do not want to receive mail from immotek at the e-mail address specified above.</source>
         <translation type="obsolete">Akkor engedélyezd ezt, ha nem szeretnél levelet kapni az Innotektől erre az e-mail címre.</translation>
     </message>
     <message>
@@ -25726,8 +25726,8 @@ to the system default language.&lt;/qt&gt;
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Details</source>

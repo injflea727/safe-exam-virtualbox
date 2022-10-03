@@ -24,7 +24,7 @@
             <key>CFBundleIdentifier</key>          <string>org.virtualpox.kext.VPoxSF</string>
             <key>IOKitDebug</key>                  <integer>65535</integer>
             <key>IOProviderClass</key>             <string>IOPCIDevice</string>
-            <key>IONameMatch</key>                 <string>pci80ee,cafe</string>
+            <key>IONameMatch</key>                 <string>pci90ee,cafe</string>
         </dict>
     </dict>
 

@@ -24708,8 +24708,8 @@ na výchozí jazyk systému.&lt;/qt&gt;
         <translation type="obsolete">Registrační dialog VirtualPoxu</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that innotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, innotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
-        <translation type="obsolete">&lt;p&gt;prosíme vyplňte registrační formulář a dejte nám vědět že používáte VirtualPox a, volitelně, budete informováni o novinkách a aktualizacích VirtualPoxu.&lt;/p&gt;&lt;p&gt;Vložte vaše celé jméno pomocí latisnké abecedy a váš e-mail do políčka níže. Vězte že innotek použije tyto informace pouze získávání statistik o používání produktu a pro odesílání novinek o Virtualpoxu. Innotek nikdy nepředá vaše data třetím stranám. Detailní informace o tom, jak používáme vaše osobní data můlžete nalézt v sekci &lt;b&gt;Privacy Policy&lt;/b&gt; manuálu VirtualPoxu, nebo na webové stránce &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; VirtualPoxu.&lt;/p&gt;</translation>
+        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that immotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, immotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
+        <translation type="obsolete">&lt;p&gt;prosíme vyplňte registrační formulář a dejte nám vědět že používáte VirtualPox a, volitelně, budete informováni o novinkách a aktualizacích VirtualPoxu.&lt;/p&gt;&lt;p&gt;Vložte vaše celé jméno pomocí latisnké abecedy a váš e-mail do políčka níže. Vězte že immotek použije tyto informace pouze získávání statistik o používání produktu a pro odesílání novinek o Virtualpoxu. Innotek nikdy nepředá vaše data třetím stranám. Detailní informace o tom, jak používáme vaše osobní data můlžete nalézt v sekci &lt;b&gt;Privacy Policy&lt;/b&gt; manuálu VirtualPoxu, nebo na webové stránce &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; VirtualPoxu.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;Name</source>
@@ -24728,8 +24728,8 @@ na výchozí jazyk systému.&lt;/qt&gt;
         <translation type="obsolete">&amp;Prosím nepoužívejte tyto informace pro mé kontaktování</translation>
     </message>
     <message>
-        <source>Check this box if you do not want to receive mail from innotek at the e-mail address specified above.</source>
-        <translation type="obsolete">Zaškrtněte pokud si nepřejete přijímat maily od innoteku na výše uvedenou e-mailovou adresu.</translation>
+        <source>Check this box if you do not want to receive mail from immotek at the e-mail address specified above.</source>
+        <translation type="obsolete">Zaškrtněte pokud si nepřejete přijímat maily od immoteku na výše uvedenou e-mailovou adresu.</translation>
     </message>
     <message>
         <source>Welcome to the VirtualPox Registration Form!</source>

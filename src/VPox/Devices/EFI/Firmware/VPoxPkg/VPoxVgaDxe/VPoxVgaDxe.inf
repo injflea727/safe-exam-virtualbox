@@ -61,7 +61,7 @@
 
   ENTRY_POINT                    = InitializeVPoxVga
 
-  PCI_VENDOR_ID  = 0x80EE
+  PCI_VENDOR_ID  = 0x90EE
   PCI_DEVICE_ID  = 0xBEEF
   PCI_CLASS_CODE = 0x030000
   PCI_REVISION   = 0x00

@@ -110,8 +110,8 @@
         Privileged
     </Condition>
 
-    <!-- Detect old innotek installation -->
-    <!-- Force a manual uninstall of an already installed innotek VirtualPox version first -->
+    <!-- Detect old immotek installation -->
+    <!-- Force a manual uninstall of an already installed immotek VirtualPox version first -->
     <Property Id="VPOXINNOTEK">
         <RegistrySearch Id="RegSearchInnotekVersion" Root="HKLM" Key="SOFTWARE\Innotek\VirtualPox" Name="Version" Type="raw" Win64="$(var.Property_Win64)"/>
     </Property>

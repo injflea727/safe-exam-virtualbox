@@ -233,10 +233,10 @@ ALIASES                = "note=@remark" \
                          "interface_method_impl{3}=\3. Implements \1 method \link \1::\2 \2 \endlink @copydoc \1::\2 " \
                          "callback_method_impl{1}=Implements the callback \link \1 \1 \endlink @copydoc \1 " \
                          "callback_method_impl{2}=\2. Implements the callback \link \1 \1 \endlink " \
-                         "bugref{1}=https://xtracker.innotek.de/index.php?bug=\1" \
-                         "bugref{2}=https://xtracker.innotek.de/index.php?bug=\1, https://xtracker.innotek.de/index.php?bug=\2" \
-                         "bugref{3}=https://xtracker.innotek.de/index.php?bug=\1, https://xtracker.innotek.de/index.php?bug=\2, https://xtracker.innotek.de/index.php?bug=\3" \
-                         "bugref{4}=https://xtracker.innotek.de/index.php?bug=\1, https://xtracker.innotek.de/index.php?bug=\2, https://xtracker.innotek.de/index.php?bug=\3, https://xtracker.innotek.de/index.php?bug=\4" \
+                         "bugref{1}=https://xtracker.immotek.de/index.php?bug=\1" \
+                         "bugref{2}=https://xtracker.immotek.de/index.php?bug=\1, https://xtracker.immotek.de/index.php?bug=\2" \
+                         "bugref{3}=https://xtracker.immotek.de/index.php?bug=\1, https://xtracker.immotek.de/index.php?bug=\2, https://xtracker.immotek.de/index.php?bug=\3" \
+                         "bugref{4}=https://xtracker.immotek.de/index.php?bug=\1, https://xtracker.immotek.de/index.php?bug=\2, https://xtracker.immotek.de/index.php?bug=\3, https://xtracker.immotek.de/index.php?bug=\4" \
                          "ticketref{1}=http://www.virtualpox.org/ticket/\1" \
                          "ticketref{2}=http://www.virtualpox.org/ticket/\1, http://www.virtualpox.org/ticket/\2" \
                          "ticketref{3}=http://www.virtualpox.org/ticket/\1, http://www.virtualpox.org/ticket/\2, http://www.virtualpox.org/ticket/\3" \

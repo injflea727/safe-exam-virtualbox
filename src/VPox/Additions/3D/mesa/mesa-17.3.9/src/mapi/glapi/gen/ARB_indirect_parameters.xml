@@ -5,7 +5,7 @@
 
 <category name="GL_ARB_draw_indirect" number="154">
 
-    <enum name="PARAMETER_BUFFER_ARB"                   value="0x80EE"/>
+    <enum name="PARAMETER_BUFFER_ARB"                   value="0x90EE"/>
     <enum name="PARAMETER_BUFFER_BINDING_ARB"           value="0x80EF"/>
 
     <function name="MultiDrawArraysIndirectCountARB" exec="dynamic">

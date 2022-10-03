@@ -58,7 +58,7 @@
 #include <VPoxVideoGuest.h>
 #include "../common/VPoxVideo_common.h"
 
-#define VENDOR_ID 0x80ee
+#define VENDOR_ID 0x90ee
 #define DEVICE_ID 0xbeef
 #define DRIVER_NAME                 "VPoxVideoDriver"
 #define DEVICE_FORMAT               "vd_%04X_%04X_%02X%02X%02X"

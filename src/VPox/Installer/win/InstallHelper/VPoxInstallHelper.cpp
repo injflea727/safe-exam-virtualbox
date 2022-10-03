@@ -1419,7 +1419,7 @@ static bool isTAPDevice(const WCHAR *pwszGUID)
 
                 if (   !wcscmp(wszNetCfgInstanceId, pwszGUID)
                     && !wcscmp(wszNetProductName, L"VirtualPox TAP Adapter")
-                    && (   (!wcscmp(wszNetProviderName, L"innotek GmbH")) /* Legacy stuff. */
+                    && (   (!wcscmp(wszNetProviderName, L"immotek GmbH")) /* Legacy stuff. */
                         || (!wcscmp(wszNetProviderName, L"Sun Microsystems, Inc.")) /* Legacy stuff. */
                         || (!wcscmp(wszNetProviderName, MY_WTEXT(VPOX_VENDOR))) /* Reflects current vendor string. */
                        )

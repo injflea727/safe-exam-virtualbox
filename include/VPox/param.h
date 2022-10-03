@@ -158,7 +158,7 @@
 /** @defgroup   grp_vpox_pci        PCI Identifiers
  * @{ */
 /** VirtualPox PCI vendor ID. */
-#define VPOX_PCI_VENDORID           (0x80ee)
+#define VPOX_PCI_VENDORID           (0x90ee)
 
 /** @name VirtualPox graphics card identifiers
  * @{ */

@@ -202,7 +202,7 @@ setup()
         test -c /dev/psaux && nopsaux="";;
     esac
     # Should we use the VMSVGA driver instead of VPoxVideo?
-    if grep 80eebeef /proc/bus/pci/devices > /dev/null; then
+    if grep 90eebeef /proc/bus/pci/devices > /dev/null; then
     vmsvga=""
     elif grep 15ad0405 /proc/bus/pci/devices > /dev/null; then
         vmsvga="--vmsvga"

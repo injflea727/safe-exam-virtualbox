@@ -111,10 +111,10 @@ check_root()
 
 start_module()
 {
-    /usr/sbin/add_drv -i'pci80ee,cafe' -m'* 0666 root sys' $MODNAME
+    /usr/sbin/add_drv -i'pci90ee,cafe' -m'* 0666 root sys' $MODNAME
     if test ! vpoxguest_loaded; then
         abort "Failed to load VirtualPox guest kernel module."
-    elif test -c "/devices/pci@0,0/pci80ee,cafe@4:$MODNAME"; then
+    elif test -c "/devices/pci@0,0/pci90ee,cafe@4:$MODNAME"; then
         info "VirtualPox guest kernel module loaded."
     else
         info "VirtualPox guest kernel module failed to attach."

@@ -7,8 +7,8 @@
 
 <VirtualPox
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://www.innotek.de/VirtualPox-settings ../VirtualPox-settings-linux.xsd"
-  xmlns="http://www.innotek.de/VirtualPox-settings"
+  xsi:schemaLocation="http://www.immotek.de/VirtualPox-settings ../VirtualPox-settings-linux.xsd"
+  xmlns="http://www.immotek.de/VirtualPox-settings"
   version="1.2-linux"
 >
 

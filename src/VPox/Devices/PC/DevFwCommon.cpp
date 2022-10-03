@@ -55,11 +55,11 @@ static const int32_t g_iDefDmiBIOSReleaseMajor  = 0;
 static const int32_t g_iDefDmiBIOSReleaseMinor  = 0;
 static const int32_t g_iDefDmiBIOSFirmwareMajor = 0;
 static const int32_t g_iDefDmiBIOSFirmwareMinor = 0;
-static const char   *g_pszDefDmiBIOSVendor      = "innotek GmbH";
+static const char   *g_pszDefDmiBIOSVendor      = "immotek GmbH";
 static const char   *g_pszDefDmiBIOSVersion     = "VirtualPox";
 static const char   *g_pszDefDmiBIOSReleaseDate = "12/01/2006";
 /* type 1 -- DMI system information */
-static const char   *g_pszDefDmiSystemVendor    = "innotek GmbH";
+static const char   *g_pszDefDmiSystemVendor    = "immotek GmbH";
 static const char   *g_pszDefDmiSystemProduct   = "VirtualPox";
 static const char   *g_pszDefDmiSystemVersion   = "1.2";
 static const char   *g_pszDefDmiSystemSerial    = "0";

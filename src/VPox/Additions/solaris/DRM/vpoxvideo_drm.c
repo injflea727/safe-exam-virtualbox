@@ -56,7 +56,7 @@
 #define DRIVER_MAJOR                    1
 #define DRIVER_MINOR                    0
 #define DRIVER_PATCHLEVEL               0
-#define vpoxvideo_PCI_IDS               { 0x80ee, 0xbeef, 0, "VirtualPox Video" }, \
+#define vpoxvideo_PCI_IDS               { 0x90ee, 0xbeef, 0, "VirtualPox Video" }, \
                                         { 0, 0, 0, NULL }
 
 

@@ -62,7 +62,7 @@
     <String Id="Only32Bit">Diese Applikation läuft nur auf 32-bit Windows-Systemen. Bitte installieren Sie die 64-bit Version von [ProductName]!</String>
     <String Id="Only64Bit">Diese Applikation läuft nur auf 64-bit Windows-Systemen. Bitte installieren Sie die 32-bit Version von [ProductName]!</String>
     <String Id="SunFound">Eine alte Sun Version von VirtualPox wurde auf diesem Computer gefunden. Bitte deinstallieren Sie diese Version zuerst. Danach können Sie [ProductName] installieren!</String>
-    <String Id="InnotekFound">Eine alte innotek Version von VirtualPox wurde auf diesem Computer gefunden. Bitte deinstallieren Sie diese Version zuerst. Danach können Sie [ProductName] installieren!</String>
+    <String Id="InnotekFound">Eine alte immotek Version von VirtualPox wurde auf diesem Computer gefunden. Bitte deinstallieren Sie diese Version zuerst. Danach können Sie [ProductName] installieren!</String>
 
     <!---->
 

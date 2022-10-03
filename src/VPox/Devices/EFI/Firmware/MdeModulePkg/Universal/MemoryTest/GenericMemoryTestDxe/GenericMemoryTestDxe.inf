@@ -11,7 +11,7 @@
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = GenericMemoryTestDxe
   MODULE_UNI_FILE                = GenericMemoryTestDxe.uni
-  FILE_GUID                      = 9C1080EE-D02E-487f-9432-F3BF086EC180
+  FILE_GUID                      = 9C1090EE-D02E-487f-9432-F3BF086EC180
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
 

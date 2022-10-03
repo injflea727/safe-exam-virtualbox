@@ -17420,8 +17420,8 @@ Versiunea %1</translation>
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Fullscreen Mode</source>
@@ -20802,8 +20802,8 @@ Folosiți meniul contextual sau butaonele din dreapta pentru a adâuga sau șter
         <translation type="obsolete">Dialog înregistrare VirtualPox</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that innotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, innotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
-        <translation type="obsolete">&lt;p&gt;Vă rugăm completați formularul de înregistrare pentru ca noi să știm că folosiți VirtualPox și, opțional, să vă ținem la curent cu noutățile și actualizările VirtualPox. &lt;/p&gt;&lt;p&gt;Introduceți numele dvs complet folosind caractere Latine și adresa dvs de e-mail în câmpurile de mai jos. Notați faptul că innotek va folosi aceste informații numai pentru a obține statistici de utilizare a produsului și a vă trimite newsletter. În particular, innotek nu va retransmite niciodată datele dvs către terți. Informații detaliate despre cum folosim datele dvs personale pot fi găsite în secțiunea &lt;b&gt;Politică de intimiate&lt;/b&gt; din Manualul VirtualPox sau pe pagina &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; de site-ul web VirtualPox.&lt;/p&gt;</translation>
+        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that immotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, immotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
+        <translation type="obsolete">&lt;p&gt;Vă rugăm completați formularul de înregistrare pentru ca noi să știm că folosiți VirtualPox și, opțional, să vă ținem la curent cu noutățile și actualizările VirtualPox. &lt;/p&gt;&lt;p&gt;Introduceți numele dvs complet folosind caractere Latine și adresa dvs de e-mail în câmpurile de mai jos. Notați faptul că immotek va folosi aceste informații numai pentru a obține statistici de utilizare a produsului și a vă trimite newsletter. În particular, immotek nu va retransmite niciodată datele dvs către terți. Informații detaliate despre cum folosim datele dvs personale pot fi găsite în secțiunea &lt;b&gt;Politică de intimiate&lt;/b&gt; din Manualul VirtualPox sau pe pagina &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; de site-ul web VirtualPox.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;Name</source>
@@ -20826,8 +20826,8 @@ Folosiți meniul contextual sau butaonele din dreapta pentru a adâuga sau șter
         <translation type="obsolete">Nu folosiți aceste informații &amp;pentru a mă contacta</translation>
     </message>
     <message>
-        <source>Check this box if you do not want to receive mail from innotek at the e-mail address specified above.</source>
-        <translation type="obsolete">Bifați această căsuță dacă nu doriți să recepționați mail de la innotek la adresa de e-mail specificată mai sus.</translation>
+        <source>Check this box if you do not want to receive mail from immotek at the e-mail address specified above.</source>
+        <translation type="obsolete">Bifați această căsuță dacă nu doriți să recepționați mail de la immotek la adresa de e-mail specificată mai sus.</translation>
     </message>
     <message>
         <source>Welcome to the VirtualPox Registration Form!</source>
@@ -20959,8 +20959,8 @@ Folosiți meniul contextual sau butaonele din dreapta pentru a adâuga sau șter
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Details</source>

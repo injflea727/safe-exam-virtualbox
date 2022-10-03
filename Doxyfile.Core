@@ -277,16 +277,16 @@ ALIASES += opdone="-------------------------"
 
 
 # bugref - xTracker bug reference, takes one to four bug numbers.
-ALIASES               += bugref{1}="https://xtracker.innotek.de/index.php?bug=\1"
-ALIASES               += bugref{2}="https://xtracker.innotek.de/index.php?bug=\1, \
-https://xtracker.innotek.de/index.php?bug=\2"
-ALIASES               += bugref{3}="https://xtracker.innotek.de/index.php?bug=\1, \
-https://xtracker.innotek.de/index.php?bug=\2, \
-https://xtracker.innotek.de/index.php?bug=\3"
-ALIASES               += bugref{4}="https://xtracker.innotek.de/index.php?bug=\1, \
-https://xtracker.innotek.de/index.php?bug=\2, \
-https://xtracker.innotek.de/index.php?bug=\3, \
-https://xtracker.innotek.de/index.php?bug=\4"
+ALIASES               += bugref{1}="https://xtracker.immotek.de/index.php?bug=\1"
+ALIASES               += bugref{2}="https://xtracker.immotek.de/index.php?bug=\1, \
+https://xtracker.immotek.de/index.php?bug=\2"
+ALIASES               += bugref{3}="https://xtracker.immotek.de/index.php?bug=\1, \
+https://xtracker.immotek.de/index.php?bug=\2, \
+https://xtracker.immotek.de/index.php?bug=\3"
+ALIASES               += bugref{4}="https://xtracker.immotek.de/index.php?bug=\1, \
+https://xtracker.immotek.de/index.php?bug=\2, \
+https://xtracker.immotek.de/index.php?bug=\3, \
+https://xtracker.immotek.de/index.php?bug=\4"
 
 # ticketref - Track ticket reference, takes one to four ticket numbers.
 ALIASES               += ticketref{1}="http://www.virtualpox.org/ticket/\1"

@@ -83,7 +83,7 @@ Private Sub Form_Load()
     
     ' Setup debug logging (available only in debug builds)
     
-    'PATH_OUT_BASE = "D:/Coding/innotek/vpox/out"
+    'PATH_OUT_BASE = "D:/Coding/immotek/vpox/out"
     
     'SetEnvironmentVariable "VPOX_LOG", "main.e.l.f + gui.e.l.f"
     'SetEnvironmentVariable "VPOX_LOG_FLAGS", "time tid thread"

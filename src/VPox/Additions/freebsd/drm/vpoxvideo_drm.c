@@ -67,7 +67,7 @@ __FBSDID("$FreeBSD$");
 
 /** @todo Take PCI IDs from VPox/param.h; VPOX_VESA_VENDORID,
  *        VPOX_VESA_DEVICEID. */
-#define vpoxvideo_PCI_IDS           { 0x80ee, 0xbeef, 0, "VirtualPox Video" }, \
+#define vpoxvideo_PCI_IDS           { 0x90ee, 0xbeef, 0, "VirtualPox Video" }, \
                                     { 0, 0, 0, NULL }
 
 static drm_pci_id_list_t vpoxvideo_pciidlist[] = {

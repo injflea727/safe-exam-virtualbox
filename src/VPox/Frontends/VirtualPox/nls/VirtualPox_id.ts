@@ -20716,8 +20716,8 @@ Versi %1</translation>
         <translation type="obsolete">OSE VirtualPox</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Fullscreen Mode</source>
@@ -24789,8 +24789,8 @@ ke nilai awal bahasa sistem.&lt;/qt&gt;
         <translation type="obsolete">Dialog Registrasi VirtualPox</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that innotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, innotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
-        <translation type="obsolete">&lt;p&gt;Mohon isi formulir registrasi ini agar kami dapat mengetahui bahwa Anda menggunakan VirtualPox dans ecara opsional, untuk menjaga Anda tetap terinformasikan mengenai berita dan update VirtualPox.&lt;/p&gt;&lt;p&gt;Masukkan nama lengkap Anda menggunakan karakter latin dan alamat e-mail Anda pada field di bawah. Mohon perhatikan bahwa innotek akan menggunakan informasi ini hanya untuk mengumpulkan statistik penggunaan produkdan mengirimi Anda newsletter VirtualPox. Secara umum, innotek tidak akan pernah memberikan data Anda pada pihak ketiga. Keterangan lebih lengkap mengenai bagaimana kami menggunakan data pribadi Anda dapat ditemukan pada bagian &lt;b&gt;Privacy Policy&lt;/b&gt; dalam manual VirtualPox atau pada halaman &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; dalam website VirtualPox.&lt;/p&gt;</translation>
+        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that immotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, immotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
+        <translation type="obsolete">&lt;p&gt;Mohon isi formulir registrasi ini agar kami dapat mengetahui bahwa Anda menggunakan VirtualPox dans ecara opsional, untuk menjaga Anda tetap terinformasikan mengenai berita dan update VirtualPox.&lt;/p&gt;&lt;p&gt;Masukkan nama lengkap Anda menggunakan karakter latin dan alamat e-mail Anda pada field di bawah. Mohon perhatikan bahwa immotek akan menggunakan informasi ini hanya untuk mengumpulkan statistik penggunaan produkdan mengirimi Anda newsletter VirtualPox. Secara umum, immotek tidak akan pernah memberikan data Anda pada pihak ketiga. Keterangan lebih lengkap mengenai bagaimana kami menggunakan data pribadi Anda dapat ditemukan pada bagian &lt;b&gt;Privacy Policy&lt;/b&gt; dalam manual VirtualPox atau pada halaman &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; dalam website VirtualPox.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;Name</source>
@@ -24813,8 +24813,8 @@ ke nilai awal bahasa sistem.&lt;/qt&gt;
         <translation type="obsolete">&amp;Mohon jangan menggunakan informasi ini untuk menghubungi saya</translation>
     </message>
     <message>
-        <source>Check this box if you do not want to receive mail from innotek at the e-mail address specified above.</source>
-        <translation type="obsolete">Cek kotak ini bila Anda tidak ingin menerima e-mail dari innotek pada alamat e-mail yang disebutkan diatas.</translation>
+        <source>Check this box if you do not want to receive mail from immotek at the e-mail address specified above.</source>
+        <translation type="obsolete">Cek kotak ini bila Anda tidak ingin menerima e-mail dari immotek pada alamat e-mail yang disebutkan diatas.</translation>
     </message>
     <message>
         <source>Welcome to the VirtualPox Registration Form!</source>
@@ -24890,8 +24890,8 @@ ke nilai awal bahasa sistem.&lt;/qt&gt;
         <translation type="obsolete">OSE VirtualPox</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Details</source>

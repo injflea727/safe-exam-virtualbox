@@ -4473,7 +4473,7 @@ static DECLCALLBACK(int) vmmdevConstruct(PPDMDEVINS pDevIns, int iInstance, PCFG
     PDMPCIDEV_ASSERT_VALID(pDevIns, pPciDev);
 
     /* PCI vendor, just a free bogus value */
-    PDMPciDevSetVendorId(pPciDev,     0x80ee);
+    PDMPciDevSetVendorId(pPciDev,     0x90ee);
     /* device ID */
     PDMPciDevSetDeviceId(pPciDev,     0xcafe);
     /* class sub code (other type of system peripheral) */

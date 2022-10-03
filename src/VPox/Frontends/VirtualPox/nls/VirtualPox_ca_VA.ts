@@ -20560,8 +20560,8 @@ Versió %1</translation>
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Fullscreen Mode</source>
@@ -24620,8 +24620,8 @@ un disc dur per connectar a la ranura remarcada actualment.&lt;/a&gt;</translati
 <context>
     <name>VPoxRegistrationDlg</name>
     <message>
-        <source>Check this box if you do not want to receive mail from innotek at the e-mail address specified above.</source>
-        <translation type="obsolete">Marqueu esta casella si no voleu rebre correus d&apos;innotek a l&apos;adreça de correu especificada.</translation>
+        <source>Check this box if you do not want to receive mail from immotek at the e-mail address specified above.</source>
+        <translation type="obsolete">Marqueu esta casella si no voleu rebre correus d&apos;immotek a l&apos;adreça de correu especificada.</translation>
     </message>
     <message>
         <source>&amp;Confirm</source>
@@ -24656,8 +24656,8 @@ un disc dur per connectar a la ranura remarcada actualment.&lt;/a&gt;</translati
         <translation type="obsolete">&amp;No feu servir esta informació per contactar amb mi</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Please fill out this registration form to let vos know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that innotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, innotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
-        <translation type="obsolete">&lt;p&gt;Ompliu este formulari de registre per fer-nos saber que fas servir el VirtualPox i, opcionalment, per mantindre&apos;t informat sobre noves versions i actualitzacions.&lt;/p&gt;&lt;p&gt;Introduïu als camps següents el vostre nom complet fent servir caràcters llatins i la vostra adreça de correu. Teniu en compte que innotek farà servir esta informació només per recopilar estadístiques d&apos;ús del producte i per informar-vos de novetats. Innotek mai no deixarà les vostres dades a terceres parts. La informació detallada de l&apos;ús de les vostres dades podeu trobar-lo a la secció del manual de VirtualPox de &lt;b&gt;Política de Privacitat&lt;/b&gt; o a la secció &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Política de privacitat&lt;/a&gt; de la pàgina de VirtualPox.&lt;/P&gt;</translation>
+        <source>&lt;p&gt;Please fill out this registration form to let vos know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that immotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, immotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
+        <translation type="obsolete">&lt;p&gt;Ompliu este formulari de registre per fer-nos saber que fas servir el VirtualPox i, opcionalment, per mantindre&apos;t informat sobre noves versions i actualitzacions.&lt;/p&gt;&lt;p&gt;Introduïu als camps següents el vostre nom complet fent servir caràcters llatins i la vostra adreça de correu. Teniu en compte que immotek farà servir esta informació només per recopilar estadístiques d&apos;ús del producte i per informar-vos de novetats. Innotek mai no deixarà les vostres dades a terceres parts. La informació detallada de l&apos;ús de les vostres dades podeu trobar-lo a la secció del manual de VirtualPox de &lt;b&gt;Política de Privacitat&lt;/b&gt; o a la secció &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Política de privacitat&lt;/a&gt; de la pàgina de VirtualPox.&lt;/P&gt;</translation>
     </message>
     <message>
         <source>VirtualPox Registration Dialog</source>
@@ -24893,8 +24893,8 @@ un disc dur per connectar a la ranura remarcada actualment.&lt;/a&gt;</translati
         <translation type="obsolete">&amp;Ajuda</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Machine</source>

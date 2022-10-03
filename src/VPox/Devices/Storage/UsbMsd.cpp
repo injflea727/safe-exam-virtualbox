@@ -46,7 +46,7 @@
 
 /** @name USB MSD vendor and product IDs
  * @{ */
-#define VPOX_USB_VENDOR             0x80EE
+#define VPOX_USB_VENDOR             0x90EE
 #define USBMSD_PID_HD               0x0030
 #define USBMSD_PID_CD               0x0031
 /** @} */

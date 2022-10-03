@@ -17859,8 +17859,8 @@ Versão %1</translation>
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Fullscreen Mode</source>
@@ -21435,8 +21435,8 @@ para ligar ao encaixe actualmente destacado.&lt;/qt&gt;
         <translation type="obsolete">Diálogo de Registo Virtualpox</translation>
     </message>
     <message>
-        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that innotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, innotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
-        <translation type="obsolete">&lt;p&gt;Por favor preencha este formulário para que possamos saber que usa o VirtualPox e, opcionalmente, para o manter informado acerca de notícias e actualizações VirtualPox.&lt;/p&gt;&lt;p&gt;Indique o seu nome completo (usando caracteres latinos) e o seu endereço electrónico nos campos abaixo. Note que a innotek usará esta informação apenas para recolha de estatísticas acerca do uso do produto e para lhe enviar notícias do VirtualPox. Em particular, a innotek nunca irá disponibilizar os seus dados a terceiros. Informação detalhada acerca de como usamos os seus dados pessoais poderá ser encontrada na secção &lt;b&gt;Política de Privacidade&lt;/b&gt; do Manual do VirtualPox Manual ou na página &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Política de Privacidade&lt;/a&gt; do sítio do VirtualPox.&lt;/p&gt;</translation>
+        <source>&lt;p&gt;Please fill out this registration form to let us know that you use VirtualPox and, optionally, to keep you informed about VirtualPox news and updates.&lt;/p&gt;&lt;p&gt;Enter your full name using Latin characters and your e-mail address to the fields below. Please note that immotek will use this information only to gather product usage statistics and to send you VirtualPox newsletters. In particular, immotek will never pass your data to third parties. Detailed information about how we use your personal data can be found in the &lt;b&gt;Privacy Policy&lt;/b&gt; section of the VirtualPox Manual or on the &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Privacy Policy&lt;/a&gt; page of the VirtualPox web-site.&lt;/p&gt;</source>
+        <translation type="obsolete">&lt;p&gt;Por favor preencha este formulário para que possamos saber que usa o VirtualPox e, opcionalmente, para o manter informado acerca de notícias e actualizações VirtualPox.&lt;/p&gt;&lt;p&gt;Indique o seu nome completo (usando caracteres latinos) e o seu endereço electrónico nos campos abaixo. Note que a immotek usará esta informação apenas para recolha de estatísticas acerca do uso do produto e para lhe enviar notícias do VirtualPox. Em particular, a immotek nunca irá disponibilizar os seus dados a terceiros. Informação detalhada acerca de como usamos os seus dados pessoais poderá ser encontrada na secção &lt;b&gt;Política de Privacidade&lt;/b&gt; do Manual do VirtualPox Manual ou na página &lt;a href=https://www.virtualpox.org/wiki/PrivacyPolicy&gt;Política de Privacidade&lt;/a&gt; do sítio do VirtualPox.&lt;/p&gt;</translation>
     </message>
     <message>
         <source>&amp;Name</source>
@@ -21459,8 +21459,8 @@ para ligar ao encaixe actualmente destacado.&lt;/qt&gt;
         <translation type="obsolete">&amp;Por favor não use estes dados para me contactar</translation>
     </message>
     <message>
-        <source>Check this box if you do not want to receive mail from innotek at the e-mail address specified above.</source>
-        <translation type="obsolete">Marque esta caixa caso não queira receber correio da innotek no endereço electrónico indicado.</translation>
+        <source>Check this box if you do not want to receive mail from immotek at the e-mail address specified above.</source>
+        <translation type="obsolete">Marque esta caixa caso não queira receber correio da immotek no endereço electrónico indicado.</translation>
     </message>
     <message>
         <source>Welcome to the VirtualPox Registration Form!</source>
@@ -21544,8 +21544,8 @@ para ligar ao encaixe actualmente destacado.&lt;/qt&gt;
         <translation type="obsolete">VirtualPox OSE</translation>
     </message>
     <message>
-        <source>innotek VirtualPox</source>
-        <translation type="obsolete">innotek VirtualPox</translation>
+        <source>immotek VirtualPox</source>
+        <translation type="obsolete">immotek VirtualPox</translation>
     </message>
     <message>
         <source>&amp;Details</source>

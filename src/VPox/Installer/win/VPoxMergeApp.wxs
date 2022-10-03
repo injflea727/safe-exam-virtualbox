@@ -31,7 +31,7 @@
          Major upgrade  change          change              change          don't change -->
 
     <!-- Old product ID: <Product Id="B59FE77B-738F-4f1c-AB48-3104895AF676"
-         Old upgrade code of innotek: UpgradeCode="F5FFAEBF-97AE-4038-8F91-4DE719456127" -->
+         Old upgrade code of immotek: UpgradeCode="F5FFAEBF-97AE-4038-8F91-4DE719456127" -->
 
     <Module Id="msm_VPoxApp"
             Language="!(loc.LANG)"

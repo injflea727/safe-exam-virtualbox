@@ -658,7 +658,7 @@ static void pci_bios_init_device(PPDMDEVINS pDevIns, PDEVPCIROOT pGlobals, PDEVP
                             bool fPrefetch =    (u8ResourceType & ((uint8_t)(PCI_ADDRESS_SPACE_MEM_PREFETCH | PCI_ADDRESS_SPACE_IO)))
                                              == PCI_ADDRESS_SPACE_MEM_PREFETCH;
 
-                            if (devclass == 0x0300 && (vendor_id == 0x80ee || vendor_id == 0x15ad) && fPrefetch)
+                            if (devclass == 0x0300 && (vendor_id == 0x90ee || vendor_id == 0x15ad) && fPrefetch)
                             {
                                 /* VGA: map frame buffer to default Bochs VBE address */
                                 paddr = &uPciBiosSpecialVRAM;

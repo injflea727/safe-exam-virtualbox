@@ -348,7 +348,7 @@ int __cdecl main(int argc, char **argv)
 
     usbMonInsertFilter(0x0529, 0x0514, 0x0100, &pId1);
     usbMonInsertFilter(0x0A16, 0x2499, 0x0100, &pId2);
-    usbMonInsertFilter(0x80EE, 0x0030, 0x0110, &pId3);
+    usbMonInsertFilter(0x90EE, 0x0030, 0x0110, &pId3);
 
     printf("Waiting to capture devices... enter 'r' to run filters\n");
     c = getchar();

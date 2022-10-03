@@ -78,7 +78,7 @@
 //
 // VirtualPox VGA PCI Configuration Header values
 //
-#define VPOX_VENDOR_ID          0x80ee
+#define VPOX_VENDOR_ID          0x90ee
 #define VPOX_VGA_DEVICE_ID      0xbeef
 
 

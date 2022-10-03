@@ -307,7 +307,7 @@ static const u64 Td[256] = {
     U64(0xfcd7e54ffcd7e54f), U64(0xd7cb2ac5d7cb2ac5),
     U64(0x8044352680443526), U64(0x8fa362b58fa362b5),
     U64(0x495ab1de495ab1de), U64(0x671bba25671bba25),
-    U64(0x980eea45980eea45), U64(0xe1c0fe5de1c0fe5d),
+    U64(0x990eea45990eea45), U64(0xe1c0fe5de1c0fe5d),
     U64(0x02752fc302752fc3), U64(0x12f04c8112f04c81),
     U64(0xa397468da397468d), U64(0xc6f9d36bc6f9d36b),
     U64(0xe75f8f03e75f8f03), U64(0x959c9215959c9215),

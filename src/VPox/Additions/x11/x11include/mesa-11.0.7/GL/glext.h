@@ -3596,7 +3596,7 @@ GLAPI void APIENTRY glResetMinmax (GLenum target);
 
 #ifndef GL_ARB_indirect_parameters
 #define GL_ARB_indirect_parameters 1
-#define GL_PARAMETER_BUFFER_ARB           0x80EE
+#define GL_PARAMETER_BUFFER_ARB           0x90EE
 #define GL_PARAMETER_BUFFER_BINDING_ARB   0x80EF
 typedef void (APIENTRYP PFNGLMULTIDRAWARRAYSINDIRECTCOUNTARBPROC) (GLenum mode, GLintptr indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride);
 typedef void (APIENTRYP PFNGLMULTIDRAWELEMENTSINDIRECTCOUNTARBPROC) (GLenum mode, GLenum type, GLintptr indirect, GLintptr drawcount, GLsizei maxdrawcount, GLsizei stride);

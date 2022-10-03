@@ -69,7 +69,7 @@
 %endif
 %define VMM_MIN_CPU_COUNT           1
 %define VMM_MAX_CPU_COUNT           64
-%define VPOX_PCI_VENDORID           (0x80ee)
+%define VPOX_PCI_VENDORID           (0x90ee)
 %define VPOX_VENDORID               VPOX_PCI_VENDORID
 %define VPOX_DEVICEID               (0xbeef)
 %define VPOX_VESA_VENDORID          VPOX_PCI_VENDORID

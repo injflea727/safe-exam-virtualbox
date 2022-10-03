@@ -51,7 +51,7 @@
 
 /** @name USB HID vendor and product IDs
  * @{ */
-#define VPOX_USB_VENDOR             0x80EE
+#define VPOX_USB_VENDOR             0x90EE
 #define USBHID_PID_MOUSE            0x0020
 #define USBHID_PID_TABLET           0x0021
 #define USBHID_PID_MULTI_TOUCH      0x0022
